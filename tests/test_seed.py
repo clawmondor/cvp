@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from cvp.models import Base, Category
-from cvp.seed import CATEGORIES, seed_categories
+from cvp.seed import seed_categories
 
 
 @pytest.fixture
@@ -39,5 +39,7 @@ def test_non_depreciable_categories_have_null_useful_life(db: Session) -> None:
     for cat_id in [7, 36, 37, 38]:
         cat = db.get(Category, cat_id)
         assert cat is not None
-        assert cat.useful_life_years is None, f"Category {cat_id} should have null useful_life_years"
+        assert cat.useful_life_years is None, (
+            f"Category {cat_id} should have null useful_life_years"
+        )
         assert cat.acv_floor_pct == 1.00, f"Category {cat_id} should have acv_floor_pct=1.0"
