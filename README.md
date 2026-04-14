@@ -223,6 +223,7 @@ All settings are read from `.env` at startup via pydantic-settings. Every variab
 | `ANTHROPIC_API_KEY` | `""` | Required for Claude Vision photo scanning |
 | `VISION_MODEL` | `claude-opus-4-6` | Model used for Vision scans |
 | `VISION_MODEL_FALLBACK` | `claude-sonnet-4-6` | Fallback model |
+| `PORT` | `8000` | Port the dev server listens on |
 | `DATABASE_URL` | `sqlite:///./data/cvp.db` | SQLite database path |
 | `UPLOAD_DIR` | `./data/uploads` | Where evidence files are stored |
 | `EXPORT_DIR` | `./data/exports` | Where PDFs and CSVs are written |
