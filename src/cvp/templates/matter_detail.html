@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}{{ matter.policyholder_name or "Matter" }}{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-start justify-between">
+  <div>
+    <h1 class="text-2xl font-semibold text-gray-900">
+      {{ matter.policyholder_name or "(unnamed policyholder)" }}
+    </h1>
+    <p class="mt-1 text-sm text-gray-500">{{ matter.firm_name }} &mdash; {{ matter.loss_event }}</p>
+  </div>
+  <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium
+    {% if matter.status == 'draft' %}bg-gray-100 text-gray-700
+    {% elif matter.status == 'in_review' %}bg-yellow-100 text-yellow-800
+    {% elif matter.status == 'delivered' %}bg-green-100 text-green-800
+    {% else %}bg-gray-100 text-gray-500{% endif %}">
+    {{ matter.status | replace('_', ' ') | title }}
+  </span>
+</div>
+
+<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-10">
+  <div class="rounded-lg border border-gray-200 bg-white p-4">
+    <dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Loss location</dt>
+    <dd class="mt-1 text-sm text-gray-900">{{ matter.loss_location or "—" }}</dd>
+  </div>
+  <div class="rounded-lg border border-gray-200 bg-white p-4">
+    <dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Loss date</dt>
+    <dd class="mt-1 text-sm text-gray-900">{{ matter.loss_date or "—" }}</dd>
+  </div>
+  <div class="rounded-lg border border-gray-200 bg-white p-4">
+    <dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Loss type</dt>
+    <dd class="mt-1 text-sm text-gray-900">{{ matter.loss_type | replace('_', ' ') | title }}</dd>
+  </div>
+  <div class="rounded-lg border border-gray-200 bg-white p-4">
+    <dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Carrier</dt>
+    <dd class="mt-1 text-sm text-gray-900">{{ matter.carrier or "—" }}</dd>
+  </div>
+  <div class="rounded-lg border border-gray-200 bg-white p-4">
+    <dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Policy number</dt>
+    <dd class="mt-1 text-sm text-gray-900">{{ matter.policy_number or "—" }}</dd>
+  </div>
+  <div class="rounded-lg border border-gray-200 bg-white p-4">
+    <dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Claim number</dt>
+    <dd class="mt-1 text-sm text-gray-900">{{ matter.claim_number or "—" }}</dd>
+  </div>
+  <div class="rounded-lg border border-gray-200 bg-white p-4">
+    <dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Coverage C limit</dt>
+    <dd class="mt-1 text-sm text-gray-900">${{ "{:,.2f}".format(matter.coverage_c_limit / 100) }}</dd>
+  </div>
+  <div class="rounded-lg border border-gray-200 bg-white p-4">
+    <dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Attorney</dt>
+    <dd class="mt-1 text-sm text-gray-900">{{ matter.attorney_name or "—" }}</dd>
+  </div>
+  <div class="rounded-lg border border-gray-200 bg-white p-4">
+    <dt class="text-xs font-medium text-gray-500 uppercase tracking-wide">Target delivery</dt>
+    <dd class="mt-1 text-sm text-gray-900">{{ matter.target_delivery_date or "—" }}</dd>
+  </div>
+</div>
+
+<div class="rounded-lg border border-gray-200 bg-white p-6 text-center text-gray-400">
+  <p class="text-sm font-medium">Evidence, items, and export tabs coming in later phases.</p>
+  <p class="text-xs mt-1">{{ items | length }} item{{ "s" if items | length != 1 else "" }} in this matter.</p>
+</div>
+{% endblock %}

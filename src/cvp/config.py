@@ -2,13 +2,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     anthropic_api_key: str = ""
     vision_model: str = "claude-opus-4-6"
     vision_model_fallback: str = "claude-sonnet-4-6"
+    port: int = 8000
     database_url: str = "sqlite:///./data/cvp.db"
     upload_dir: str = "./data/uploads"
     export_dir: str = "./data/exports"

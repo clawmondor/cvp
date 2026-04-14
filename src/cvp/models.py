@@ -78,9 +78,7 @@ class Room(Base):
     __tablename__ = "rooms"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
-    matter_id: Mapped[str] = mapped_column(
-        String, ForeignKey("matters.id"), nullable=False
-    )
+    matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
     name: Mapped[str] = mapped_column(String)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -114,15 +112,9 @@ class Item(Base):
     __tablename__ = "items"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
-    matter_id: Mapped[str] = mapped_column(
-        String, ForeignKey("matters.id"), nullable=False
-    )
-    room_id: Mapped[str | None] = mapped_column(
-        String, ForeignKey("rooms.id"), nullable=True
-    )
-    category_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("categories.id"), nullable=False
-    )
+    matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
+    room_id: Mapped[str | None] = mapped_column(String, ForeignKey("rooms.id"), nullable=True)
+    category_id: Mapped[int] = mapped_column(Integer, ForeignKey("categories.id"), nullable=False)
     line_number: Mapped[int] = mapped_column(Integer, default=0)
     description: Mapped[str] = mapped_column(String, default="")
     brand: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -160,9 +152,7 @@ class EvidenceFile(Base):
     __tablename__ = "evidence_files"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
-    matter_id: Mapped[str] = mapped_column(
-        String, ForeignKey("matters.id"), nullable=False
-    )
+    matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
     filename: Mapped[str] = mapped_column(String)
     stored_path: Mapped[str] = mapped_column(String)
     mime_type: Mapped[str] = mapped_column(String, default="")
@@ -187,9 +177,7 @@ class VisionRun(Base):
     __tablename__ = "vision_runs"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
-    matter_id: Mapped[str] = mapped_column(
-        String, ForeignKey("matters.id"), nullable=False
-    )
+    matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
     evidence_file_id: Mapped[str] = mapped_column(
         String, ForeignKey("evidence_files.id"), nullable=False
     )

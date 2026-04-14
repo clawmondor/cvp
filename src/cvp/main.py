@@ -7,12 +7,14 @@ from fastapi.templating import Jinja2Templates
 
 from cvp.db import SessionLocal
 from cvp.models import Matter
+from cvp.routers import matters
 
 BASE_DIR = Path(__file__).parent
 
 app = FastAPI(title="Contents Valuation Prototype")
 
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+app.include_router(matters.router)
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
@@ -31,4 +33,6 @@ def dashboard(request: Request) -> HTMLResponse:
 def run_dev() -> None:
     import uvicorn
 
-    uvicorn.run("cvp.main:app", host="127.0.0.1", port=8000, reload=True)
+    from cvp.config import settings
+
+    uvicorn.run("cvp.main:app", host="127.0.0.1", port=settings.port, reload=True)
