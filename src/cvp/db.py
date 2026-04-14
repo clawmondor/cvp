@@ -1,0 +1,45 @@
+"""SQLAlchemy 2.x database session and engine configuration."""
+
+from collections.abc import Generator
+from pathlib import Path
+
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import Session, sessionmaker
+
+from cvp.config import settings
+
+
+def _ensure_data_dirs() -> None:
+    """Create required data directories at module import time."""
+    Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
+    Path(settings.export_dir).mkdir(parents=True, exist_ok=True)
+    db_file = settings.database_url.replace("sqlite:///", "")
+    Path(db_file).parent.mkdir(parents=True, exist_ok=True)
+
+
+_ensure_data_dirs()
+
+engine = create_engine(
+    settings.database_url,
+    connect_args={"check_same_thread": False},
+)
+
+
+@event.listens_for(engine, "connect")
+def _set_wal_mode(dbapi_connection, connection_record) -> None:  # noqa: ANN001
+    """Enable WAL journal mode for SQLite."""
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.close()
+
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def get_db() -> Generator[Session, None, None]:
+    """FastAPI dependency that yields a database session."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
