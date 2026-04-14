@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from cvp.db import SessionLocal
 from cvp.models import Matter
-from cvp.routers import matters
+from cvp.routers import evidence, matters
 
 BASE_DIR = Path(__file__).parent
 
@@ -16,6 +16,7 @@ app = FastAPI(title="Contents Valuation Prototype")
 
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(matters.router)
+app.include_router(evidence.router)
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 

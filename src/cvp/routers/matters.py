@@ -83,7 +83,7 @@ def matter_detail(request: Request, matter_id: str) -> HTMLResponse:
     try:
         matter = (
             db.query(Matter)
-            .options(selectinload(Matter.items))
+            .options(selectinload(Matter.items), selectinload(Matter.evidence_files))
             .filter(Matter.id == matter_id)
             .first()
         )
@@ -94,9 +94,8 @@ def matter_detail(request: Request, matter_id: str) -> HTMLResponse:
         total_rcv_cents = sum(i.rcv_total_cents for i in confirmed)
         total_acv_cents = sum(i.acv_total_cents for i in confirmed)
         unconfirmed_count = sum(1 for i in items if not i.confirmed)
-        missing_price_count = sum(
-            1 for i in confirmed if i.rcv_unit_cents == 0
-        )
+        missing_price_count = sum(1 for i in confirmed if i.rcv_unit_cents == 0)
+        evidence_files = sorted(matter.evidence_files, key=lambda f: f.created_at, reverse=True)
     finally:
         db.close()
 
@@ -106,6 +105,7 @@ def matter_detail(request: Request, matter_id: str) -> HTMLResponse:
         context={
             "matter": matter,
             "items": items,
+            "evidence_files": evidence_files,
             "total_rcv_cents": total_rcv_cents,
             "total_acv_cents": total_acv_cents,
             "unconfirmed_count": unconfirmed_count,
@@ -179,6 +179,7 @@ def update_matter_status(
         matter.status = status
         if status == "delivered":
             from datetime import date as date_cls
+
             matter.delivered_date = date_cls.today()
         db.commit()
     finally:

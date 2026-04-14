@@ -1,4 +1,54 @@
-<div class="rounded-lg border border-dashed border-gray-300 bg-white p-12 text-center text-gray-400">
-  <p class="text-sm font-medium text-gray-500">Evidence upload</p>
-  <p class="text-xs mt-1">Drag-and-drop photo/file upload — Phase 3</p>
+<div class="space-y-4">
+  <!-- Upload zone -->
+  <form id="evidence-form"
+        hx-post="/api/matters/{{ matter.id }}/evidence"
+        hx-target="#evidence-grid"
+        hx-swap="outerHTML"
+        hx-encoding="multipart/form-data">
+    <div id="drop-zone"
+         class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white px-6 py-10 text-center transition-colors hover:border-indigo-400 cursor-pointer"
+         onclick="document.getElementById('evidence-input').click()">
+      <svg class="mx-auto mb-3 h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+      </svg>
+      <p class="text-sm font-medium text-gray-600">Drop files here or <span class="text-indigo-600">browse</span></p>
+      <p class="mt-1 text-xs text-gray-400">Photos, PDFs, videos — any file type accepted</p>
+      <input id="evidence-input" name="files" type="file" multiple class="hidden">
+    </div>
+  </form>
+
+  <!-- File grid (swapped by HTMX after upload) -->
+  {% include "_evidence_grid.html" %}
 </div>
+
+<script>
+(function () {
+  const zone = document.getElementById('drop-zone');
+  const input = document.getElementById('evidence-input');
+  const form  = document.getElementById('evidence-form');
+
+  function submitFiles(fileList) {
+    if (!fileList || fileList.length === 0) return;
+    const dt = new DataTransfer();
+    Array.from(fileList).forEach(f => dt.items.add(f));
+    input.files = dt.files;
+    htmx.trigger(form, 'submit');
+  }
+
+  input.addEventListener('change', () => submitFiles(input.files));
+
+  zone.addEventListener('dragover', e => {
+    e.preventDefault();
+    zone.classList.add('border-indigo-500', 'bg-indigo-50');
+  });
+  zone.addEventListener('dragleave', () => {
+    zone.classList.remove('border-indigo-500', 'bg-indigo-50');
+  });
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('border-indigo-500', 'bg-indigo-50');
+    submitFiles(e.dataTransfer.files);
+  });
+})();
+</script>

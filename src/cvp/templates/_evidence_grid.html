@@ -1,0 +1,32 @@
+<div id="evidence-grid"
+     class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+  {% for f in evidence_files %}
+  <div data-file-card class="group relative rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
+    {% if f.kind == "image" %}
+    <img src="/files/{{ f.stored_path }}"
+         alt="{{ f.filename }}"
+         class="h-32 w-full object-cover">
+    {% elif f.kind == "pdf" %}
+    <div class="flex h-32 items-center justify-center bg-red-50 text-4xl">📄</div>
+    {% elif f.kind == "video" %}
+    <div class="flex h-32 items-center justify-center bg-purple-50 text-4xl">🎬</div>
+    {% else %}
+    <div class="flex h-32 items-center justify-center bg-gray-50 text-4xl">📎</div>
+    {% endif %}
+
+    <div class="px-2 py-1.5">
+      <p class="truncate text-xs font-medium text-gray-700" title="{{ f.filename }}">{{ f.filename }}</p>
+      <p class="text-xs text-gray-400">{{ (f.size_bytes / 1024) | round(1) }} KB</p>
+    </div>
+
+    <button
+      hx-delete="/api/evidence/{{ f.id }}"
+      hx-target="closest [data-file-card]"
+      hx-swap="outerHTML"
+      hx-confirm="Delete {{ f.filename }}?"
+      class="absolute right-1 top-1 hidden rounded bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white opacity-90 group-hover:block hover:bg-red-700">
+      ✕
+    </button>
+  </div>
+  {% endfor %}
+</div>
