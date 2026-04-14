@@ -1,0 +1,19 @@
+<li id="room-{{ room.id }}"
+    class="group flex items-center justify-between rounded-md border border-gray-200 bg-white px-4 py-2.5 shadow-sm">
+  <span id="room-name-{{ room.id }}" class="text-sm font-medium text-gray-800">{{ room.name }}</span>
+  <div class="flex items-center gap-2">
+    <button
+      onclick="startRename('{{ room.id }}')"
+      class="hidden rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100 group-hover:inline-flex">
+      Rename
+    </button>
+    <button
+      hx-delete="/api/rooms/{{ room.id }}"
+      hx-target="#room-{{ room.id }}"
+      hx-swap="outerHTML"
+      hx-confirm="Delete room '{{ room.name }}'? Items in this room will become unassigned."
+      class="hidden rounded px-2 py-0.5 text-xs text-red-600 hover:bg-red-50 group-hover:inline-flex">
+      Delete
+    </button>
+  </div>
+</li>

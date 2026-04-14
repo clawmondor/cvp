@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import selectinload
 
 from cvp.db import SessionLocal
-from cvp.models import Matter
+from cvp.models import Category, Matter
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -83,19 +83,25 @@ def matter_detail(request: Request, matter_id: str) -> HTMLResponse:
     try:
         matter = (
             db.query(Matter)
-            .options(selectinload(Matter.items), selectinload(Matter.evidence_files))
+            .options(
+                selectinload(Matter.items),
+                selectinload(Matter.evidence_files),
+                selectinload(Matter.rooms),
+            )
             .filter(Matter.id == matter_id)
             .first()
         )
         if matter is None:
             return HTMLResponse("Matter not found", status_code=404)
-        items = matter.items
+        items = sorted(matter.items, key=lambda i: i.line_number)
         confirmed = [i for i in items if i.confirmed and not i.excluded]
         total_rcv_cents = sum(i.rcv_total_cents for i in confirmed)
         total_acv_cents = sum(i.acv_total_cents for i in confirmed)
         unconfirmed_count = sum(1 for i in items if not i.confirmed)
         missing_price_count = sum(1 for i in confirmed if i.rcv_unit_cents == 0)
         evidence_files = sorted(matter.evidence_files, key=lambda f: f.created_at, reverse=True)
+        rooms = sorted(matter.rooms, key=lambda r: r.sort_order)
+        categories = db.query(Category).order_by(Category.id).all()
     finally:
         db.close()
 
@@ -106,6 +112,8 @@ def matter_detail(request: Request, matter_id: str) -> HTMLResponse:
             "matter": matter,
             "items": items,
             "evidence_files": evidence_files,
+            "rooms": rooms,
+            "categories": categories,
             "total_rcv_cents": total_rcv_cents,
             "total_acv_cents": total_acv_cents,
             "unconfirmed_count": unconfirmed_count,

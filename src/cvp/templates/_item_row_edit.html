@@ -1,0 +1,117 @@
+<tr id="item-row-{{ item.id }}" class="bg-indigo-50 text-sm">
+  <td colspan="12" class="px-3 py-3">
+    <form hx-patch="/api/items/{{ item.id }}"
+          hx-target="#item-row-{{ item.id }}"
+          hx-swap="outerHTML"
+          class="space-y-3">
+
+      <!-- Row 1: core fields -->
+      <div class="grid grid-cols-12 gap-2 items-end">
+        <div class="col-span-4">
+          <label class="text-xs font-medium text-gray-600">Description</label>
+          <input name="description" value="{{ item.description }}" required maxlength="255"
+                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs font-medium text-gray-600">Brand</label>
+          <input name="brand" value="{{ item.brand or '' }}" maxlength="100"
+                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs font-medium text-gray-600">Model</label>
+          <input name="model_num" value="{{ item.model or '' }}" maxlength="100"
+                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs font-medium text-gray-600">Room</label>
+          <select name="room_id"
+                  class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+            <option value="">— unassigned —</option>
+            {% for room in rooms %}
+            <option value="{{ room.id }}" {% if item.room_id == room.id %}selected{% endif %}>{{ room.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs font-medium text-gray-600">Category</label>
+          <select name="category_id" required
+                  class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+            {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if item.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Row 2: numeric fields -->
+      <div class="grid grid-cols-12 gap-2 items-end">
+        <div class="col-span-1">
+          <label class="text-xs font-medium text-gray-600">Qty</label>
+          <input name="quantity" type="number" min="1" value="{{ item.quantity }}"
+                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs font-medium text-gray-600">Age (years)</label>
+          <input name="age_years" type="number" min="0" step="0.5" value="{{ item.age_years }}"
+                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs font-medium text-gray-600">Condition</label>
+          <select name="condition"
+                  class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+            {% for cond in conditions %}
+            <option value="{{ cond }}" {% if item.condition == cond %}selected{% endif %}>{{ cond.replace("_", " ").title() }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs font-medium text-gray-600">RCV / unit ($)</label>
+          <input name="rcv_unit_dollars" type="number" min="0" step="0.01"
+                 value="{{ "%.2f" % (item.rcv_unit_cents / 100) }}"
+                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none font-mono">
+        </div>
+        <div class="col-span-3">
+          <label class="text-xs font-medium text-gray-600">Notes</label>
+          <input name="notes" value="{{ item.notes }}" maxlength="500"
+                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div class="col-span-2 flex gap-2">
+          <button type="submit"
+                  class="w-full rounded bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">
+            Save
+          </button>
+          <button type="button"
+                  hx-get="/api/items/{{ item.id }}/view"
+                  hx-target="#item-row-{{ item.id }}"
+                  hx-swap="outerHTML"
+                  class="w-full rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50">
+            Cancel
+          </button>
+        </div>
+      </div>
+
+      <!-- Row 3: ACV override (collapsible) -->
+      <details class="text-xs">
+        <summary class="cursor-pointer text-gray-500 hover:text-gray-700 select-none">
+          ACV override {% if item.acv_override_cents is not none %}<span class="text-amber-600 font-medium">(active: ${{ "%.2f" % (item.acv_override_cents / 100) }})</span>{% endif %}
+        </summary>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-medium text-gray-600">Override ACV ($)</label>
+            <input name="acv_override_dollars" type="number" min="0" step="0.01"
+                   value="{{ "%.2f" % (item.acv_override_cents / 100) if item.acv_override_cents is not none else "" }}"
+                   placeholder="Leave blank to use computed ACV"
+                   class="mt-0.5 block w-full rounded border border-amber-300 px-2 py-1 text-sm focus:border-amber-500 focus:outline-none font-mono">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-600">Override reason (required)</label>
+            <input name="acv_override_reason" value="{{ item.acv_override_reason or '' }}"
+                   placeholder="e.g. Appraised value per attached report"
+                   class="mt-0.5 block w-full rounded border border-amber-300 px-2 py-1 text-sm focus:border-amber-500 focus:outline-none">
+          </div>
+        </div>
+      </details>
+
+    </form>
+  </td>
+</tr>
