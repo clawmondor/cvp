@@ -20,15 +20,11 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 def dashboard(request: Request) -> HTMLResponse:
     db = SessionLocal()
     try:
-        matters = (
-            db.query(Matter)
-            .order_by(Matter.status, Matter.target_delivery_date)
-            .all()
-        )
+        matters = db.query(Matter).order_by(Matter.status, Matter.target_delivery_date).all()
     finally:
         db.close()
     return templates.TemplateResponse(
-        "dashboard.html", {"request": request, "matters": matters}
+        request=request, name="dashboard.html", context={"matters": matters}
     )
 
 
