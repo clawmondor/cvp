@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import selectinload
 
 from cvp.db import SessionLocal
 from cvp.models import Matter
@@ -22,7 +23,12 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 def dashboard(request: Request) -> HTMLResponse:
     db = SessionLocal()
     try:
-        matters = db.query(Matter).order_by(Matter.status, Matter.target_delivery_date).all()
+        matters = (
+            db.query(Matter)
+            .options(selectinload(Matter.items))
+            .order_by(Matter.status, Matter.target_delivery_date)
+            .all()
+        )
     finally:
         db.close()
     return templates.TemplateResponse(

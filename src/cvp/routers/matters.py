@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import selectinload
 
 from cvp.db import SessionLocal
 from cvp.models import Matter
@@ -80,10 +81,15 @@ def create_matter(
 def matter_detail(request: Request, matter_id: str) -> HTMLResponse:
     db = SessionLocal()
     try:
-        matter = db.get(Matter, matter_id)
+        matter = (
+            db.query(Matter)
+            .options(selectinload(Matter.items))
+            .filter(Matter.id == matter_id)
+            .first()
+        )
         if matter is None:
             return HTMLResponse("Matter not found", status_code=404)
-        items = list(matter.items)
+        items = matter.items
     finally:
         db.close()
 
