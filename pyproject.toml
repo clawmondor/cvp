@@ -43,3 +43,6 @@ exclude = ["migrations/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/cvp/services/vision_prompts.py" = ["E501"]

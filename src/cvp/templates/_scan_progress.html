@@ -1,0 +1,46 @@
+{% set pct = ((progress / total * 100) | int) if total else 0 %}
+<div id="scan-status"
+  {% if status == "running" %}
+  hx-get="/api/matters/{{ matter_id }}/vision-scan/{{ job_id }}"
+  hx-trigger="every 2s"
+  hx-target="#scan-status"
+  hx-swap="outerHTML"
+  {% endif %}
+  class="rounded-lg border {% if status == 'error' %}border-red-200 bg-red-50{% elif status == 'done' %}border-green-200 bg-green-50{% else %}border-indigo-200 bg-indigo-50{% endif %} p-4 space-y-2">
+
+  <div class="flex items-center justify-between text-sm font-medium
+    {% if status == 'error' %}text-red-700{% elif status == 'done' %}text-green-700{% else %}text-indigo-700{% endif %}">
+    {% if status == "running" %}
+    <span>Scanning… {{ progress }} / {{ total }} images</span>
+    <span class="animate-pulse">●</span>
+    {% elif status == "done" %}
+    <span>Scan complete — {{ items_created }} draft item{{ "s" if items_created != 1 }} created</span>
+    <span>✓</span>
+    {% else %}
+    <span>Scan finished with errors — {{ items_created }} item{{ "s" if items_created != 1 }} created</span>
+    <span>⚠</span>
+    {% endif %}
+  </div>
+
+  {% if status == "running" %}
+  <div class="w-full rounded-full bg-indigo-100 h-2">
+    <div class="h-2 rounded-full bg-indigo-500 transition-all" style="width: {{ pct }}%"></div>
+  </div>
+  {% endif %}
+
+  {% if errors %}
+  <ul class="text-xs text-red-600 space-y-0.5 list-disc list-inside">
+    {% for err in errors %}
+    <li>{{ err }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if status != "running" %}
+  <p class="text-xs text-gray-500">
+    Switch to the <strong>Items</strong> tab to review and confirm draft items.
+    <a href="#items" class="text-indigo-600 hover:underline" onclick="location.reload()">Reload page →</a>
+  </p>
+  {% endif %}
+
+</div>

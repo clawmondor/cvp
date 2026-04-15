@@ -1,4 +1,5 @@
 <div class="space-y-4">
+
   <!-- Upload zone -->
   <form id="evidence-form"
         hx-post="/api/matters/{{ matter.id }}/evidence"
@@ -18,12 +19,62 @@
     </div>
   </form>
 
-  <!-- File grid (swapped by HTMX after upload) -->
+  <!-- Scan controls (only shown if there are image files) -->
+  {% set image_files = evidence_files | selectattr("kind", "equalto", "image") | list %}
+  {% if image_files %}
+  <div class="rounded-lg border border-indigo-100 bg-indigo-50 p-4">
+    <form id="scan-form"
+          hx-post="/api/matters/{{ matter.id }}/vision-scan"
+          hx-target="#scan-status-container"
+          hx-swap="innerHTML">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-indigo-800">Scan with Vision</h3>
+        <div class="flex items-center gap-3">
+          <span id="scan-cost-label" class="text-xs text-indigo-600"></span>
+          <button type="button" onclick="selectAllImages()" class="text-xs text-indigo-600 hover:underline">All</button>
+          <button type="button" onclick="selectNoneImages()" class="text-xs text-indigo-600 hover:underline">None</button>
+          <button type="submit" id="scan-btn" disabled
+                  class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed">
+            Scan selected
+          </button>
+        </div>
+      </div>
+      <p class="text-xs text-indigo-600 mb-3">
+        Select images to send to Claude Vision. Each image costs approximately $0.03.
+        Batches over 20 images require confirmation.
+      </p>
+      <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+        {% for f in image_files %}
+        <label class="relative cursor-pointer group">
+          <input type="checkbox" name="evidence_file_ids" value="{{ f.id }}"
+                 class="scan-checkbox sr-only"
+                 onchange="updateScanState()">
+          <img src="/files/{{ f.stored_path }}"
+               alt="{{ f.filename }}"
+               class="h-20 w-full rounded object-cover ring-2 ring-transparent group-has-[:checked]:ring-indigo-500 transition-all">
+          <div class="absolute inset-0 rounded bg-indigo-600/20 opacity-0 group-has-[:checked]:opacity-100 transition-opacity flex items-center justify-center">
+            <svg class="h-5 w-5 text-white drop-shadow" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          {% if f.scanned %}
+          <span class="absolute top-0.5 right-0.5 rounded bg-green-500 px-1 py-0.5 text-xs text-white leading-none" title="Already scanned">✓</span>
+          {% endif %}
+        </label>
+        {% endfor %}
+      </div>
+    </form>
+    <div id="scan-status-container" class="mt-3"></div>
+  </div>
+  {% endif %}
+
+  <!-- File grid -->
   {% include "_evidence_grid.html" %}
 </div>
 
 <script>
 (function () {
+  // Drag-and-drop upload
   const zone = document.getElementById('drop-zone');
   const input = document.getElementById('evidence-input');
   const form  = document.getElementById('evidence-form');
@@ -37,7 +88,6 @@
   }
 
   input.addEventListener('change', () => submitFiles(input.files));
-
   zone.addEventListener('dragover', e => {
     e.preventDefault();
     zone.classList.add('border-indigo-500', 'bg-indigo-50');
@@ -51,4 +101,30 @@
     submitFiles(e.dataTransfer.files);
   });
 })();
+
+function updateScanState() {
+  const checked = document.querySelectorAll('.scan-checkbox:checked');
+  const btn = document.getElementById('scan-btn');
+  const label = document.getElementById('scan-cost-label');
+  const n = checked.length;
+  btn.disabled = n === 0;
+  label.textContent = n > 0 ? `${n} image${n > 1 ? 's' : ''} · ~$${(n * 0.03).toFixed(2)}` : '';
+}
+
+function selectAllImages() {
+  document.querySelectorAll('.scan-checkbox').forEach(cb => cb.checked = true);
+  updateScanState();
+}
+function selectNoneImages() {
+  document.querySelectorAll('.scan-checkbox').forEach(cb => cb.checked = false);
+  updateScanState();
+}
+
+// Confirm large batches before submitting
+document.getElementById('scan-form')?.addEventListener('htmx:confirm', function(e) {
+  const n = document.querySelectorAll('.scan-checkbox:checked').length;
+  if (n > 20 && !confirm(`You selected ${n} images. This will cost approximately $${(n * 0.03).toFixed(2)}. Continue?`)) {
+    e.preventDefault();
+  }
+});
 </script>
