@@ -70,10 +70,18 @@
                  value="{{ "%.2f" % (item.rcv_unit_cents / 100) }}"
                  class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none font-mono">
         </div>
-        <div class="col-span-3">
+        <div class="col-span-2">
           <label class="text-xs font-medium text-gray-600">Notes</label>
           <input name="notes" value="{{ item.notes }}" maxlength="500"
                  class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div class="col-span-1 flex flex-col justify-end pb-0.5">
+          <label class="flex items-center gap-1.5 cursor-pointer select-none">
+            <input type="checkbox" name="confirmed" value="true"
+                   {% if item.confirmed %}checked{% endif %}
+                   class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+            <span class="text-xs font-medium text-gray-600">Confirmed</span>
+          </label>
         </div>
         <div class="col-span-2 flex gap-2">
           <button type="submit"

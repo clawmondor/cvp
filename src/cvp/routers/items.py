@@ -107,6 +107,7 @@ def create_item(
             condition=condition,
             rcv_unit_cents=_parse_cents(rcv_unit_dollars),
             notes=notes.strip(),
+            confirmed=True,  # manually entered items start confirmed; Vision drafts use False
         )
         _compute_and_set_totals(item, cat)
         db.add(item)
@@ -160,6 +161,7 @@ def update_item(
     notes: str = Form(""),
     acv_override_dollars: str = Form(""),
     acv_override_reason: str = Form(""),
+    confirmed: bool = Form(False),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -170,6 +172,7 @@ def update_item(
         if cat is None:
             raise HTTPException(status_code=400, detail="Invalid category")
 
+        item.confirmed = confirmed
         item.description = description.strip()
         item.category_id = category_id
         item.room_id = room_id or None
