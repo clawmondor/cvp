@@ -4,8 +4,8 @@
     <form hx-post="/api/matters/{{ matter.id }}/rooms"
           hx-target="#rooms-list"
           hx-swap="beforeend"
-          class="flex items-center gap-2"
-          onsubmit="this.reset()">
+          hx-on::after-request="if(event.detail.successful){ this.reset(); const e=document.getElementById('rooms-empty'); if(e) e.remove(); }"
+          class="flex items-center gap-2">
       <input name="name" placeholder="Room name" required maxlength="100"
              class="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
       <button type="submit"
@@ -15,17 +15,13 @@
     </form>
   </div>
 
-  {% if rooms %}
   <ul id="rooms-list" class="space-y-2">
     {% for room in rooms %}
     {% include "_room_li.html" %}
+    {% else %}
+    <li id="rooms-empty" class="text-sm text-gray-400 italic">No rooms yet — add one above.</li>
     {% endfor %}
   </ul>
-  {% else %}
-  <ul id="rooms-list" class="space-y-2">
-    <li class="text-sm text-gray-400 italic">No rooms yet — add one above.</li>
-  </ul>
-  {% endif %}
 </div>
 
 <script>
