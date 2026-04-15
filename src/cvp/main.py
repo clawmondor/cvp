@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from cvp.db import SessionLocal
 from cvp.models import Matter
-from cvp.routers import evidence, items, matters, rooms, vision
+from cvp.routers import evidence, exports, items, matters, rooms, vision
 
 BASE_DIR = Path(__file__).parent
 
@@ -20,6 +20,7 @@ app.include_router(evidence.router)
 app.include_router(rooms.router)
 app.include_router(items.router)
 app.include_router(vision.router)
+app.include_router(exports.router)
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
