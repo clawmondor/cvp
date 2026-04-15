@@ -98,7 +98,32 @@
         </div>
       </div>
 
-      <!-- Row 3: ACV override (collapsible) -->
+      <!-- Row 3: sourcing -->
+      <div class="grid grid-cols-12 gap-2 items-end">
+        <div class="col-span-2">
+          <label class="text-xs font-medium text-gray-600">Retailer</label>
+          <input name="source_retailer" value="{{ item.source_retailer or '' }}" maxlength="100"
+                 placeholder="e.g. Amazon, Home Depot"
+                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div class="col-span-7">
+          <label class="text-xs font-medium text-gray-600">Source URL</label>
+          <input name="source_url" type="url" value="{{ item.source_url or '' }}"
+                 placeholder="https://..."
+                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm font-mono focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div class="col-span-3">
+          <label class="text-xs font-medium text-gray-600">Match type</label>
+          <select name="match_type"
+                  class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+            {% for mt in [("exact", "Exact"), ("nearest_comparable", "Nearest comparable"), ("category_average", "Category average")] %}
+            <option value="{{ mt[0] }}" {% if item.match_type == mt[0] %}selected{% endif %}>{{ mt[1] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Row 4: ACV override (collapsible) -->
       <details class="text-xs">
         <summary class="cursor-pointer text-gray-500 hover:text-gray-700 select-none">
           ACV override {% if item.acv_override_cents is not none %}<span class="text-amber-600 font-medium">(active: ${{ "%.2f" % (item.acv_override_cents / 100) }})</span>{% endif %}

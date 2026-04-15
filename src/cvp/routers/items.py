@@ -159,6 +159,9 @@ def update_item(
     brand: str = Form(""),
     model_num: str = Form(""),
     notes: str = Form(""),
+    source_retailer: str = Form(""),
+    source_url: str = Form(""),
+    match_type: str = Form("exact"),
     acv_override_dollars: str = Form(""),
     acv_override_reason: str = Form(""),
     confirmed: bool = Form(False),
@@ -183,6 +186,9 @@ def update_item(
         item.brand = brand.strip() or None
         item.model = model_num.strip() or None
         item.notes = notes.strip()
+        item.source_retailer = source_retailer.strip()
+        item.source_url = source_url.strip()
+        item.match_type = match_type
 
         if acv_override_dollars.strip() and acv_override_reason.strip():
             item.acv_override_cents = _parse_cents(acv_override_dollars)
