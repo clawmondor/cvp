@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contents Inventory and Valuation Report — {{ matter.policyholder_name }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      .page-break { page-break-before: always; }
+      body { font-size: 11pt; }
+    }
+    .report-section { margin-bottom: 3rem; }
+  </style>
+</head>
+<body class="bg-white text-gray-900 font-sans max-w-5xl mx-auto px-8 py-10">
+
+<!-- ─── Print / back controls ─────────────────────────── -->
+<div class="no-print mb-6 flex items-center gap-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+  <a href="/matters/{{ matter.id }}#preview"
+     class="text-sm text-indigo-600 hover:underline">← Back to matter</a>
+  <button onclick="window.print()"
+          class="ml-auto rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">
+    Print / Save PDF
+  </button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     1. COVER PAGE
+     ═══════════════════════════════════════════════════════════ -->
+<div class="report-section min-h-[60vh] flex flex-col justify-center border-b-2 border-gray-900 pb-10">
+  <p class="text-xs uppercase tracking-widest text-gray-500 mb-8">Confidential — Attorney Work Product</p>
+
+  <h1 class="text-4xl font-bold text-gray-900 leading-tight mb-2">
+    Contents Inventory<br>and Valuation Report
+  </h1>
+  <p class="text-xl text-gray-600 mb-10">Prepared for Attorney Use Only</p>
+
+  <table class="text-sm w-full max-w-lg border-collapse">
+    <tbody>
+      <tr class="border-b border-gray-200">
+        <td class="py-2 pr-6 font-semibold text-gray-600 w-40">Policyholder</td>
+        <td class="py-2">{{ matter.policyholder_name or "—" }}</td>
+      </tr>
+      <tr class="border-b border-gray-200">
+        <td class="py-2 pr-6 font-semibold text-gray-600">Loss Address</td>
+        <td class="py-2">{{ matter.loss_location or "—" }}</td>
+      </tr>
+      <tr class="border-b border-gray-200">
+        <td class="py-2 pr-6 font-semibold text-gray-600">Loss Event</td>
+        <td class="py-2">{{ matter.loss_event or "—" }}</td>
+      </tr>
+      <tr class="border-b border-gray-200">
+        <td class="py-2 pr-6 font-semibold text-gray-600">Date of Loss</td>
+        <td class="py-2">{{ matter.loss_date.strftime("%B %-d, %Y") if matter.loss_date else "—" }}</td>
+      </tr>
+      <tr class="border-b border-gray-200">
+        <td class="py-2 pr-6 font-semibold text-gray-600">Carrier</td>
+        <td class="py-2">{{ matter.carrier or "—" }}</td>
+      </tr>
+      <tr class="border-b border-gray-200">
+        <td class="py-2 pr-6 font-semibold text-gray-600">Claim Number</td>
+        <td class="py-2">{{ matter.claim_number or "—" }}</td>
+      </tr>
+      <tr class="border-b border-gray-200">
+        <td class="py-2 pr-6 font-semibold text-gray-600">Policy Number</td>
+        <td class="py-2">{{ matter.policy_number or "—" }}</td>
+      </tr>
+      <tr class="border-b border-gray-200">
+        <td class="py-2 pr-6 font-semibold text-gray-600">Coverage C Limit</td>
+        <td class="py-2">${{ "{:,.2f}".format(matter.coverage_c_limit / 100) }}</td>
+      </tr>
+      <tr class="border-b border-gray-200">
+        <td class="py-2 pr-6 font-semibold text-gray-600">Referring Firm</td>
+        <td class="py-2">{{ matter.firm_name or "—" }}</td>
+      </tr>
+      <tr class="border-b border-gray-200">
+        <td class="py-2 pr-6 font-semibold text-gray-600">Attorney</td>
+        <td class="py-2">{{ matter.attorney_name or "—" }}</td>
+      </tr>
+      <tr>
+        <td class="py-2 pr-6 font-semibold text-gray-600">Report Date</td>
+        <td class="py-2">{{ report_date }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="mt-12 text-sm text-gray-500">
+    <p class="font-semibold text-gray-700">{{ company_name }}</p>
+    {% if company_address %}<p>{{ company_address }}</p>{% endif %}
+    {% if company_email %}<p>{{ company_email }}</p>{% endif %}
+    {% if company_phone %}<p>{{ company_phone }}</p>{% endif %}
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     2. TABLE OF CONTENTS
+     ═══════════════════════════════════════════════════════════ -->
+<div class="report-section page-break pt-10">
+  <h2 class="text-2xl font-bold text-gray-900 border-b-2 border-gray-900 pb-2 mb-6">Table of Contents</h2>
+  <ol class="space-y-2 text-sm">
+    {% for sec in [
+        "Executive Summary",
+        "Scope of Engagement",
+        "Methodology",
+        "Data Sources and Inputs",
+        "Depreciation Methodology",
+        "Summary of Findings by Room",
+        "Itemized Inventory",
+        "Pricing Audit Trail",
+        "Certifications and Limitations",
+        "Preparer's Signature",
+    ] %}
+    <li class="flex items-baseline justify-between border-b border-dotted border-gray-300 pb-1">
+      <span>{{ loop.index + 2 }}. {{ sec }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     3. EXECUTIVE SUMMARY
+     ═══════════════════════════════════════════════════════════ -->
+<div class="report-section page-break pt-10">
+  <h2 class="text-2xl font-bold text-gray-900 border-b-2 border-gray-900 pb-2 mb-6">Executive Summary</h2>
+
+  <p class="text-sm text-gray-700 mb-6 leading-relaxed">
+    This report presents a comprehensive contents inventory and replacement cost valuation for the personal
+    property of <strong>{{ matter.policyholder_name or "the insured" }}</strong> at
+    <strong>{{ matter.loss_location or "the loss address" }}</strong>, arising from the
+    <strong>{{ matter.loss_event or "reported loss event" }}</strong>
+    {% if matter.loss_date %}on <strong>{{ matter.loss_date.strftime("%B %-d, %Y") }}</strong>{% endif %}.
+    The inventory was compiled through physical evidence review, photographic analysis, and current retail
+    market research. All replacement cost values (RCV) reflect current market prices at the time of
+    documentation. Actual cash values (ACV) are computed using the straight-line depreciation methodology
+    described in Section 7.
+  </p>
+
+  <!-- Headline figures -->
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-8">
+    {% set headline = [
+        ("Total Line Items", total_items | string),
+        ("Total RCV", "$" + "{:,.2f}".format(total_rcv_cents / 100)),
+        ("Total ACV", "$" + "{:,.2f}".format(total_acv_cents / 100)),
+        ("Coverage C Limit", "$" + "{:,.2f}".format(matter.coverage_c_limit / 100)),
+    ] %}
+    {% for label, value in headline %}
+    <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
+      <p class="text-xs text-gray-500 uppercase tracking-wide">{{ label }}</p>
+      <p class="text-xl font-bold text-gray-900 mt-1 font-mono">{{ value }}</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if total_rcv_cents > 0 and total_acv_cents > 0 %}
+  {% set dep_pct = ((total_rcv_cents - total_acv_cents) / total_rcv_cents * 100) | round(1) %}
+  <p class="text-sm text-gray-600">
+    Blended depreciation across all confirmed items: <strong>{{ dep_pct }}%</strong>
+    (RCV − ACV = <strong>${{ "{:,.2f}".format((total_rcv_cents - total_acv_cents) / 100) }}</strong>).
+  </p>
+  {% endif %}
+
+  {% if matter.coverage_c_limit and total_rcv_cents > matter.coverage_c_limit %}
+  <p class="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+    ⚠ Total RCV exceeds the Coverage C limit by
+    <strong>${{ "{:,.2f}".format((total_rcv_cents - matter.coverage_c_limit) / 100) }}</strong>.
+  </p>
+  {% endif %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     4. SCOPE OF ENGAGEMENT
+     ═══════════════════════════════════════════════════════════ -->
+<div class="report-section page-break pt-10">
+  <h2 class="text-2xl font-bold text-gray-900 border-b-2 border-gray-900 pb-2 mb-6">Scope of Engagement</h2>
+  <div class="text-sm text-gray-700 space-y-3 leading-relaxed">
+    <p>
+      {{ company_name }} was retained by <strong>{{ matter.firm_name or "the referring law firm" }}</strong>
+      to prepare a documented contents inventory and replacement cost valuation report for the
+      personal property of <strong>{{ matter.policyholder_name or "the insured" }}</strong>.
+    </p>
+    <p>
+      The scope of this engagement is limited to the identification, description, and valuation of
+      personal property (Coverage C) contents. Structural, mechanical, and real property components
+      are expressly excluded from this report.
+    </p>
+    <p>
+      {{ company_name }} is an expert documentation and valuation services vendor. This report does not
+      constitute the practice of public adjusting, legal advice, or a USPAP-compliant appraisal.
+      {{ company_name }} does not negotiate claims, represent policyholders in dealings with insurers,
+      or advocate for any particular claim outcome.
+    </p>
+    <p>
+      This report is prepared as attorney work product at the direction of counsel and is subject to
+      applicable work-product protections. It is not intended for direct submission to any carrier
+      without review by the retaining attorney.
+    </p>
+    <p>Services provided: flat-fee documentation and valuation; no contingency or percentage-of-recovery
+      fee arrangement exists.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     5. METHODOLOGY
+     ═══════════════════════════════════════════════════════════ -->
+<div class="report-section page-break pt-10">
+  <h2 class="text-2xl font-bold text-gray-900 border-b-2 border-gray-900 pb-2 mb-6">Methodology</h2>
+  <div class="text-sm text-gray-700 space-y-3 leading-relaxed">
+    <p>The contents inventory was developed using the following process:</p>
+    <ol class="list-decimal list-inside space-y-2 pl-2">
+      <li><strong>Evidence intake.</strong> All available evidence — including photographs, video walkthroughs,
+          receipts, prior appraisals, and policyholder-provided inventories — was collected and organized
+          by room.</li>
+      <li><strong>Item identification.</strong> Each item was identified by description, brand (where visible
+          or recalled), model (where available), and room location.</li>
+      <li><strong>Current market pricing.</strong> Replacement cost values (RCV) reflect the current retail
+          price of a like-kind-and-quality replacement item, sourced from major U.S. retailers at the time
+          of documentation. Each price is supported by a source URL and capture date recorded in the
+          Pricing Audit Trail (Section 10).</li>
+      <li><strong>Depreciation.</strong> Actual cash values (ACV) are computed using straight-line
+          depreciation per the schedule in Section 7. All computations are algorithmic and consistent
+          across every item — no specialist discretion is applied to individual depreciation rates.</li>
+      <li><strong>Quality review.</strong> Each line item was individually reviewed and confirmed by
+          a senior specialist before inclusion in this report.</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     6. DATA SOURCES AND INPUTS
+     ═══════════════════════════════════════════════════════════ -->
+<div class="report-section page-break pt-10">
+  <h2 class="text-2xl font-bold text-gray-900 border-b-2 border-gray-900 pb-2 mb-6">Data Sources and Inputs</h2>
+  <div class="text-sm text-gray-700 space-y-3 leading-relaxed">
+    <p>The following inputs were used in preparing this inventory:</p>
+    <ul class="list-disc list-inside space-y-1 pl-2">
+      {% if matter.loss_event %}<li>Loss event: {{ matter.loss_event }}</li>{% endif %}
+      {% if matter.loss_date %}<li>Date of loss: {{ matter.loss_date.strftime("%B %-d, %Y") }}</li>{% endif %}
+      {% if matter.loss_location %}<li>Loss address: {{ matter.loss_location }}</li>{% endif %}
+      {% if matter.loss_type %}<li>Loss type: {{ matter.loss_type.replace("_", " ").title() }}</li>{% endif %}
+      <li>Photographic and video evidence provided by policyholder and/or attorney</li>
+      <li>Policyholder-provided item recall and documentation</li>
+      <li>Current retail price research (sources documented in the Pricing Audit Trail)</li>
+    </ul>
+    {% if evidence_files %}
+    <p class="mt-4">
+      <strong>{{ evidence_files | length }}</strong> evidence file(s) were received and reviewed for this matter.
+    </p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     7. DEPRECIATION METHODOLOGY
+     ═══════════════════════════════════════════════════════════ -->
+<div class="report-section page-break pt-10">
+  <h2 class="text-2xl font-bold text-gray-900 border-b-2 border-gray-900 pb-2 mb-6">Depreciation Methodology</h2>
+  <div class="text-sm text-gray-700 space-y-3 leading-relaxed mb-6">
+    <p>
+      Depreciation is computed using the <strong>straight-line method</strong> applied to each item's
+      useful life, age, and condition. The formula is:
+    </p>
+    <pre class="bg-gray-50 border border-gray-200 rounded px-4 py-3 text-xs font-mono leading-relaxed">
+dep_rate          = 1 / useful_life_years
+accumulated_dep   = min(dep_rate × age_years × condition_multiplier, 1 − floor_pct)
+acv_unit          = round(rcv_unit × (1 − accumulated_dep))
+acv_total         = acv_unit × quantity</pre>
+    <p><strong>Condition multipliers:</strong>
+      Excellent 0.75 · Above Average 0.90 · Average 1.00 · Below Average 1.15.
+      Items with no assigned useful life (e.g., jewelry, artwork) are not depreciated — ACV equals RCV.
+    </p>
+  </div>
+
+  {% if categories_used %}
+  <p class="text-sm font-semibold text-gray-700 mb-3">Categories appearing in this report:</p>
+  <table class="w-full text-xs border-collapse">
+    <thead>
+      <tr class="bg-gray-100">
+        <th class="text-left px-3 py-2 border border-gray-200">Category</th>
+        <th class="text-center px-3 py-2 border border-gray-200">Useful Life</th>
+        <th class="text-center px-3 py-2 border border-gray-200">ACV Floor</th>
+        <th class="text-right px-3 py-2 border border-gray-200">Items</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cat, count in categories_used %}
+      <tr class="border-b border-gray-100">
+        <td class="px-3 py-1.5 border border-gray-200">{{ cat.name }}</td>
+        <td class="px-3 py-1.5 border border-gray-200 text-center">
+          {{ cat.useful_life_years ~ " yr" if cat.useful_life_years else "Non-depreciable" }}
+        </td>
+        <td class="px-3 py-1.5 border border-gray-200 text-center">{{ (cat.acv_floor_pct * 100) | int }}%</td>
+        <td class="px-3 py-1.5 border border-gray-200 text-right">{{ count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     8. SUMMARY OF FINDINGS BY ROOM
+     ═══════════════════════════════════════════════════════════ -->
+<div class="report-section page-break pt-10">
+  <h2 class="text-2xl font-bold text-gray-900 border-b-2 border-gray-900 pb-2 mb-6">Summary of Findings by Room</h2>
+
+  {% if by_room %}
+  <table class="w-full text-sm border-collapse mb-4">
+    <thead>
+      <tr class="bg-gray-100">
+        <th class="text-left px-3 py-2 border border-gray-200">Room</th>
+        <th class="text-right px-3 py-2 border border-gray-200">Items</th>
+        <th class="text-right px-3 py-2 border border-gray-200">Total RCV</th>
+        <th class="text-right px-3 py-2 border border-gray-200">Total ACV</th>
+        <th class="text-right px-3 py-2 border border-gray-200">Depreciation</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in by_room %}
+      <tr class="border-b border-gray-100 hover:bg-gray-50">
+        <td class="px-3 py-2 border border-gray-200 font-medium">{{ row.room_name }}</td>
+        <td class="px-3 py-2 border border-gray-200 text-right">{{ row.count }}</td>
+        <td class="px-3 py-2 border border-gray-200 text-right font-mono">${{ "{:,.2f}".format(row.rcv / 100) }}</td>
+        <td class="px-3 py-2 border border-gray-200 text-right font-mono">${{ "{:,.2f}".format(row.acv / 100) }}</td>
+        <td class="px-3 py-2 border border-gray-200 text-right font-mono text-gray-600">
+          ${{ "{:,.2f}".format((row.rcv - row.acv) / 100) }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="bg-gray-50 font-semibold">
+        <td class="px-3 py-2 border border-gray-200">Total</td>
+        <td class="px-3 py-2 border border-gray-200 text-right">{{ total_items }}</td>
+        <td class="px-3 py-2 border border-gray-200 text-right font-mono">${{ "{:,.2f}".format(total_rcv_cents / 100) }}</td>
+        <td class="px-3 py-2 border border-gray-200 text-right font-mono">${{ "{:,.2f}".format(total_acv_cents / 100) }}</td>
+        <td class="px-3 py-2 border border-gray-200 text-right font-mono text-gray-600">
+          ${{ "{:,.2f}".format((total_rcv_cents - total_acv_cents) / 100) }}
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+  {% else %}
+  <p class="text-sm text-gray-500 italic">No confirmed items in this report.</p>
+  {% endif %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     9. ITEMIZED INVENTORY
+     ═══════════════════════════════════════════════════════════ -->
+<div class="report-section page-break pt-10">
+  <h2 class="text-2xl font-bold text-gray-900 border-b-2 border-gray-900 pb-2 mb-6">Itemized Inventory</h2>
+  <p class="text-xs text-gray-500 mb-4">Confirmed, non-excluded items only. Prices in USD. ACV ★ = specialist override applied.</p>
+
+  {% if confirmed_items %}
+  <table class="w-full text-xs border-collapse">
+    <thead class="bg-gray-100">
+      <tr>
+        <th class="text-left px-2 py-2 border border-gray-200">#</th>
+        <th class="text-left px-2 py-2 border border-gray-200">Description</th>
+        <th class="text-left px-2 py-2 border border-gray-200">Room</th>
+        <th class="text-left px-2 py-2 border border-gray-200">Category</th>
+        <th class="text-center px-2 py-2 border border-gray-200">Qty</th>
+        <th class="text-center px-2 py-2 border border-gray-200">Age</th>
+        <th class="text-center px-2 py-2 border border-gray-200">Cond</th>
+        <th class="text-right px-2 py-2 border border-gray-200">RCV/unit</th>
+        <th class="text-right px-2 py-2 border border-gray-200">RCV total</th>
+        <th class="text-right px-2 py-2 border border-gray-200">ACV total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in confirmed_items %}
+      <tr class="border-b border-gray-100">
+        <td class="px-2 py-1.5 border border-gray-200 font-mono text-gray-400">{{ item.line_number }}</td>
+        <td class="px-2 py-1.5 border border-gray-200 font-medium">
+          {{ item.description }}
+          {% if item.brand or item.model %}
+          <span class="text-gray-400 font-normal"> — {{ item.brand or "" }}{% if item.brand and item.model %} {{ item.model }}{% elif item.model %} {{ item.model }}{% endif %}</span>
+          {% endif %}
+        </td>
+        <td class="px-2 py-1.5 border border-gray-200">{{ room_map.get(item.room_id, "Unassigned") }}</td>
+        <td class="px-2 py-1.5 border border-gray-200">{{ cat_map.get(item.category_id, "—") }}</td>
+        <td class="px-2 py-1.5 border border-gray-200 text-center">{{ item.quantity }}</td>
+        <td class="px-2 py-1.5 border border-gray-200 text-center">{{ item.age_years | int }}y</td>
+        <td class="px-2 py-1.5 border border-gray-200 text-center">{{ item.condition.replace("_"," ").title() }}</td>
+        <td class="px-2 py-1.5 border border-gray-200 text-right font-mono">${{ "{:,.2f}".format(item.rcv_unit_cents / 100) }}</td>
+        <td class="px-2 py-1.5 border border-gray-200 text-right font-mono">${{ "{:,.2f}".format(item.rcv_total_cents / 100) }}</td>
+        <td class="px-2 py-1.5 border border-gray-200 text-right font-mono">
+          ${{ "{:,.2f}".format(item.acv_total_cents / 100) }}{% if item.acv_override_cents is not none %} ★{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="bg-gray-50 font-semibold text-xs">
+        <td colspan="8" class="px-2 py-2 border border-gray-200 text-right">Totals</td>
+        <td class="px-2 py-2 border border-gray-200 text-right font-mono">${{ "{:,.2f}".format(total_rcv_cents / 100) }}</td>
+        <td class="px-2 py-2 border border-gray-200 text-right font-mono">${{ "{:,.2f}".format(total_acv_cents / 100) }}</td>
+      </tr>
+    </tfoot>
+  </table>
+  {% else %}
+  <p class="text-sm text-gray-500 italic">No confirmed items to display.</p>
+  {% endif %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     10. PRICING AUDIT TRAIL
+     ═══════════════════════════════════════════════════════════ -->
+<div class="report-section page-break pt-10">
+  <h2 class="text-2xl font-bold text-gray-900 border-b-2 border-gray-900 pb-2 mb-6">Pricing Audit Trail</h2>
+  <p class="text-xs text-gray-500 mb-4">Every confirmed item with a source URL. Items without a source URL are listed with a placeholder.</p>
+
+  {% if confirmed_items %}
+  <table class="w-full text-xs border-collapse">
+    <thead class="bg-gray-100">
+      <tr>
+        <th class="text-left px-2 py-2 border border-gray-200">#</th>
+        <th class="text-left px-2 py-2 border border-gray-200">Description</th>
+        <th class="text-left px-2 py-2 border border-gray-200">Retailer</th>
+        <th class="text-left px-2 py-2 border border-gray-200">Source URL</th>
+        <th class="text-center px-2 py-2 border border-gray-200">Match Type</th>
+        <th class="text-center px-2 py-2 border border-gray-200">Captured</th>
+        <th class="text-right px-2 py-2 border border-gray-200">RCV/unit</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in confirmed_items %}
+      <tr class="border-b border-gray-100">
+        <td class="px-2 py-1.5 border border-gray-200 font-mono text-gray-400">{{ item.line_number }}</td>
+        <td class="px-2 py-1.5 border border-gray-200 font-medium">{{ item.description }}</td>
+        <td class="px-2 py-1.5 border border-gray-200">{{ item.source_retailer or "—" }}</td>
+        <td class="px-2 py-1.5 border border-gray-200 max-w-xs break-all">
+          {% if item.source_url %}
+          <a href="{{ item.source_url }}" class="text-indigo-600 hover:underline" target="_blank">{{ item.source_url[:60] }}{% if item.source_url | length > 60 %}…{% endif %}</a>
+          {% else %}
+          <span class="text-gray-400 italic">No source on file</span>
+          {% endif %}
+        </td>
+        <td class="px-2 py-1.5 border border-gray-200 text-center">{{ item.match_type.replace("_"," ") if item.match_type else "—" }}</td>
+        <td class="px-2 py-1.5 border border-gray-200 text-center">
+          {{ item.source_captured_at.strftime("%Y-%m-%d") if item.source_captured_at else "—" }}
+        </td>
+        <td class="px-2 py-1.5 border border-gray-200 text-right font-mono">${{ "{:,.2f}".format(item.rcv_unit_cents / 100) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-sm text-gray-500 italic">No confirmed items to display.</p>
+  {% endif %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     11. CERTIFICATIONS AND LIMITATIONS
+     ═══════════════════════════════════════════════════════════ -->
+<div class="report-section page-break pt-10">
+  <h2 class="text-2xl font-bold text-gray-900 border-b-2 border-gray-900 pb-2 mb-6">Certifications and Limitations</h2>
+  <div class="text-sm text-gray-700 space-y-3 leading-relaxed">
+    <p>The preparer certifies that, to the best of their knowledge and belief:</p>
+    <ol class="list-decimal list-inside space-y-2 pl-2">
+      <li>The statements of fact contained in this report are true and correct.</li>
+      <li>The reported analyses, opinions, and conclusions are limited only by the reported assumptions
+          and limiting conditions, and are the preparer's personal, impartial, and unbiased professional
+          analysis, opinions, and conclusions.</li>
+      <li>The preparer has no present or prospective interest in the property that is the subject of
+          this report and has no personal interest with respect to the parties involved.</li>
+      <li>The preparer's compensation for completing this assignment is not contingent upon the
+          development or reporting of a predetermined value or direction in value that favors the cause
+          of the client, the amount of the value opinion, the attainment of a stipulated result, or the
+          occurrence of a subsequent event directly related to the intended use of this appraisal.</li>
+      <li>The replacement cost values stated herein are based on current market research conducted at the
+          time of documentation and may not reflect prices at any prior or subsequent date.</li>
+    </ol>
+    <p class="mt-4 font-semibold">Limiting Conditions:</p>
+    <ul class="list-disc list-inside space-y-1 pl-2">
+      <li>This report is prepared solely for the use of the retaining attorney as attorney work product
+          and is not intended for any other purpose or party.</li>
+      <li>{{ company_name }} has not independently verified the existence, ownership, or pre-loss condition
+          of any item except as stated herein.</li>
+      <li>This report does not constitute a USPAP-compliant appraisal and should not be represented as such.</li>
+      <li>The ACV computations herein apply the depreciation schedule selected by the retaining attorney.
+          Other methodologies may produce different results.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     12. PREPARER'S SIGNATURE
+     ═══════════════════════════════════════════════════════════ -->
+<div class="report-section page-break pt-10">
+  <h2 class="text-2xl font-bold text-gray-900 border-b-2 border-gray-900 pb-2 mb-6">Preparer's Signature</h2>
+  <div class="text-sm text-gray-700 space-y-6 max-w-md">
+    <p>
+      Prepared by <strong>{{ company_name }}</strong> on <strong>{{ report_date }}</strong>.
+    </p>
+    <div class="mt-10 space-y-6">
+      <div>
+        <div class="border-b border-gray-900 w-64 mb-1"></div>
+        <p class="text-xs text-gray-500">Signature</p>
+      </div>
+      <div>
+        <div class="border-b border-gray-900 w-64 mb-1"></div>
+        <p class="text-xs text-gray-500">Printed Name / Title</p>
+      </div>
+      <div>
+        <div class="border-b border-gray-900 w-64 mb-1"></div>
+        <p class="text-xs text-gray-500">Date</p>
+      </div>
+    </div>
+    <p class="text-xs text-gray-400 mt-8 border-t border-gray-200 pt-4">
+      Confidential — Attorney Work Product.
+      Prepared at the direction of {{ matter.attorney_name or "counsel" }},
+      {{ matter.firm_name or "the retaining law firm" }}.
+      Not for distribution without attorney authorization.
+    </p>
+  </div>
+</div>
+
+</body>
+</html>

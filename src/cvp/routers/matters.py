@@ -1,5 +1,6 @@
 import uuid
-from datetime import date
+from collections import Counter, defaultdict
+from datetime import date, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Form, Request
@@ -7,11 +8,13 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import selectinload
 
+from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.models import Category, Matter
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+report_templates = Jinja2Templates(directory=BASE_DIR / "templates/report")
 
 router = APIRouter()
 
@@ -186,10 +189,104 @@ def update_matter_status(
             return HTMLResponse("Matter not found", status_code=404)
         matter.status = status
         if status == "delivered":
-            from datetime import date as date_cls
-
-            matter.delivered_date = date_cls.today()
+            matter.delivered_date = date.today()
         db.commit()
     finally:
         db.close()
     return RedirectResponse(url=f"/matters/{matter_id}#overview", status_code=303)
+
+
+@router.get("/matters/{matter_id}/preview", response_class=HTMLResponse)
+def matter_preview(request: Request, matter_id: str) -> HTMLResponse:
+    db = SessionLocal()
+    try:
+        matter = (
+            db.query(Matter)
+            .options(
+                selectinload(Matter.items),
+                selectinload(Matter.evidence_files),
+                selectinload(Matter.rooms),
+            )
+            .filter(Matter.id == matter_id)
+            .first()
+        )
+        if matter is None:
+            return HTMLResponse("Matter not found", status_code=404)
+
+        confirmed_items = sorted(
+            [i for i in matter.items if i.confirmed and not i.excluded],
+            key=lambda i: i.line_number,
+        )
+        total_rcv_cents = sum(i.rcv_total_cents for i in confirmed_items)
+        total_acv_cents = sum(i.acv_total_cents for i in confirmed_items)
+
+        # Room lookup map
+        room_map = {r.id: r.name for r in matter.rooms}
+
+        # Category lookup
+        all_categories = db.query(Category).order_by(Category.id).all()
+        cat_map = {c.id: c.name for c in all_categories}
+        cat_obj_map = {c.id: c for c in all_categories}
+
+        # Categories used and item counts
+        cat_counts: Counter = Counter(i.category_id for i in confirmed_items)
+        categories_used = sorted(
+            [(cat_obj_map[cid], count) for cid, count in cat_counts.items() if cid in cat_obj_map],
+            key=lambda x: x[0].id,
+        )
+
+        # Summary by room
+        room_rcv: dict = defaultdict(int)
+        room_acv: dict = defaultdict(int)
+        room_count: Counter = Counter()
+        for item in confirmed_items:
+            key = item.room_id or "__unassigned__"
+            room_rcv[key] += item.rcv_total_cents
+            room_acv[key] += item.acv_total_cents
+            room_count[key] += 1
+
+        by_room = []
+        # Named rooms first (in sort_order), then unassigned
+        for room in sorted(matter.rooms, key=lambda r: r.sort_order):
+            if room.id in room_count:
+                by_room.append(
+                    dict(
+                        room_name=room.name,
+                        count=room_count[room.id],
+                        rcv=room_rcv[room.id],
+                        acv=room_acv[room.id],
+                    )
+                )
+        if "__unassigned__" in room_count:
+            by_room.append(
+                dict(
+                    room_name="Unassigned",
+                    count=room_count["__unassigned__"],
+                    rcv=room_rcv["__unassigned__"],
+                    acv=room_acv["__unassigned__"],
+                )
+            )
+    finally:
+        db.close()
+
+    return report_templates.TemplateResponse(
+        request=request,
+        name="preview.html",
+        context={
+            "matter": matter,
+            "confirmed_items": confirmed_items,
+            "total_items": len(confirmed_items),
+            "total_rcv_cents": total_rcv_cents,
+            "total_acv_cents": total_acv_cents,
+            "evidence_files": matter.evidence_files,
+            "room_map": room_map,
+            "cat_map": cat_map,
+            "categories_used": categories_used,
+            "by_room": by_room,
+            "report_date": datetime.now().strftime("%B %-d, %Y"),
+            "company_name": settings.company_name,
+            "company_address": settings.company_address,
+            "company_email": settings.company_email,
+            "company_phone": settings.company_phone,
+        },
+    )
