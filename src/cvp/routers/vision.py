@@ -53,8 +53,9 @@ async def start_scan(
     job_id = vision_svc.create_job(image_ids)
     background_tasks.add_task(vision_svc.run_scan, job_id, matter_id, image_ids)
 
+    job = vision_svc.get_job(job_id)
     html = templates.get_template("_scan_progress.html").render(
-        job_id=job_id, matter_id=matter_id, total=len(image_ids)
+        job_id=job_id, matter_id=matter_id, **job
     )
     return HTMLResponse(html)
 
