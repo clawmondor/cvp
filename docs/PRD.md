@@ -421,7 +421,6 @@ Build in these phases in strict order. Do not start phase N+1 until phase N pass
 ### Phase 8 — Polish
 
 - Dashboard status chips
-- Keyboard shortcuts in the Items table (j/k to move, Enter to edit, Cmd-S to save)
 - Progress indicator during Vision scans
 - Error states for API failures
 - Simple backup script: `uv run backup` tars `./data/` to `./backups/<timestamp>.tar.gz`
