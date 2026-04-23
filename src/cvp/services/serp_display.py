@@ -39,10 +39,13 @@ def _parse_price_cents(price_obj: object) -> int | None:
     extracted = price_obj.get("extracted_value")
     if extracted is None:
         return None
+    if isinstance(extracted, bool) or not isinstance(extracted, (int, float)):
+        return None
     try:
-        return round(float(extracted) * 100)
+        cents = round(float(extracted) * 100)
     except (TypeError, ValueError):
         return None
+    return cents if cents > 0 else None
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +54,8 @@ def _parse_price_cents(price_obj: object) -> int | None:
 
 
 def _extract_google_lens(response_dict: dict) -> list[dict]:
-    matches = response_dict.get("visual_matches", [])[:_RESULT_LIMIT]
+    raw = response_dict.get("visual_matches", [])
+    matches = [m for m in raw if isinstance(m, dict)][:_RESULT_LIMIT]
     return [
         {
             "title": m.get("title"),

@@ -70,7 +70,7 @@ def call_serp(
     if not url:
         return (
             SERP_BASE,
-            params,
+            _mask_params(params),
             {"error": "No image URL available. Paste a public URL or set PUBLIC_BASE_URL in .env."},
             0,
         )
@@ -92,10 +92,10 @@ def call_serp(
         response_data = response.json() if "json" in ct else {"raw": response.text}
     except httpx.TimeoutException:
         logger.warning("SerpAPI timeout | service=%s crop=%s", service, item_crop.id)
-        return SERP_BASE, params, {"error": "Request timed out after 30 seconds"}, 0
+        return SERP_BASE, _mask_params(params), {"error": "Request timed out after 30 seconds"}, 0
     except Exception as exc:  # noqa: BLE001
         logger.exception("SerpAPI call failed | service=%s crop=%s", service, item_crop.id)
-        return SERP_BASE, params, {"error": str(exc)}, 0
+        return SERP_BASE, _mask_params(params), {"error": str(exc)}, 0
 
     logger.debug(
         "SerpAPI response | service=%s crop=%s status=%d url=%s",
@@ -111,4 +111,4 @@ def call_serp(
         json.dumps(response_data, indent=2, ensure_ascii=False)[:4000],
     )
 
-    return request_url, params, response_data, status_code
+    return request_url, _mask_params(params), response_data, status_code
