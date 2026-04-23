@@ -10,6 +10,7 @@ from pathlib import Path
 
 import anthropic
 from PIL import Image
+from sqlalchemy import func as sqlfunc
 
 from cvp.config import settings
 from cvp.db import SessionLocal
@@ -50,6 +51,7 @@ def _update_job(job_id: str, **kwargs) -> None:
 # Category matching
 # ---------------------------------------------------------------------------
 
+
 def _match_category_id(hint: str | None, categories: list[Category]) -> int:
     """Best-effort fuzzy match of Vision's category_hint to a DB category id."""
     if not hint:
@@ -74,6 +76,7 @@ def _match_category_id(hint: str | None, categories: list[Category]) -> int:
 # ---------------------------------------------------------------------------
 # Response parsing
 # ---------------------------------------------------------------------------
+
 
 def _parse_response(text: str) -> list[dict]:
     """Extract a JSON array from the model response, tolerating markdown fences."""
@@ -100,6 +103,7 @@ def _parse_response(text: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Bounding box helpers
 # ---------------------------------------------------------------------------
+
 
 def _parse_bbox(raw: object, img_width: int, img_height: int) -> tuple[int, int, int, int] | None:
     """
@@ -131,6 +135,7 @@ def _parse_bbox(raw: object, img_width: int, img_height: int) -> tuple[int, int,
 # ---------------------------------------------------------------------------
 # Core scan logic (called from BackgroundTasks thread)
 # ---------------------------------------------------------------------------
+
 
 def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
     """Process each evidence file sequentially, creating Item + ItemCrop rows."""
@@ -186,8 +191,6 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                 parsed = _parse_response(raw_text)
                 items_this_file = 0
 
-                from sqlalchemy import func as sqlfunc
-
                 max_line = (
                     db.query(sqlfunc.max(Item.line_number))
                     .filter(Item.matter_id == matter_id)
@@ -195,73 +198,77 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                     or 0
                 )
 
-                # Prepare crop output directory
                 crop_dir = crop_base / file_id
-                crop_dir.mkdir(parents=True, exist_ok=True)
 
-                for raw_item in parsed:
-                    if not isinstance(raw_item, dict):
-                        continue
-                    description = str(raw_item.get("description") or "").strip()
-                    if not description:
-                        continue
+                with Image.open(image_path) as crop_src:
+                    for raw_item in parsed:
+                        if not isinstance(raw_item, dict):
+                            continue
+                        description = str(raw_item.get("description") or "").strip()
+                        if not description:
+                            continue
 
-                    cat_id = _match_category_id(raw_item.get("category_hint"), categories)
-                    qty = int(raw_item.get("quantity") or 1)
-                    if qty < 1:
-                        qty = 1
-                    condition = str(raw_item.get("condition") or "average")
-                    if condition not in ("excellent", "above_average", "average", "below_average"):
-                        condition = "average"
+                        cat_id = _match_category_id(raw_item.get("category_hint"), categories)
+                        qty = int(raw_item.get("quantity") or 1)
+                        if qty < 1:
+                            qty = 1
+                        condition = str(raw_item.get("condition") or "average")
+                        if condition not in (
+                            "excellent",
+                            "above_average",
+                            "average",
+                            "below_average",
+                        ):
+                            condition = "average"
 
-                    search_hint = str(raw_item.get("search_hint") or "").strip() or None
+                        search_hint = str(raw_item.get("search_hint") or "").strip() or None
 
-                    max_line += 1
-                    item = Item(
-                        matter_id=matter_id,
-                        category_id=cat_id,
-                        line_number=max_line,
-                        description=description,
-                        brand=str(raw_item.get("brand") or "").strip() or None,
-                        model=str(raw_item.get("model") or "").strip() or None,
-                        quantity=qty,
-                        age_years=0.0,
-                        condition=condition,
-                        rcv_unit_cents=0,
-                        rcv_total_cents=0,
-                        acv_total_cents=0,
-                        confirmed=False,
-                        search_hint=search_hint,
-                        notes=(
-                            f"room_hint:{raw_item.get('room_hint') or ''}"
-                            f"|confidence:{raw_item.get('confidence') or 'medium'}"
-                        ),
-                    )
-                    db.add(item)
-                    db.flush()  # get item.id before creating ItemCrop
-
-                    # Attempt crop
-                    bbox = _parse_bbox(raw_item.get("bounding_box"), img_width, img_height)
-                    if bbox:
-                        left, upper, right, lower = bbox
-                        crop_filename = f"{item.id}.jpg"
-                        crop_dest = crop_dir / crop_filename
-                        with Image.open(image_path) as img:
-                            cropped = img.crop((left, upper, right, lower)).convert("RGB")
-                            cropped.save(crop_dest, "JPEG", quality=85)
-                        crop_path = f"{file_id}/{crop_filename}"
-                        item_crop = ItemCrop(
-                            item_id=item.id,
-                            evidence_file_id=file_id,
-                            bbox_left=left,
-                            bbox_upper=upper,
-                            bbox_right=right,
-                            bbox_lower=lower,
-                            crop_path=crop_path,
+                        max_line += 1
+                        item = Item(
+                            matter_id=matter_id,
+                            category_id=cat_id,
+                            line_number=max_line,
+                            description=description,
+                            brand=str(raw_item.get("brand") or "").strip() or None,
+                            model=str(raw_item.get("model") or "").strip() or None,
+                            quantity=qty,
+                            age_years=0.0,
+                            condition=condition,
+                            rcv_unit_cents=0,
+                            rcv_total_cents=0,
+                            acv_total_cents=0,
+                            confirmed=False,
+                            search_hint=search_hint,
+                            notes=(
+                                f"room_hint:{raw_item.get('room_hint') or ''}"
+                                f"|confidence:{raw_item.get('confidence') or 'medium'}"
+                            ),
                         )
-                        db.add(item_crop)
+                        db.add(item)
+                        db.flush()  # get item.id before creating ItemCrop
 
-                    items_this_file += 1
+                        # Attempt crop
+                        bbox = _parse_bbox(raw_item.get("bounding_box"), img_width, img_height)
+                        if bbox:
+                            left, upper, right, lower = bbox
+                            crop_dir.mkdir(parents=True, exist_ok=True)  # lazy
+                            crop_filename = f"{item.id}.jpg"
+                            crop_dest = crop_dir / crop_filename
+                            cropped = crop_src.crop((left, upper, right, lower)).convert("RGB")
+                            cropped.save(crop_dest, "JPEG", quality=85)
+                            crop_path = f"{file_id}/{crop_filename}"
+                            item_crop = ItemCrop(
+                                item_id=item.id,
+                                evidence_file_id=file_id,
+                                bbox_left=left,
+                                bbox_upper=upper,
+                                bbox_right=right,
+                                bbox_lower=lower,
+                                crop_path=crop_path,
+                            )
+                            db.add(item_crop)
+
+                        items_this_file += 1
 
                 vr = VisionRun(
                     matter_id=matter_id,
