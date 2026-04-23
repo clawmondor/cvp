@@ -3,6 +3,7 @@
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
@@ -18,9 +19,9 @@ from cvp.services.serp_display import extract_results
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
-templates.env.filters["pretty_json"] = (
-    lambda v: json.dumps(json.loads(v), indent=2) if v else ""
-)
+templates.env.filters["pretty_json"] = lambda v: json.dumps(json.loads(v), indent=2) if v else ""
+templates.env.filters["cents"] = lambda c: f"${c / 100:,.2f}" if c else "$0.00"
+templates.env.filters["qplus"] = quote_plus
 
 router = APIRouter()
 
