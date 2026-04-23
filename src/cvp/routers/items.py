@@ -7,6 +7,7 @@ from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
+from sqlalchemy.orm import selectinload
 
 from cvp.db import SessionLocal
 from cvp.depreciation import compute_acv
@@ -57,6 +58,7 @@ def _items_tbody_html(matter_id: str, db) -> str:
     items = (
         db.query(Item)
         .filter(Item.matter_id == matter_id)
+        .options(selectinload(Item.crops))
         .order_by(Item.line_number)
         .all()
     )
@@ -138,7 +140,9 @@ def item_edit_form(item_id: str) -> HTMLResponse:
 def item_view_row(item_id: str) -> HTMLResponse:
     db = SessionLocal()
     try:
-        item = db.get(Item, item_id)
+        item = (
+            db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
+        )
         if item is None:
             raise HTTPException(status_code=404)
         categories, rooms = _get_context(item.matter_id, db)
@@ -170,7 +174,9 @@ def update_item(
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
-        item = db.get(Item, item_id)
+        item = (
+            db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
+        )
         if item is None:
             raise HTTPException(status_code=404)
         cat = db.get(Category, category_id)
@@ -213,7 +219,9 @@ def update_item(
 def toggle_confirm(item_id: str) -> HTMLResponse:
     db = SessionLocal()
     try:
-        item = db.get(Item, item_id)
+        item = (
+            db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
+        )
         if item is None:
             raise HTTPException(status_code=404)
         item.confirmed = not item.confirmed
@@ -230,7 +238,9 @@ def toggle_confirm(item_id: str) -> HTMLResponse:
 def toggle_exclude(item_id: str) -> HTMLResponse:
     db = SessionLocal()
     try:
-        item = db.get(Item, item_id)
+        item = (
+            db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
+        )
         if item is None:
             raise HTTPException(status_code=404)
         item.excluded = not item.excluded

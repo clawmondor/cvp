@@ -11,9 +11,7 @@
     <span class="font-medium text-gray-900">{{ item.description or "—" }}</span>
     {% if item.brand or item.model %}<br><span class="text-xs text-gray-400">{{ item.brand or "" }}{% if item.brand and item.model %} · {% endif %}{{ item.model or "" }}</span>{% endif %}
     {% if not item.source_url %}
-    {% set _hint = "" %}
-    {% for seg in item.notes.split("|") %}{% if seg.startswith("search_hint:") %}{% set _hint = seg[12:] %}{% endif %}{% endfor %}
-    {% set _q = (_hint if _hint else ((item.description or "") + (" " + item.brand if item.brand else ""))) | qplus %}
+    {% set _q = (item.search_hint if item.search_hint else ((item.description or "") + (" " + item.brand if item.brand else ""))) | qplus %}
     <br><span class="inline-flex gap-2 mt-0.5">
       <a href="https://www.amazon.com/s?k={{ _q }}" target="_blank" rel="noopener" class="text-xs text-indigo-500 hover:underline">Amazon</a>
       <a href="https://www.google.com/search?q={{ _q }}&tbm=shop" target="_blank" rel="noopener" class="text-xs text-indigo-500 hover:underline">Google</a>
@@ -48,6 +46,13 @@
   </td>
   <td class="whitespace-nowrap px-3 py-2 text-center">
     <div class="flex items-center gap-1 justify-center">
+      {% if item.crops %}
+      <button onclick="toggleSerpPanel('{{ item.id }}')"
+              class="rounded px-2 py-0.5 text-xs text-violet-600 hover:bg-violet-50"
+              title="Find price with Google Lens">🔍</button>
+      {% else %}
+      <span class="text-gray-300 text-xs px-1" title="Re-scan evidence to enable Lens search">📷</span>
+      {% endif %}
       <button hx-get="/api/items/{{ item.id }}/edit"
               hx-target="#item-row-{{ item.id }}"
               hx-swap="outerHTML"

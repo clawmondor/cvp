@@ -30,3 +30,34 @@ function initTabs() {
 }
 
 document.addEventListener('DOMContentLoaded', initTabs);
+
+// ── Serp panel toggle ────────────────────────────────────────────────────
+function toggleSerpPanel(itemId) {
+  const existing = document.getElementById('serp-panel-' + itemId);
+  if (existing) {
+    existing.remove();
+    return;
+  }
+  htmx.ajax('GET', '/api/items/' + itemId + '/serp-panel', {
+    target: document.getElementById('item-row-' + itemId),
+    swap: 'afterend',
+  });
+}
+
+function showCropPanel(itemId, cropId) {
+  // Hide all crop panels for this item, show the selected one
+  const panel = document.getElementById('serp-panel-' + itemId);
+  if (!panel) return;
+  panel.querySelectorAll('[id^="crop-panel-"]').forEach(el => el.classList.add('hidden'));
+  panel.querySelectorAll('[id^="crop-tab-"]').forEach(el => {
+    el.classList.remove('border-violet-500');
+    el.classList.add('border-transparent');
+  });
+  const target = document.getElementById('crop-panel-' + cropId);
+  if (target) target.classList.remove('hidden');
+  const tab = document.getElementById('crop-tab-' + cropId);
+  if (tab) {
+    tab.classList.remove('border-transparent');
+    tab.classList.add('border-violet-500');
+  }
+}
