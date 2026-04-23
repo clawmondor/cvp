@@ -13,7 +13,7 @@ import anthropic
 from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.models import Category, EvidenceFile, Item, VisionRun
-from cvp.services.vision_prompts import SCAN_PROMPT_V2, SCAN_PROMPT_VERSION
+from cvp.services.vision_prompts import SCAN_PROMPT_VERSION, build_scan_prompt
 
 # ---------------------------------------------------------------------------
 # In-memory job registry (single-user local app — no persistence needed)
@@ -142,7 +142,7 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                                         "data": image_data,
                                     },
                                 },
-                                {"type": "text", "text": SCAN_PROMPT_V2},
+                                {"type": "text", "text": build_scan_prompt(1920, 1080)},
                             ],
                         }
                     ],
