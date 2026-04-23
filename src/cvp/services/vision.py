@@ -9,10 +9,11 @@ import uuid
 from pathlib import Path
 
 import anthropic
+from PIL import Image
 
 from cvp.config import settings
 from cvp.db import SessionLocal
-from cvp.models import Category, EvidenceFile, Item, VisionRun
+from cvp.models import Category, EvidenceFile, Item, ItemCrop, VisionRun
 from cvp.services.vision_prompts import SCAN_PROMPT_VERSION, build_scan_prompt
 
 # ---------------------------------------------------------------------------
@@ -77,7 +78,6 @@ def _match_category_id(hint: str | None, categories: list[Category]) -> int:
 def _parse_response(text: str) -> list[dict]:
     """Extract a JSON array from the model response, tolerating markdown fences."""
     text = text.strip()
-    # Strip ```json ... ``` fences
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
     try:
@@ -86,7 +86,6 @@ def _parse_response(text: str) -> list[dict]:
             return data
     except json.JSONDecodeError:
         pass
-    # Try to find the first [...] block
     m = re.search(r"\[.*\]", text, re.DOTALL)
     if m:
         try:
@@ -99,13 +98,45 @@ def _parse_response(text: str) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Bounding box helpers
+# ---------------------------------------------------------------------------
+
+def _parse_bbox(raw: object, img_width: int, img_height: int) -> tuple[int, int, int, int] | None:
+    """
+    Parse and validate a bounding_box value from the Vision response.
+
+    Returns (left, upper, right, lower) clamped to image bounds with 15% padding,
+    or None if the bbox is missing or malformed.
+    """
+    if not isinstance(raw, (list, tuple)) or len(raw) != 4:
+        return None
+    try:
+        left, upper, right, lower = (int(v) for v in raw)
+    except (TypeError, ValueError):
+        return None
+
+    # Apply 15% generous padding
+    pad_x = round((right - left) * 0.15)
+    pad_y = round((lower - upper) * 0.15)
+    left = max(0, left - pad_x)
+    upper = max(0, upper - pad_y)
+    right = min(img_width, right + pad_x)
+    lower = min(img_height, lower + pad_y)
+
+    if left >= right or upper >= lower:
+        return None
+    return left, upper, right, lower
+
+
+# ---------------------------------------------------------------------------
 # Core scan logic (called from BackgroundTasks thread)
 # ---------------------------------------------------------------------------
 
 def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
-    """Process each evidence file sequentially, creating draft Item rows."""
+    """Process each evidence file sequentially, creating Item + ItemCrop rows."""
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     upload_base = Path(settings.upload_dir).resolve()
+    crop_base = Path(settings.crop_dir).resolve()
 
     db = SessionLocal()
     try:
@@ -123,7 +154,10 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                     _update_job(job_id, progress=idx + 1)
                     continue
 
-                # Determine media type
+                # Read image dimensions for the prompt
+                with Image.open(image_path) as img:
+                    img_width, img_height = img.size
+
                 mime = ef.mime_type or "image/jpeg"
                 image_data = base64.standard_b64encode(image_path.read_bytes()).decode()
 
@@ -142,7 +176,7 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                                         "data": image_data,
                                     },
                                 },
-                                {"type": "text", "text": build_scan_prompt(1920, 1080)},
+                                {"type": "text", "text": build_scan_prompt(img_width, img_height)},
                             ],
                         }
                     ],
@@ -152,7 +186,6 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                 parsed = _parse_response(raw_text)
                 items_this_file = 0
 
-                # Compute next line number for this matter
                 from sqlalchemy import func as sqlfunc
 
                 max_line = (
@@ -162,6 +195,10 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                     or 0
                 )
 
+                # Prepare crop output directory
+                crop_dir = crop_base / file_id
+                crop_dir.mkdir(parents=True, exist_ok=True)
+
                 for raw_item in parsed:
                     if not isinstance(raw_item, dict):
                         continue
@@ -169,17 +206,15 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                     if not description:
                         continue
 
-                    cat_id = _match_category_id(
-                        raw_item.get("category_hint"), categories
-                    )
-
+                    cat_id = _match_category_id(raw_item.get("category_hint"), categories)
                     qty = int(raw_item.get("quantity") or 1)
                     if qty < 1:
                         qty = 1
-
                     condition = str(raw_item.get("condition") or "average")
                     if condition not in ("excellent", "above_average", "average", "below_average"):
                         condition = "average"
+
+                    search_hint = str(raw_item.get("search_hint") or "").strip() or None
 
                     max_line += 1
                     item = Item(
@@ -196,16 +231,38 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                         rcv_total_cents=0,
                         acv_total_cents=0,
                         confirmed=False,
+                        search_hint=search_hint,
                         notes=(
                             f"room_hint:{raw_item.get('room_hint') or ''}"
                             f"|confidence:{raw_item.get('confidence') or 'medium'}"
-                            f"|search_hint:{str(raw_item.get('search_hint') or '').strip()}"
                         ),
                     )
                     db.add(item)
+                    db.flush()  # get item.id before creating ItemCrop
+
+                    # Attempt crop
+                    bbox = _parse_bbox(raw_item.get("bounding_box"), img_width, img_height)
+                    if bbox:
+                        left, upper, right, lower = bbox
+                        crop_filename = f"{item.id}.jpg"
+                        crop_dest = crop_dir / crop_filename
+                        with Image.open(image_path) as img:
+                            cropped = img.crop((left, upper, right, lower)).convert("RGB")
+                            cropped.save(crop_dest, "JPEG", quality=85)
+                        crop_path = f"{file_id}/{crop_filename}"
+                        item_crop = ItemCrop(
+                            item_id=item.id,
+                            evidence_file_id=file_id,
+                            bbox_left=left,
+                            bbox_upper=upper,
+                            bbox_right=right,
+                            bbox_lower=lower,
+                            crop_path=crop_path,
+                        )
+                        db.add(item_crop)
+
                     items_this_file += 1
 
-                # Record the vision run
                 vr = VisionRun(
                     matter_id=matter_id,
                     evidence_file_id=file_id,
@@ -215,7 +272,6 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                     items_created=items_this_file,
                 )
                 db.add(vr)
-
                 ef.scanned = True
                 db.commit()
 
@@ -234,7 +290,6 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                     _jobs[job_id]["errors"].append(f"File {file_id}: {exc}")
                     _jobs[job_id]["progress"] = idx + 1
 
-            # Sequential — 500 ms pause between images (rate limits + cost control)
             if idx < len(file_ids) - 1:
                 time.sleep(0.5)
 
@@ -248,8 +303,6 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
 # Cost estimate (rough — shown in UI before scan)
 # ---------------------------------------------------------------------------
 
-# Approximate input token cost for claude-opus-4-6 at standard pricing
-# ~1500 tokens/image × $15/M input tokens ≈ $0.023/image
 _COST_PER_IMAGE_USD = 0.025
 
 
