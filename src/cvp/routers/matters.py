@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from cvp.config import settings
 from cvp.db import SessionLocal
-from cvp.models import Category, Matter
+from cvp.models import Category, Item, Matter
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -89,7 +89,7 @@ def matter_detail(request: Request, matter_id: str) -> HTMLResponse:
         matter = (
             db.query(Matter)
             .options(
-                selectinload(Matter.items),
+                selectinload(Matter.items).selectinload(Item.crops),
                 selectinload(Matter.evidence_files),
                 selectinload(Matter.rooms),
             )
