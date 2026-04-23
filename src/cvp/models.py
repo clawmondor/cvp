@@ -135,6 +135,7 @@ class Item(Base):
     confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     excluded: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str] = mapped_column(Text, default="")
+    search_hint: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
@@ -144,6 +145,9 @@ class Item(Base):
     matter: Mapped["Matter"] = relationship("Matter", back_populates="items")
     room: Mapped["Room | None"] = relationship("Room", back_populates="items")
     category: Mapped["Category"] = relationship("Category", back_populates="items")
+    crops: Mapped[list["ItemCrop"]] = relationship(
+        "ItemCrop", back_populates="item", cascade="all, delete-orphan"
+    )
 
 
 class EvidenceFile(Base):
@@ -169,6 +173,9 @@ class EvidenceFile(Base):
     vision_runs: Mapped[list["VisionRun"]] = relationship(
         "VisionRun", back_populates="evidence_file"
     )
+    crops: Mapped[list["ItemCrop"]] = relationship(
+        "ItemCrop", back_populates="evidence_file", cascade="all, delete-orphan"
+    )
 
 
 class VisionRun(Base):
@@ -192,3 +199,49 @@ class VisionRun(Base):
     evidence_file: Mapped["EvidenceFile"] = relationship(
         "EvidenceFile", back_populates="vision_runs"
     )
+
+
+class ItemCrop(Base):
+    """A cropped image of a single item extracted from an evidence photo."""
+
+    __tablename__ = "item_crops"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
+    item_id: Mapped[str] = mapped_column(String, ForeignKey("items.id"), nullable=False)
+    evidence_file_id: Mapped[str] = mapped_column(
+        String, ForeignKey("evidence_files.id"), nullable=False
+    )
+    bbox_left: Mapped[int] = mapped_column(Integer, default=0)
+    bbox_upper: Mapped[int] = mapped_column(Integer, default=0)
+    bbox_right: Mapped[int] = mapped_column(Integer, default=0)
+    bbox_lower: Mapped[int] = mapped_column(Integer, default=0)
+    crop_path: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    # Relationships
+    item: Mapped["Item"] = relationship("Item", back_populates="crops")
+    evidence_file: Mapped["EvidenceFile"] = relationship("EvidenceFile", back_populates="crops")
+    serp_searches: Mapped[list["SerpSearch"]] = relationship(
+        "SerpSearch", back_populates="item_crop", cascade="all, delete-orphan"
+    )
+
+
+class SerpSearch(Base):
+    """A SerpAPI search run against a specific item crop."""
+
+    __tablename__ = "serp_searches"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
+    item_crop_id: Mapped[str] = mapped_column(
+        String, ForeignKey("item_crops.id"), nullable=False
+    )
+    service: Mapped[str] = mapped_column(String, default="google_lens")
+    image_url: Mapped[str] = mapped_column(String, default="")
+    request_url: Mapped[str] = mapped_column(String, default="")
+    request_params: Mapped[str] = mapped_column(Text, default="")
+    response_json: Mapped[str] = mapped_column(Text, default="")
+    status_code: Mapped[int] = mapped_column(Integer, default=0)
+    ran_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    # Relationships
+    item_crop: Mapped["ItemCrop"] = relationship("ItemCrop", back_populates="serp_searches")
