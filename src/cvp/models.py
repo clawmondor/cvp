@@ -215,8 +215,31 @@ class ItemCrop(Base):
     bbox_upper: Mapped[int] = mapped_column(Integer, default=0)
     bbox_right: Mapped[int] = mapped_column(Integer, default=0)
     bbox_lower: Mapped[int] = mapped_column(Integer, default=0)
+    adjusted_bbox_left: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    adjusted_bbox_upper: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    adjusted_bbox_right: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    adjusted_bbox_lower: Mapped[int | None] = mapped_column(Integer, nullable=True)
     crop_path: Mapped[str] = mapped_column(String, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    @property
+    def effective_bbox(self) -> tuple[int, int, int, int]:
+        if all(
+            v is not None
+            for v in (
+                self.adjusted_bbox_left,
+                self.adjusted_bbox_upper,
+                self.adjusted_bbox_right,
+                self.adjusted_bbox_lower,
+            )
+        ):
+            return (
+                self.adjusted_bbox_left,
+                self.adjusted_bbox_upper,
+                self.adjusted_bbox_right,
+                self.adjusted_bbox_lower,
+            )
+        return (self.bbox_left, self.bbox_upper, self.bbox_right, self.bbox_lower)
 
     # Relationships
     item: Mapped["Item"] = relationship("Item", back_populates="crops")
