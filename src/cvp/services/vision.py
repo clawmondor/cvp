@@ -15,6 +15,7 @@ from sqlalchemy import func as sqlfunc
 from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.models import Category, EvidenceFile, Item, ItemCrop, VisionRun
+from cvp.services.crop import recrop_item_crop
 from cvp.services.vision_prompts import SCAN_PROMPT_VERSION, build_scan_prompt
 
 # ---------------------------------------------------------------------------
@@ -198,77 +199,70 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                     or 0
                 )
 
-                crop_dir = crop_base / file_id
+                for raw_item in parsed:
+                    if not isinstance(raw_item, dict):
+                        continue
+                    description = str(raw_item.get("description") or "").strip()
+                    if not description:
+                        continue
 
-                with Image.open(image_path) as crop_src:
-                    for raw_item in parsed:
-                        if not isinstance(raw_item, dict):
-                            continue
-                        description = str(raw_item.get("description") or "").strip()
-                        if not description:
-                            continue
+                    cat_id = _match_category_id(raw_item.get("category_hint"), categories)
+                    qty = int(raw_item.get("quantity") or 1)
+                    if qty < 1:
+                        qty = 1
+                    condition = str(raw_item.get("condition") or "average")
+                    if condition not in (
+                        "excellent",
+                        "above_average",
+                        "average",
+                        "below_average",
+                    ):
+                        condition = "average"
 
-                        cat_id = _match_category_id(raw_item.get("category_hint"), categories)
-                        qty = int(raw_item.get("quantity") or 1)
-                        if qty < 1:
-                            qty = 1
-                        condition = str(raw_item.get("condition") or "average")
-                        if condition not in (
-                            "excellent",
-                            "above_average",
-                            "average",
-                            "below_average",
-                        ):
-                            condition = "average"
+                    search_hint = str(raw_item.get("search_hint") or "").strip() or None
 
-                        search_hint = str(raw_item.get("search_hint") or "").strip() or None
+                    max_line += 1
+                    item = Item(
+                        matter_id=matter_id,
+                        category_id=cat_id,
+                        line_number=max_line,
+                        description=description,
+                        brand=str(raw_item.get("brand") or "").strip() or None,
+                        model=str(raw_item.get("model") or "").strip() or None,
+                        quantity=qty,
+                        age_years=0.0,
+                        condition=condition,
+                        rcv_unit_cents=0,
+                        rcv_total_cents=0,
+                        acv_total_cents=0,
+                        confirmed=False,
+                        search_hint=search_hint,
+                        notes=(
+                            f"room_hint:{raw_item.get('room_hint') or ''}"
+                            f"|confidence:{raw_item.get('confidence') or 'medium'}"
+                        ),
+                    )
+                    db.add(item)
+                    db.flush()  # get item.id before creating ItemCrop
 
-                        max_line += 1
-                        item = Item(
-                            matter_id=matter_id,
-                            category_id=cat_id,
-                            line_number=max_line,
-                            description=description,
-                            brand=str(raw_item.get("brand") or "").strip() or None,
-                            model=str(raw_item.get("model") or "").strip() or None,
-                            quantity=qty,
-                            age_years=0.0,
-                            condition=condition,
-                            rcv_unit_cents=0,
-                            rcv_total_cents=0,
-                            acv_total_cents=0,
-                            confirmed=False,
-                            search_hint=search_hint,
-                            notes=(
-                                f"room_hint:{raw_item.get('room_hint') or ''}"
-                                f"|confidence:{raw_item.get('confidence') or 'medium'}"
-                            ),
+                    # Attempt crop
+                    bbox = _parse_bbox(raw_item.get("bounding_box"), img_width, img_height)
+                    if bbox:
+                        left, upper, right, lower = bbox
+                        item_crop = ItemCrop(
+                            item_id=item.id,
+                            evidence_file_id=file_id,
+                            bbox_left=left,
+                            bbox_upper=upper,
+                            bbox_right=right,
+                            bbox_lower=lower,
                         )
-                        db.add(item)
-                        db.flush()  # get item.id before creating ItemCrop
+                        item_crop.crop_path = recrop_item_crop(
+                            item_crop, ef, upload_base, crop_base
+                        )
+                        db.add(item_crop)
 
-                        # Attempt crop
-                        bbox = _parse_bbox(raw_item.get("bounding_box"), img_width, img_height)
-                        if bbox:
-                            left, upper, right, lower = bbox
-                            crop_dir.mkdir(parents=True, exist_ok=True)  # lazy
-                            crop_filename = f"{item.id}.jpg"
-                            crop_dest = crop_dir / crop_filename
-                            cropped = crop_src.crop((left, upper, right, lower)).convert("RGB")
-                            cropped.save(crop_dest, "JPEG", quality=85)
-                            crop_path = f"{file_id}/{crop_filename}"
-                            item_crop = ItemCrop(
-                                item_id=item.id,
-                                evidence_file_id=file_id,
-                                bbox_left=left,
-                                bbox_upper=upper,
-                                bbox_right=right,
-                                bbox_lower=lower,
-                                crop_path=crop_path,
-                            )
-                            db.add(item_crop)
-
-                        items_this_file += 1
+                    items_this_file += 1
 
                 vr = VisionRun(
                     matter_id=matter_id,
