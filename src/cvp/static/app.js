@@ -107,12 +107,22 @@ document.addEventListener('DOMContentLoaded', function () {
   toggleCropEditor(fileId);
 
   if (cropId) {
-    document.addEventListener('htmx:afterSettle', function handler() {
+    var settled = false;
+    // The handler stays attached until ceSelect_* exists (crop editor IIFE has run).
+    // removeEventListener is intentionally inside the if-block so unrelated HTMX
+    // settle events (before the editor loads) don't remove the listener prematurely.
+    function handler() {
       var fnName = 'ceSelect_' + fileId.replace(/-/g, '_');
       if (window[fnName]) {
+        settled = true;
         window[fnName](cropId);
         document.removeEventListener('htmx:afterSettle', handler);
       }
-    });
+    }
+    document.addEventListener('htmx:afterSettle', handler);
+    // Failsafe: remove listener if the crop editor never loads (e.g. network error).
+    setTimeout(function () {
+      if (!settled) document.removeEventListener('htmx:afterSettle', handler);
+    }, 10000);
   }
 });

@@ -217,6 +217,7 @@
       selectedIdx = idx;
       draw();
       updateSidebar();
+      canvas.scrollIntoView({behavior: 'smooth', block: 'nearest'});
     }
   };
 
