@@ -93,3 +93,26 @@ function toggleCropEditor(fileId) {
     swap: 'afterend',
   });
 }
+
+// ── Crop-edit deep-link auto-init ────────────────────────────────────────────
+// When the page is opened via the "Edit crop" thumbnail link (?file=&crop=#evidence),
+// auto-open the crop editor for the evidence file and pre-select the item's crop.
+document.addEventListener('DOMContentLoaded', function () {
+  var params = new URLSearchParams(window.location.search);
+  var fileId = params.get('file');
+  var cropId = params.get('crop');
+  if (!fileId) return;
+
+  // The hash is already #evidence; initTabs (also on DOMContentLoaded) activates the panel.
+  toggleCropEditor(fileId);
+
+  if (cropId) {
+    document.addEventListener('htmx:afterSettle', function handler() {
+      var fnName = 'ceSelect_' + fileId.replace(/-/g, '_');
+      if (window[fnName]) {
+        window[fnName](cropId);
+        document.removeEventListener('htmx:afterSettle', handler);
+      }
+    });
+  }
+});
