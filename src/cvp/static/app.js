@@ -61,3 +61,17 @@ function showCropPanel(itemId, cropId) {
     tab.classList.add('border-violet-500');
   }
 }
+
+// ── Crop editor toggle ───────────────────────────────────────────────────
+function toggleCropEditor(fileId) {
+  const existing = document.getElementById('crop-editor-' + fileId);
+  if (existing) {
+    existing.remove();
+    return;
+  }
+  const grid = document.getElementById('evidence-grid');
+  htmx.ajax('GET', '/api/evidence/' + fileId + '/crop-editor', {
+    target: grid,
+    swap: 'afterend',
+  });
+}

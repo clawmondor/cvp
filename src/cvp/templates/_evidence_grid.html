@@ -17,6 +17,12 @@
     <div class="px-2 py-1.5">
       <p class="truncate text-xs font-medium text-gray-700" title="{{ f.filename }}">{{ f.filename }}</p>
       <p class="text-xs text-gray-400">{{ (f.size_bytes / 1024) | round(1) }} KB</p>
+      {% if f.kind == "image" and f.scanned %}
+      <button onclick="toggleCropEditor('{{ f.id }}')"
+              class="mt-1 rounded border border-indigo-200 px-1.5 py-0.5 text-xs text-indigo-600 hover:bg-indigo-50">
+        Edit crops
+      </button>
+      {% endif %}
     </div>
 
     <button
