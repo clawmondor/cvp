@@ -52,6 +52,7 @@ def test_tbody_renders_crop_edit_link(env):
     assert "Edit crop" in html
     assert "/matters/matter-1?file=ef-xyz&crop=crop-abc#evidence" in html
     assert 'target="_blank"' in html
+    assert 'aria-label="Edit crop for Lamp"' in html
 
 
 def test_tbody_no_overlay_when_no_crop(env):
