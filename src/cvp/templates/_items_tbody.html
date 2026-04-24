@@ -16,6 +16,7 @@
       <a href="/matters/{{ item.matter_id }}?file={{ item.crops[0].evidence_file_id }}&crop={{ item.crops[0].id }}#evidence"
          target="_blank"
          rel="noopener"
+         aria-label="Edit crop for {{ item.description }}"
          class="absolute inset-x-0 bottom-0 flex items-center justify-center py-1
                 bg-black/50 opacity-0 group-hover/thumb:opacity-100
                 transition-opacity rounded-b text-white text-xs font-medium">

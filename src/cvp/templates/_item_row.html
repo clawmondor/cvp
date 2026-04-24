@@ -5,12 +5,24 @@
 <tr id="item-row-{{ item.id }}"
     class="{% if item.excluded %}opacity-40{% endif %} hover:bg-gray-50 text-sm">
   <td class="whitespace-nowrap px-3 py-2 text-gray-400 font-mono text-xs">{{ item.line_number }}</td>
-  <td class="px-2 py-1.5">
+  <td class="px-2 py-1" style="width:100px;min-width:100px;">
     {% if item.crops and item.crops[0].crop_path %}
-    <img src="/crops/{{ item.crops[0].crop_path }}" alt="{{ item.description }}"
-         class="w-10 h-10 object-contain rounded border border-gray-200 bg-white">
+    <div class="relative group/thumb inline-block" style="width:96px;height:96px;">
+      <img src="/crops/{{ item.crops[0].crop_path }}" alt="{{ item.description }}"
+           class="object-contain rounded border border-gray-200 bg-white"
+           style="width:96px;height:96px;">
+      <a href="/matters/{{ item.matter_id }}?file={{ item.crops[0].evidence_file_id }}&crop={{ item.crops[0].id }}#evidence"
+         target="_blank"
+         rel="noopener"
+         aria-label="Edit crop for {{ item.description }}"
+         class="absolute inset-x-0 bottom-0 flex items-center justify-center py-1
+                bg-black/50 opacity-0 group-hover/thumb:opacity-100
+                transition-opacity rounded-b text-white text-xs font-medium">
+        Edit crop
+      </a>
+    </div>
     {% else %}
-    <div class="w-10 h-10 rounded border border-gray-100 bg-gray-50"></div>
+    <div class="rounded border border-gray-100 bg-gray-50" style="width:96px;height:96px;"></div>
     {% endif %}
   </td>
   <td class="px-3 py-2 max-w-xs">
