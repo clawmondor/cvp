@@ -7,6 +7,14 @@
 <tr id="item-row-{{ item.id }}"
     class="{% if item.excluded %}opacity-40{% endif %} hover:bg-gray-50 text-sm">
   <td class="whitespace-nowrap px-3 py-2 text-gray-400 font-mono text-xs">{{ item.line_number }}</td>
+  <td class="px-2 py-1.5">
+    {% if item.crops and item.crops[0].crop_path %}
+    <img src="/crops/{{ item.crops[0].crop_path }}" alt="{{ item.description }}"
+         class="w-10 h-10 object-contain rounded border border-gray-200 bg-white">
+    {% else %}
+    <div class="w-10 h-10 rounded border border-gray-100 bg-gray-50"></div>
+    {% endif %}
+  </td>
   <td class="px-3 py-2 max-w-xs">
     <span class="font-medium text-gray-900">{{ item.description or "—" }}</span>
     {% if item.brand or item.model %}<br><span class="text-xs text-gray-400">{{ item.brand or "" }}{% if item.brand and item.model %} · {% endif %}{{ item.model or "" }}</span>{% endif %}
@@ -46,13 +54,6 @@
   </td>
   <td class="whitespace-nowrap px-3 py-2 text-center">
     <div class="flex items-center gap-1 justify-center">
-      {% if item.crops %}
-      <button onclick="toggleSerpPanel('{{ item.id }}')"
-              class="rounded px-2 py-0.5 text-xs text-violet-600 hover:bg-violet-50"
-              title="Find price with Google Lens">🔍</button>
-      {% else %}
-      <span class="text-gray-300 text-xs px-1" title="Re-scan evidence to enable Lens search">📷</span>
-      {% endif %}
       <button hx-get="/api/items/{{ item.id }}/edit"
               hx-target="#item-row-{{ item.id }}"
               hx-swap="outerHTML"
@@ -68,7 +69,7 @@
 {% endfor %}
 {% else %}
 <tr id="items-empty-row">
-  <td colspan="12" class="px-6 py-10 text-center text-sm text-gray-400">
+  <td colspan="13" class="px-6 py-10 text-center text-sm text-gray-400">
     No items yet — add one above.
   </td>
 </tr>

@@ -1,5 +1,6 @@
 """Item CRUD endpoints with ACV auto-computation."""
 
+import json
 from pathlib import Path
 from urllib.parse import quote_plus
 
@@ -9,9 +10,11 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 
+from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.depreciation import compute_acv
-from cvp.models import Category, Item, Room
+from cvp.models import Category, Item, Room, SerpSearch
+from cvp.services.serp_display import extract_results
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -48,9 +51,21 @@ def _item_row_html(item: Item, categories: list, rooms: list) -> str:
     )
 
 
-def _item_row_edit_html(item: Item, categories: list, rooms: list) -> str:
+def _item_row_edit_html(
+    item: Item,
+    categories: list,
+    rooms: list,
+    latest_by_crop: dict | None = None,
+    display_by_crop: dict | None = None,
+) -> str:
     return templates.get_template("_item_row_edit.html").render(
-        item=item, categories=categories, rooms=rooms, conditions=CONDITIONS
+        item=item,
+        categories=categories,
+        rooms=rooms,
+        conditions=CONDITIONS,
+        public_base_url=settings.public_base_url,
+        latest_by_crop=latest_by_crop or {},
+        display_by_crop=display_by_crop or {},
     )
 
 
@@ -126,11 +141,29 @@ def create_item(
 def item_edit_form(item_id: str) -> HTMLResponse:
     db = SessionLocal()
     try:
-        item = db.get(Item, item_id)
+        item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
         if item is None:
             raise HTTPException(status_code=404)
         categories, rooms = _get_context(item.matter_id, db)
-        html = _item_row_edit_html(item, categories, rooms)
+
+        latest_by_crop: dict = {}
+        display_by_crop: dict = {}
+        for crop in item.crops:
+            latest = (
+                db.query(SerpSearch)
+                .filter(SerpSearch.item_crop_id == crop.id)
+                .order_by(SerpSearch.ran_at.desc())
+                .first()
+            )
+            latest_by_crop[crop.id] = latest
+            if latest and latest.response_json:
+                display_by_crop[crop.id] = extract_results(
+                    latest.service, json.loads(latest.response_json)
+                )
+            else:
+                display_by_crop[crop.id] = []
+
+        html = _item_row_edit_html(item, categories, rooms, latest_by_crop, display_by_crop)
     finally:
         db.close()
     return HTMLResponse(html)

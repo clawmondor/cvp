@@ -62,6 +62,24 @@ function showCropPanel(itemId, cropId) {
   }
 }
 
+// ── Edit-form crop selector (Google Lens section) ────────────────────────
+function showEditCrop(itemId, cropId) {
+  document.querySelectorAll('[id^="edit-crop-panel-"]').forEach(function(el) {
+    el.classList.add('hidden');
+  });
+  document.querySelectorAll('[id^="edit-crop-tab-"]').forEach(function(el) {
+    el.classList.remove('border-violet-500');
+    el.classList.add('border-transparent');
+  });
+  var panel = document.getElementById('edit-crop-panel-' + cropId);
+  if (panel) panel.classList.remove('hidden');
+  var tab = document.getElementById('edit-crop-tab-' + cropId);
+  if (tab) {
+    tab.classList.remove('border-transparent');
+    tab.classList.add('border-violet-500');
+  }
+}
+
 // ── Crop editor toggle ───────────────────────────────────────────────────
 function toggleCropEditor(fileId) {
   const existing = document.getElementById('crop-editor-' + fileId);
