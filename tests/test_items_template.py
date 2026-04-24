@@ -50,7 +50,7 @@ def test_tbody_renders_crop_edit_link(env):
     tmpl = env.get_template("_items_tbody.html")
     html = tmpl.render(items=[FakeItem()], categories=[], rooms=[], conditions=[])
     assert "Edit crop" in html
-    assert "/matters/matter-1?file=ef-xyz&amp;crop=crop-abc#evidence" in html
+    assert "/matters/matter-1?file=ef-xyz&crop=crop-abc#evidence" in html
     assert 'target="_blank"' in html
 
 
