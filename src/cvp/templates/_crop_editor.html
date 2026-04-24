@@ -211,6 +211,15 @@
     });
   };
 
+  window['ceSelect_' + EF_ID.replace(/-/g, '_')] = function(cropId) {
+    var idx = boxes.findIndex(function(b) { return b.id === cropId; });
+    if (idx >= 0) {
+      selectedIdx = idx;
+      draw();
+      updateSidebar();
+    }
+  };
+
   function updateSidebarInputs() {
     if (selectedIdx === null) return;
     var box = boxes[selectedIdx];
