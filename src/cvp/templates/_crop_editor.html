@@ -89,18 +89,37 @@
     boxes.forEach(function(box, i) {
       var l = tc(box.left), u = tc(box.upper);
       var w = tc(box.right) - l, h = tc(box.lower) - u;
-      ctx.strokeStyle = box.adjusted ? '#f59e0b' : '#6366f1';
-      ctx.lineWidth = (i === selectedIdx) ? 2 : 1.5;
+      var isSelected = (i === selectedIdx);
+
+      if (isSelected) {
+        // Semi-transparent cyan fill so the selected box is unmistakable
+        ctx.fillStyle = 'rgba(6,182,212,0.18)';
+        ctx.fillRect(l, u, w, h);
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 3;
+      } else {
+        ctx.strokeStyle = box.adjusted ? '#f59e0b' : '#6366f1';
+        ctx.lineWidth = 1.5;
+      }
       ctx.strokeRect(l, u, w, h);
-      ctx.fillStyle = box.adjusted ? '#f59e0b' : '#6366f1';
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillText(String(i + 1), l + 3, u + 13);
-      if (i === selectedIdx) {
+
+      // Label: truncated description so users can see which item each box belongs to
+      ctx.font = 'bold 10px sans-serif';
+      var label = box.description ? box.description.slice(0, 20) : String(i + 1);
+      var textW = ctx.measureText(label).width;
+      var padX = 3, padY = 2, lineH = 12;
+      var bgW = Math.min(w - 2, textW + padX * 2);
+      ctx.fillStyle = isSelected ? 'rgba(6,182,212,0.85)' : 'rgba(0,0,0,0.5)';
+      ctx.fillRect(l, u, bgW, lineH + padY * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(label, l + padX, u + lineH);
+
+      if (isSelected) {
         getHandles(box).forEach(function(h) {
           ctx.fillStyle = '#fff';
           ctx.fillRect(h.x - HANDLE_SIZE/2, h.y - HANDLE_SIZE/2, HANDLE_SIZE, HANDLE_SIZE);
-          ctx.strokeStyle = '#6366f1';
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = '#06b6d4';
+          ctx.lineWidth = 1.5;
           ctx.strokeRect(h.x - HANDLE_SIZE/2, h.y - HANDLE_SIZE/2, HANDLE_SIZE, HANDLE_SIZE);
         });
       }
