@@ -32,7 +32,11 @@ def new_matter_form(
     return templates.TemplateResponse(
         request=request,
         name="matter_new.html",
-        context={"loss_types": LOSS_TYPES, "loss_events": LOSS_EVENTS},
+        context={
+            "loss_types": LOSS_TYPES,
+            "loss_events": LOSS_EVENTS,
+            "user": user,
+        },
     )
 
 
@@ -131,6 +135,7 @@ def matter_detail(
             "missing_price_count": missing_price_count,
             "loss_types": LOSS_TYPES,
             "loss_events": LOSS_EVENTS,
+            "user": user,
         },
     )
 
@@ -300,5 +305,6 @@ def matter_preview(
             "company_address": settings.company_address,
             "company_email": settings.company_email,
             "company_phone": settings.company_phone,
+            "user": user,
         },
     )
