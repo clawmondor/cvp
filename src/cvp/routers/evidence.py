@@ -4,12 +4,13 @@ import mimetypes
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from cvp.config import settings
 from cvp.db import SessionLocal
+from cvp.dependencies import CurrentUser, require_active_user
 from cvp.models import EvidenceFile
 
 BASE_DIR = Path(__file__).parent.parent
@@ -29,7 +30,11 @@ def _kind_from_mime(mime: str) -> str:
 
 
 @router.post("/api/matters/{matter_id}/evidence", response_class=HTMLResponse)
-async def upload_evidence(matter_id: str, files: list[UploadFile]) -> HTMLResponse:
+async def upload_evidence(
+    matter_id: str,
+    files: list[UploadFile],
+    user: CurrentUser = Depends(require_active_user),
+) -> HTMLResponse:
     upload_base = Path(settings.upload_dir).resolve()
     matter_dir = upload_base / matter_id
     matter_dir.mkdir(parents=True, exist_ok=True)
@@ -74,7 +79,7 @@ async def upload_evidence(matter_id: str, files: list[UploadFile]) -> HTMLRespon
 
 
 @router.delete("/api/evidence/{file_id}", response_class=HTMLResponse)
-def delete_evidence(file_id: str) -> HTMLResponse:
+def delete_evidence(file_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
     db = SessionLocal()
     try:
         ef = db.get(EvidenceFile, file_id)
@@ -96,7 +101,7 @@ def delete_evidence(file_id: str) -> HTMLResponse:
 
 
 @router.get("/files/{stored_path:path}")
-def serve_file(stored_path: str) -> FileResponse:
+def serve_file(stored_path: str, user: CurrentUser = Depends(require_active_user)) -> FileResponse:
     upload_base = Path(settings.upload_dir).resolve()
     dest = (upload_base / stored_path).resolve()
     # Path-traversal guard

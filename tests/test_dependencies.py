@@ -1,12 +1,9 @@
 """Tests for FastAPI auth dependencies."""
 
-import pytest
 from unittest.mock import MagicMock
-from fastapi import HTTPException
 
 from cvp.auth import create_access_token
-from cvp.dependencies import CurrentUser, _extract_token, _decode_and_build_user
-
+from cvp.dependencies import CurrentUser, _decode_and_build_user, _extract_token
 
 TEST_SECRET = "testsecret123456789012345678901234"
 

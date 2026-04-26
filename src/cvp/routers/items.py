@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from urllib.parse import quote_plus
 
-from fastapi import APIRouter, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from cvp.config import settings
 from cvp.db import SessionLocal
+from cvp.dependencies import CurrentUser, require_active_user
 from cvp.depreciation import compute_acv
 from cvp.models import Category, Item, Room, SerpSearch
 from cvp.services.serp_display import extract_results
@@ -93,6 +94,7 @@ def _parse_cents(dollars_str: str) -> int:
 @router.post("/api/matters/{matter_id}/items", response_class=HTMLResponse)
 def create_item(
     matter_id: str,
+    user: CurrentUser = Depends(require_active_user),
     description: str = Form(""),
     category_id: int = Form(...),
     room_id: str = Form(""),
@@ -138,7 +140,7 @@ def create_item(
 
 
 @router.get("/api/items/{item_id}/edit", response_class=HTMLResponse)
-def item_edit_form(item_id: str) -> HTMLResponse:
+def item_edit_form(item_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
     db = SessionLocal()
     try:
         item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
@@ -170,12 +172,10 @@ def item_edit_form(item_id: str) -> HTMLResponse:
 
 
 @router.get("/api/items/{item_id}/view", response_class=HTMLResponse)
-def item_view_row(item_id: str) -> HTMLResponse:
+def item_view_row(item_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
     db = SessionLocal()
     try:
-        item = (
-            db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
-        )
+        item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
         if item is None:
             raise HTTPException(status_code=404)
         categories, rooms = _get_context(item.matter_id, db)
@@ -188,6 +188,7 @@ def item_view_row(item_id: str) -> HTMLResponse:
 @router.patch("/api/items/{item_id}", response_class=HTMLResponse)
 def update_item(
     item_id: str,
+    user: CurrentUser = Depends(require_active_user),
     description: str = Form(""),
     category_id: int = Form(...),
     room_id: str = Form(""),
@@ -207,9 +208,7 @@ def update_item(
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
-        item = (
-            db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
-        )
+        item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
         if item is None:
             raise HTTPException(status_code=404)
         cat = db.get(Category, category_id)
@@ -249,12 +248,10 @@ def update_item(
 
 
 @router.post("/api/items/{item_id}/toggle-confirm", response_class=HTMLResponse)
-def toggle_confirm(item_id: str) -> HTMLResponse:
+def toggle_confirm(item_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
     db = SessionLocal()
     try:
-        item = (
-            db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
-        )
+        item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
         if item is None:
             raise HTTPException(status_code=404)
         item.confirmed = not item.confirmed
@@ -268,12 +265,10 @@ def toggle_confirm(item_id: str) -> HTMLResponse:
 
 
 @router.post("/api/items/{item_id}/toggle-exclude", response_class=HTMLResponse)
-def toggle_exclude(item_id: str) -> HTMLResponse:
+def toggle_exclude(item_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
     db = SessionLocal()
     try:
-        item = (
-            db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
-        )
+        item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
         if item is None:
             raise HTTPException(status_code=404)
         item.excluded = not item.excluded
@@ -287,7 +282,7 @@ def toggle_exclude(item_id: str) -> HTMLResponse:
 
 
 @router.delete("/api/items/{item_id}", response_class=HTMLResponse)
-def delete_item(item_id: str) -> HTMLResponse:
+def delete_item(item_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
     db = SessionLocal()
     try:
         item = db.get(Item, item_id)

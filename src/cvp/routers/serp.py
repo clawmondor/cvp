@@ -5,13 +5,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote_plus
 
-from fastapi import APIRouter, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import selectinload
 
 from cvp.config import settings
 from cvp.db import SessionLocal
+from cvp.dependencies import CurrentUser, optional_user, require_active_user
 from cvp.depreciation import compute_acv
 from cvp.models import Category, Item, ItemCrop, Room, SerpSearch
 from cvp.services.serp import build_crop_url, call_serp
@@ -27,7 +28,7 @@ router = APIRouter()
 
 
 @router.get("/crops/{crop_path:path}")
-def serve_crop(crop_path: str) -> FileResponse:
+def serve_crop(crop_path: str, user: CurrentUser | None = Depends(optional_user)) -> FileResponse:
     """Serve a crop image file from the crop directory with path-traversal guard."""
     crop_dir = Path(settings.crop_dir).resolve()
     requested = (crop_dir / crop_path).resolve()
@@ -39,16 +40,11 @@ def serve_crop(crop_path: str) -> FileResponse:
 
 
 @router.get("/api/items/{item_id}/serp-panel", response_class=HTMLResponse)
-def serp_panel(item_id: str) -> HTMLResponse:
+def serp_panel(item_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
     """Render the SERP panel for an item showing all crops and their latest search results."""
     db = SessionLocal()
     try:
-        item = (
-            db.query(Item)
-            .options(selectinload(Item.crops))
-            .filter(Item.id == item_id)
-            .first()
-        )
+        item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
         if item is None:
             raise HTTPException(status_code=404, detail="Item not found")
 
@@ -84,6 +80,7 @@ def serp_panel(item_id: str) -> HTMLResponse:
 def run_google_lens(
     item_id: str,
     crop_id: str,
+    user: CurrentUser = Depends(require_active_user),
     image_url: str = Form(""),
 ) -> HTMLResponse:
     """Run a Google Lens search for a specific item crop and persist the result."""
@@ -128,6 +125,7 @@ def run_google_lens(
 @router.post("/api/items/{item_id}/serp-apply", response_class=HTMLResponse)
 def serp_apply(
     item_id: str,
+    user: CurrentUser = Depends(require_active_user),
     source_url: str = Form(""),
     source_retailer: str = Form(""),
     rcv_unit_cents: str = Form(""),
@@ -135,12 +133,7 @@ def serp_apply(
     """Apply a SERP search result to an item, updating its pricing and source fields."""
     db = SessionLocal()
     try:
-        item = (
-            db.query(Item)
-            .options(selectinload(Item.crops))
-            .filter(Item.id == item_id)
-            .first()
-        )
+        item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
         if item is None:
             raise HTTPException(status_code=404, detail="Item not found")
 
@@ -170,10 +163,7 @@ def serp_apply(
 
         categories = db.query(Category).order_by(Category.id).all()
         rooms = (
-            db.query(Room)
-            .filter(Room.matter_id == item.matter_id)
-            .order_by(Room.sort_order)
-            .all()
+            db.query(Room).filter(Room.matter_id == item.matter_id).order_by(Room.sort_order).all()
         )
 
         html = templates.get_template("_item_row.html").render(

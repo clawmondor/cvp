@@ -139,8 +139,7 @@ def login(
     refresh_record = RefreshToken(
         user_id=user.id,
         token_hash=hash_token(raw_refresh),
-        expires_at=datetime.now(tz=timezone.utc)
-        + timedelta(days=settings.jwt_refresh_ttl_days),
+        expires_at=datetime.now(tz=timezone.utc) + timedelta(days=settings.jwt_refresh_ttl_days),
     )
     db.add(refresh_record)
 
@@ -233,8 +232,7 @@ def refresh_token(
     new_rt = RefreshToken(
         user_id=user.id,
         token_hash=hash_token(raw_refresh),
-        expires_at=datetime.now(tz=timezone.utc)
-        + timedelta(days=settings.jwt_refresh_ttl_days),
+        expires_at=datetime.now(tz=timezone.utc) + timedelta(days=settings.jwt_refresh_ttl_days),
     )
     db.add(new_rt)
     db.commit()
@@ -334,6 +332,4 @@ def register(
     user.password_changed_at = datetime.now(tz=timezone.utc)
     db.commit()
 
-    return RedirectResponse(
-        url="/login?message=Account+created.+Please+sign+in.", status_code=303
-    )
+    return RedirectResponse(url="/login?message=Account+created.+Please+sign+in.", status_code=303)

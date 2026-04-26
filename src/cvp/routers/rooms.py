@@ -2,12 +2,13 @@
 
 from pathlib import Path
 
-from fastapi import APIRouter, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import update
 
 from cvp.db import SessionLocal
+from cvp.dependencies import CurrentUser, require_active_user
 from cvp.models import Item, Room
 
 BASE_DIR = Path(__file__).parent.parent
@@ -21,17 +22,17 @@ def _room_li(room: Room) -> str:
 
 
 @router.post("/api/matters/{matter_id}/rooms", response_class=HTMLResponse)
-def create_room(matter_id: str, name: str = Form(...)) -> HTMLResponse:
+def create_room(
+    matter_id: str,
+    name: str = Form(...),
+    user: CurrentUser = Depends(require_active_user),
+) -> HTMLResponse:
     name = name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Room name required")
     db = SessionLocal()
     try:
-        max_order = (
-            db.query(Room)
-            .filter(Room.matter_id == matter_id)
-            .count()
-        )
+        max_order = db.query(Room).filter(Room.matter_id == matter_id).count()
         room = Room(matter_id=matter_id, name=name, sort_order=max_order)
         db.add(room)
         db.commit()
@@ -43,7 +44,11 @@ def create_room(matter_id: str, name: str = Form(...)) -> HTMLResponse:
 
 
 @router.patch("/api/rooms/{room_id}", response_class=HTMLResponse)
-def rename_room(room_id: str, name: str = Form(...)) -> HTMLResponse:
+def rename_room(
+    room_id: str,
+    name: str = Form(...),
+    user: CurrentUser = Depends(require_active_user),
+) -> HTMLResponse:
     name = name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Room name required")
@@ -62,7 +67,7 @@ def rename_room(room_id: str, name: str = Form(...)) -> HTMLResponse:
 
 
 @router.delete("/api/rooms/{room_id}", response_class=HTMLResponse)
-def delete_room(room_id: str) -> HTMLResponse:
+def delete_room(room_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
     db = SessionLocal()
     try:
         room = db.get(Room, room_id)

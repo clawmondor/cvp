@@ -3,7 +3,7 @@
 import json as _json
 from pathlib import Path
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from PIL import Image
@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from cvp.config import settings
 from cvp.db import SessionLocal
+from cvp.dependencies import CurrentUser, require_active_user
 from cvp.models import EvidenceFile, ItemCrop
 from cvp.services.crop import recrop_item_crop
 
@@ -30,7 +31,9 @@ class BboxBody(BaseModel):
 
 
 @router.post("/api/item-crops/{crop_id}/adjust-bbox")
-def adjust_bbox(crop_id: str, body: BboxBody) -> JSONResponse:
+def adjust_bbox(
+    crop_id: str, body: BboxBody, user: CurrentUser = Depends(require_active_user)
+) -> JSONResponse:
     db = SessionLocal()
     try:
         crop = db.get(ItemCrop, crop_id)
@@ -69,7 +72,7 @@ def adjust_bbox(crop_id: str, body: BboxBody) -> JSONResponse:
 
 
 @router.delete("/api/item-crops/{crop_id}/adjust-bbox")
-def clear_bbox(crop_id: str) -> JSONResponse:
+def clear_bbox(crop_id: str, user: CurrentUser = Depends(require_active_user)) -> JSONResponse:
     db = SessionLocal()
     try:
         crop = db.get(ItemCrop, crop_id)
@@ -86,7 +89,9 @@ def clear_bbox(crop_id: str) -> JSONResponse:
 
 
 @router.get("/api/evidence/{file_id}/crop-editor", response_class=HTMLResponse)
-def crop_editor(request: Request, file_id: str) -> HTMLResponse:
+def crop_editor(
+    request: Request, file_id: str, user: CurrentUser = Depends(require_active_user)
+) -> HTMLResponse:
     db = SessionLocal()
     try:
         ef = db.get(EvidenceFile, file_id)
@@ -104,24 +109,26 @@ def crop_editor(request: Request, file_id: str) -> HTMLResponse:
         with Image.open((upload_base / ef.stored_path).resolve()) as img:
             img_w, img_h = img.size
 
-        crops_json = _json.dumps([
-            {
-                "id": c.id,
-                "description": (c.item.description if c.item else None) or f"Item {i + 1}",
-                "bbox": list(c.effective_bbox),
-                "claude_bbox": [c.bbox_left, c.bbox_upper, c.bbox_right, c.bbox_lower],
-                "adjusted": all(
-                    v is not None
-                    for v in (
-                        c.adjusted_bbox_left,
-                        c.adjusted_bbox_upper,
-                        c.adjusted_bbox_right,
-                        c.adjusted_bbox_lower,
-                    )
-                ),
-            }
-            for i, c in enumerate(crops)
-        ])
+        crops_json = _json.dumps(
+            [
+                {
+                    "id": c.id,
+                    "description": (c.item.description if c.item else None) or f"Item {i + 1}",
+                    "bbox": list(c.effective_bbox),
+                    "claude_bbox": [c.bbox_left, c.bbox_upper, c.bbox_right, c.bbox_lower],
+                    "adjusted": all(
+                        v is not None
+                        for v in (
+                            c.adjusted_bbox_left,
+                            c.adjusted_bbox_upper,
+                            c.adjusted_bbox_right,
+                            c.adjusted_bbox_lower,
+                        )
+                    ),
+                }
+                for i, c in enumerate(crops)
+            ]
+        )
 
         stored_path = ef.stored_path
     finally:
@@ -141,7 +148,7 @@ def crop_editor(request: Request, file_id: str) -> HTMLResponse:
 
 
 @router.post("/api/evidence/{file_id}/recrop")
-def recrop_evidence(file_id: str) -> JSONResponse:
+def recrop_evidence(file_id: str, user: CurrentUser = Depends(require_active_user)) -> JSONResponse:
     db = SessionLocal()
     try:
         ef = db.get(EvidenceFile, file_id)

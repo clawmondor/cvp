@@ -8,6 +8,7 @@ from PIL import Image
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from cvp.dependencies import CurrentUser, require_active_user
 from cvp.models import Base, Category, EvidenceFile, Item, ItemCrop, Matter
 
 
@@ -58,6 +59,17 @@ def client(tmp_base, db_engine):
 
     app = FastAPI()
     app.include_router(crops_mod.router)
+
+    async def mock_user() -> CurrentUser:
+        return CurrentUser(
+            id="test-user",
+            email="test@test.com",
+            system_role="system_admin",
+            group_id="g1",
+            group_kind="internal",
+        )
+
+    app.dependency_overrides[require_active_user] = mock_user
 
     with (
         patch.object(crops_mod, "SessionLocal", Session),

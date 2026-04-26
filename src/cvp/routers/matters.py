@@ -4,13 +4,14 @@ from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import quote_plus
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import selectinload
 
 from cvp.config import settings
 from cvp.db import SessionLocal
+from cvp.dependencies import CurrentUser, require_active_user
 from cvp.models import Category, Item, Matter
 
 BASE_DIR = Path(__file__).parent.parent
@@ -25,7 +26,9 @@ LOSS_EVENTS = ["Palisades Fire", "Eaton Fire", "Other"]
 
 
 @router.get("/matters/new", response_class=HTMLResponse)
-def new_matter_form(request: Request) -> HTMLResponse:
+def new_matter_form(
+    request: Request, user: CurrentUser = Depends(require_active_user)
+) -> HTMLResponse:
     return templates.TemplateResponse(
         request=request,
         name="matter_new.html",
@@ -36,6 +39,7 @@ def new_matter_form(request: Request) -> HTMLResponse:
 @router.post("/matters")
 def create_matter(
     request: Request,
+    user: CurrentUser = Depends(require_active_user),
     firm_name: str = Form(default=""),
     attorney_name: str = Form(default=""),
     attorney_email: str = Form(default=""),
@@ -83,7 +87,9 @@ def create_matter(
 
 
 @router.get("/matters/{matter_id}", response_class=HTMLResponse)
-def matter_detail(request: Request, matter_id: str) -> HTMLResponse:
+def matter_detail(
+    request: Request, matter_id: str, user: CurrentUser = Depends(require_active_user)
+) -> HTMLResponse:
     db = SessionLocal()
     try:
         matter = (
@@ -132,6 +138,7 @@ def matter_detail(request: Request, matter_id: str) -> HTMLResponse:
 @router.post("/matters/{matter_id}/update")
 def update_matter(
     matter_id: str,
+    user: CurrentUser = Depends(require_active_user),
     firm_name: str = Form(default=""),
     attorney_name: str = Form(default=""),
     attorney_email: str = Form(default=""),
@@ -179,6 +186,7 @@ def update_matter(
 @router.post("/api/matters/{matter_id}/status")
 def update_matter_status(
     matter_id: str,
+    user: CurrentUser = Depends(require_active_user),
     status: str = Form(...),
 ) -> RedirectResponse:
     valid = {"draft", "in_review", "delivered", "archived"}
@@ -199,7 +207,9 @@ def update_matter_status(
 
 
 @router.get("/matters/{matter_id}/preview", response_class=HTMLResponse)
-def matter_preview(request: Request, matter_id: str) -> HTMLResponse:
+def matter_preview(
+    request: Request, matter_id: str, user: CurrentUser = Depends(require_active_user)
+) -> HTMLResponse:
     db = SessionLocal()
     try:
         matter = (
