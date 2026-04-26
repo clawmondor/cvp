@@ -13,7 +13,7 @@ from cvp.dependencies import CurrentUser, require_active_user
 from cvp.middleware import SecurityHeadersMiddleware
 from cvp.models import Matter
 from cvp.models_access import MatterAccess
-from cvp.routers import auth, crops, evidence, exports, items, matters, rooms, serp, vision
+from cvp.routers import auth, crops, evidence, exports, items, matters, rooms, serp, sharing, vision
 
 BASE_DIR = Path(__file__).parent
 
@@ -36,6 +36,7 @@ app.include_router(vision.router)
 app.include_router(serp.router)
 app.include_router(crops.router)
 app.include_router(exports.router)
+app.include_router(sharing.router)
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
