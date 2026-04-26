@@ -268,3 +268,6 @@ class SerpSearch(Base):
 
     # Relationships
     item_crop: Mapped["ItemCrop"] = relationship("ItemCrop", back_populates="serp_searches")
+
+
+import cvp.models_auth as _auth_models  # noqa: F401, E402 — register auth tables with Base

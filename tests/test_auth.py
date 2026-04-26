@@ -31,3 +31,42 @@ def test_dev_environment_settings():
     assert s.environment == "dev"
     assert s.cookie_secure is False
     assert s.rate_limit_enabled is False
+
+
+from cvp.models_auth import Group, User, RefreshToken
+
+
+def test_group_model_fields():
+    g = Group(id="g1", name="Test Group", kind="internal")
+    assert g.id == "g1"
+    assert g.name == "Test Group"
+    assert g.kind == "internal"
+    assert g.is_active is True
+
+
+def test_user_model_fields():
+    u = User(
+        id="u1",
+        email="test@example.com",
+        display_name="Test User",
+        password_hash="hashed",
+        system_role="internal_user",
+        group_id="g1",
+    )
+    assert u.id == "u1"
+    assert u.email == "test@example.com"
+    assert u.system_role == "internal_user"
+    assert u.is_active is True
+    assert u.mfa_enabled is False
+    assert u.mfa_secret is None
+
+
+def test_refresh_token_model_fields():
+    rt = RefreshToken(
+        id="rt1",
+        user_id="u1",
+        token_hash="hash123",
+    )
+    assert rt.id == "rt1"
+    assert rt.user_id == "u1"
+    assert rt.revoked_at is None
