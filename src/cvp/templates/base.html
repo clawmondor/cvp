@@ -3,20 +3,37 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{% block title %}CVP{% endblock %} — Contents Valuation Prototype</title>
+  <title>{% block title %}CVP{% endblock %} — Contents Valuation Platform</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="/static/app.js" defer></script>
+  <script>
+    // CSRF: read cvp_csrf cookie and set it as X-CSRF-Token header on all HTMX requests
+    document.addEventListener('DOMContentLoaded', function() {
+      var csrf = document.cookie.split('; ').find(c => c.startsWith('cvp_csrf='));
+      if (csrf) {
+        document.body.setAttribute('hx-headers', JSON.stringify({'X-CSRF-Token': csrf.split('=')[1]}));
+      }
+    });
+  </script>
 </head>
 <body class="h-full">
   <nav class="bg-white border-b border-gray-200">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="flex h-14 items-center justify-between">
-        <a href="/" class="text-base font-semibold text-gray-900">Contents Valuation Prototype</a>
-        <a href="/matters/new"
-           class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
-          New matter
-        </a>
+        <a href="/dashboard" class="text-base font-semibold text-gray-900">Contents Valuation Platform</a>
+        <div class="flex items-center gap-4">
+          <a href="/matters/new"
+             class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
+            New matter
+          </a>
+          {% if user %}
+          <span class="text-sm text-gray-600">{{ user.email }}</span>
+          <form method="POST" action="/api/auth/logout" class="inline">
+            <button type="submit" class="text-sm text-gray-500 hover:text-gray-700">Sign out</button>
+          </form>
+          {% endif %}
+        </div>
       </div>
     </div>
   </nav>

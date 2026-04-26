@@ -73,7 +73,7 @@ def _clear_auth_cookies(response: Response) -> None:
     response.delete_cookie("cvp_csrf", path="/")
 
 
-@router.get("/", response_class=HTMLResponse)
+@router.get("/", response_class=HTMLResponse, response_model=None)
 def splash(request: Request) -> HTMLResponse | RedirectResponse:
     """Public splash page. In dev with auto_login, redirects to dashboard."""
     if settings.environment == "dev" and settings.auto_login_user_id:
@@ -93,7 +93,7 @@ def login_page(
     )
 
 
-@router.post("/api/auth/login")
+@router.post("/api/auth/login", response_model=None)
 def login(
     request: Request,
     email: str = Form(...),
@@ -275,7 +275,7 @@ def register_page(
     )
 
 
-@router.post("/api/auth/register")
+@router.post("/api/auth/register", response_model=None)
 def register(
     request: Request,
     invite_code: str = Form(...),
