@@ -39,7 +39,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
     email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String, nullable=False, default="")
-    password_hash: Mapped[str] = mapped_column(String, nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     system_role: Mapped[str] = mapped_column(String, nullable=False)
     group_id: Mapped[str | None] = mapped_column(String, ForeignKey("groups.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -1,5 +1,6 @@
 """System Admin panel router."""
 
+import datetime
 import uuid
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+from cvp.auth import generate_invite_code, hash_token
 from cvp.db import get_db
 from cvp.dependencies import CurrentUser, require_system_admin
 from cvp.models import Matter
@@ -108,8 +110,40 @@ def system_invite_user(
     user: CurrentUser = Depends(require_system_admin),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    # InviteCode model not yet implemented — return 501
-    raise HTTPException(status_code=501, detail="Invite system not yet implemented")
+    existing = db.query(User).filter(User.email == email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    group = db.get(Group, group_id)
+    if group is None:
+        raise HTTPException(status_code=400, detail="Group not found")
+
+    raw_code = generate_invite_code()
+    now_utc = datetime.datetime.now(tz=datetime.timezone.utc)
+    new_user = User(
+        id=str(uuid.uuid4()),
+        email=email,
+        display_name=display_name,
+        system_role=system_role,
+        group_id=group_id,
+        invite_code=hash_token(raw_code),
+        invite_expires_at=now_utc + datetime.timedelta(days=7),
+    )
+    db.add(new_user)
+    db.commit()
+
+    invite_url = str(request.base_url) + f"register/{raw_code}"
+    groups = db.query(Group).order_by(Group.name).all()
+    users = db.query(User).order_by(User.email).all()
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/system/users.html",
+        context=_ctx(user, users=users, groups=groups, invite_url=invite_url,
+                     breadcrumbs=[
+                         {"label": "System Admin", "url": "/admin/system/"},
+                         {"label": "Users", "url": "/admin/system/users"},
+                     ]),
+    )
 
 
 @router.post("/users/{user_id}/deactivate", response_class=HTMLResponse)
