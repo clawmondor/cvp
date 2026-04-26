@@ -1,5 +1,6 @@
 """Authentication endpoints: login, logout, register, refresh."""
 
+import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -150,7 +151,8 @@ def login(
     # Build response with cookies
     redirect_url = next if next else "/dashboard"
     response = RedirectResponse(url=redirect_url, status_code=303)
-    _set_auth_cookies(response, access_token, raw_refresh, hash_token(access_token)[:32])
+    csrf_token = secrets.token_urlsafe(24)
+    _set_auth_cookies(response, access_token, raw_refresh, csrf_token)
 
     return response
 
@@ -239,7 +241,8 @@ def refresh_token(
 
     next_url = request.headers.get("referer", "/dashboard")
     response = RedirectResponse(url=next_url, status_code=303)
-    _set_auth_cookies(response, access_token, raw_refresh, hash_token(access_token)[:32])
+    csrf_token = secrets.token_urlsafe(24)
+    _set_auth_cookies(response, access_token, raw_refresh, csrf_token)
     return response
 
 
