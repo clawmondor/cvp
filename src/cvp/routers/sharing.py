@@ -69,6 +69,19 @@ def revoke_access(
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     """Revoke a user's access to a matter."""
+    # 1. Load the target user first
+    target = db.get(User, target_user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # 2. Tenant isolation guard before checking the grant
+    if user.group_kind == "external" and target.group_id != user.group_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot revoke access for users outside your group",
+        )
+
+    # 3. Find the grant and 404 if not found
     access = (
         db.query(MatterAccess)
         .filter(
@@ -80,15 +93,7 @@ def revoke_access(
     if access is None:
         raise HTTPException(status_code=404, detail="Access grant not found")
 
-    # Tenant isolation
-    if user.group_kind == "external":
-        target = db.get(User, target_user_id)
-        if target and target.group_id != user.group_id:
-            raise HTTPException(
-                status_code=403,
-                detail="Cannot revoke access for users outside your group",
-            )
-
+    # 4. Delete
     db.delete(access)
     db.commit()
     return JSONResponse({"ok": True})

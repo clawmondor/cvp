@@ -118,9 +118,81 @@ def test_revoke_access(client):
     assert resp.json()["ok"] is True
 
 
-def test_grant_invalid_role(client):
+def test_invalid_role(client):
     resp = client.post(
         "/api/matters/m1/access",
         data={"user_id": "eu", "role": "superuser"},
     )
     assert resp.status_code == 400
+
+
+def test_grant_user_not_found(client):
+    resp = client.post(
+        "/api/matters/m1/access",
+        data={"user_id": "nonexistent-user-id", "role": "viewer"},
+    )
+    assert resp.status_code == 404
+
+
+def test_revoke_grant_not_found(client):
+    # No grant exists for "eu" — revoke should 404
+    resp = client.delete("/api/matters/m1/access/eu")
+    assert resp.status_code == 404
+
+
+def test_grant_cross_tenant_blocked(seeded_share_db):
+    """External admin cannot grant access to a user in a different group."""
+    from cvp.db import get_db
+    from cvp.dependencies import CurrentUser, require_active_user
+    from cvp.main import app
+
+    import cvp.dependencies as deps_local
+
+    # Add an external_admin user in the "eg" group
+    from cvp.auth import hash_password as hp
+    from cvp.models_auth import User as U
+
+    ea = U(
+        id="ea",
+        email="ea@test.com",
+        display_name="ExtAdmin",
+        password_hash=hp("testpassword1"),
+        system_role="external_admin",
+        group_id="eg",
+    )
+    seeded_share_db.add(ea)
+    seeded_share_db.commit()
+
+    def override_get_db():
+        try:
+            yield seeded_share_db
+        finally:
+            pass
+
+    async def mock_ext_admin():
+        return CurrentUser(
+            id="ea",
+            email="ea@test.com",
+            system_role="external_admin",
+            group_id="eg",
+            group_kind="external",
+        )
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[require_active_user] = mock_ext_admin
+    monkeypatched = pytest.MonkeyPatch()
+    monkeypatched.setattr(
+        deps_local, "_check_matter_access", lambda db, user, matter_id, role: True
+    )
+
+    with TestClient(app) as c:
+        # "ia" is in group "ig" (internal), external admin is in "eg" — cross-tenant
+        resp = c.post(
+            "/api/matters/m1/access",
+            data={"user_id": "ia", "role": "viewer"},
+        )
+
+    app.dependency_overrides.clear()
+    monkeypatched.undo()
+
+    assert resp.status_code == 403
