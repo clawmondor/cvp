@@ -52,6 +52,12 @@ class Matter(Base):
     delivered_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     invoice_amount_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     internal_notes: Mapped[str] = mapped_column(Text, default="")
+    owner_group_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("groups.id"), nullable=True
+    )
+    created_by_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("users.id"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
@@ -134,6 +140,10 @@ class Item(Base):
     source_screenshot_path: Mapped[str | None] = mapped_column(String, nullable=True)
     confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     excluded: Mapped[bool] = mapped_column(Boolean, default=False)
+    confirmed_by_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("users.id"), nullable=True
+    )
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     notes: Mapped[str] = mapped_column(Text, default="")
     search_hint: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
