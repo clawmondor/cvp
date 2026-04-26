@@ -1,6 +1,8 @@
 .env
 data/
 backups/
+# Allow tracking of src/cvp/data/ but ignore everything else
+!/src/cvp/data/
 __pycache__/
 *.pyc
 .venv/

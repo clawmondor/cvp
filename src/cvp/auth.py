@@ -10,7 +10,7 @@ import jwt
 
 # Load breached passwords into a set for O(1) lookup
 _BREACHED_PASSWORDS: set[str] = set()
-_BREACHED_FILE = Path(__file__).parent.parent.parent / "data" / "pwned_passwords_top100k.txt"
+_BREACHED_FILE = Path(__file__).parent / "data" / "pwned_passwords_top100k.txt"
 if _BREACHED_FILE.exists():
     _BREACHED_PASSWORDS = set(_BREACHED_FILE.read_text().strip().splitlines())
 
