@@ -19,5 +19,16 @@ class Settings(BaseSettings):
     company_email: str = ""
     company_phone: str = ""
 
+    # Auth settings
+    environment: str = "production"
+    jwt_secret: str = ""
+    jwt_access_ttl_minutes: int = 60
+    jwt_refresh_ttl_days: int = 7
+    mfa_encryption_key: str = ""
+    auto_login_user_id: str = ""
+    cookie_secure: bool = True
+    cookie_domain: str = ""
+    rate_limit_enabled: bool = True
+
 
 settings = Settings()
