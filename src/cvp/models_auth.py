@@ -70,7 +70,7 @@ class RefreshToken(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)
-    token_hash: Mapped[str] = mapped_column(String, nullable=False)
+    token_hash: Mapped[str] = mapped_column(String, nullable=False, index=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

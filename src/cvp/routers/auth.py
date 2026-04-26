@@ -19,6 +19,7 @@ from cvp.auth import (
 )
 from cvp.config import settings
 from cvp.db import get_db
+from cvp.dependencies import CurrentUser, optional_user
 from cvp.models_auth import RefreshToken, User
 
 BASE_DIR = Path(__file__).parent.parent
@@ -160,6 +161,7 @@ def login(
 def logout(
     request: Request,
     db: Session = Depends(get_db),
+    user: CurrentUser | None = Depends(optional_user),
 ) -> RedirectResponse:
     """Revoke refresh token and clear cookies."""
     refresh_cookie = request.cookies.get("cvp_refresh")
@@ -294,6 +296,14 @@ def register(
         )
 
     if user.invite_expires_at and user.invite_expires_at < datetime.now(tz=timezone.utc):
+        return templates.TemplateResponse(
+            request=request,
+            name="register.html",
+            context={"invalid": True, "invite_code": "", "email": ""},
+        )
+
+    # Prevent re-use of invite code by already-registered user
+    if user.password_changed_at is not None:
         return templates.TemplateResponse(
             request=request,
             name="register.html",
