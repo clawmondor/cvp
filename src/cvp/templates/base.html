@@ -29,6 +29,13 @@
           </a>
           {% if user %}
           <span class="text-sm text-gray-600">{{ user.email }}</span>
+          {% if user.system_role == "system_admin" %}
+          <a href="/admin/system/" class="text-sm text-gray-500 hover:text-gray-700">Admin</a>
+          {% elif user.system_role == "internal_admin" %}
+          <a href="/admin/internal/" class="text-sm text-gray-500 hover:text-gray-700">Admin</a>
+          {% elif user.system_role == "external_admin" %}
+          <a href="/admin/org/" class="text-sm text-gray-500 hover:text-gray-700">Admin</a>
+          {% endif %}
           <form method="POST" action="/api/auth/logout" class="inline">
             <button type="submit" class="text-sm text-gray-500 hover:text-gray-700">Sign out</button>
           </form>
