@@ -14,6 +14,7 @@ from cvp.middleware import SecurityHeadersMiddleware
 from cvp.models import Matter
 from cvp.models_access import MatterAccess
 from cvp.routers import auth, crops, evidence, exports, items, matters, rooms, serp, sharing, vision
+from cvp.routers.admin import internal as admin_internal
 from cvp.routers.admin import system as admin_system
 
 BASE_DIR = Path(__file__).parent
@@ -39,6 +40,7 @@ app.include_router(crops.router)
 app.include_router(exports.router)
 app.include_router(sharing.router)
 app.include_router(admin_system.router)
+app.include_router(admin_internal.router)
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
