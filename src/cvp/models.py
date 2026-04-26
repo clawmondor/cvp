@@ -55,9 +55,7 @@ class Matter(Base):
     owner_group_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("groups.id"), nullable=True
     )
-    created_by_id: Mapped[str | None] = mapped_column(
-        String, ForeignKey("users.id"), nullable=True
-    )
+    created_by_id: Mapped[str | None] = mapped_column(String, ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
@@ -278,5 +276,5 @@ class SerpSearch(Base):
     item_crop: Mapped["ItemCrop"] = relationship("ItemCrop", back_populates="serp_searches")
 
 
-import cvp.models_auth as _auth_models  # noqa: F401, E402 — register auth tables with Base
 import cvp.models_access as _access_models  # noqa: F401, E402 — register access tables with Base
+import cvp.models_auth as _auth_models  # noqa: F401, E402 — register auth tables with Base

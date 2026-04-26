@@ -140,14 +140,13 @@ def test_revoke_grant_not_found(client):
 
 def test_grant_cross_tenant_blocked(seeded_share_db, monkeypatch):
     """External admin cannot grant access to a user in a different group."""
-    from cvp.db import get_db
-    from cvp.dependencies import CurrentUser, require_active_user
-    from cvp.main import app
-
     import cvp.dependencies as deps_local
 
     # Add an external_admin user in the "eg" group
     from cvp.auth import hash_password as hp
+    from cvp.db import get_db
+    from cvp.dependencies import CurrentUser, require_active_user
+    from cvp.main import app
     from cvp.models_auth import User as U
 
     ea = U(
@@ -178,9 +177,7 @@ def test_grant_cross_tenant_blocked(seeded_share_db, monkeypatch):
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[require_active_user] = mock_ext_admin
-    monkeypatch.setattr(
-        deps_local, "_check_matter_access", lambda db, user, matter_id, role: True
-    )
+    monkeypatch.setattr(deps_local, "_check_matter_access", lambda db, user, matter_id, role: True)
 
     try:
         with TestClient(app) as c:

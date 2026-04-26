@@ -117,12 +117,14 @@ def list_access(
     for grant, target in rows:
         if user.group_kind == "external" and target.group_id != user.group_id:
             continue
-        result.append({
-            "user_id": grant.user_id,
-            "email": target.email,
-            "display_name": target.display_name,
-            "role": grant.role,
-            "granted_by_id": grant.granted_by_id,
-        })
+        result.append(
+            {
+                "user_id": grant.user_id,
+                "email": target.email,
+                "display_name": target.display_name,
+                "role": grant.role,
+                "granted_by_id": grant.granted_by_id,
+            }
+        )
 
     return JSONResponse(result)

@@ -13,14 +13,10 @@ class MatterAccess(Base):
     """Per-user, per-matter permission grant."""
 
     __tablename__ = "matter_access"
-    __table_args__ = (
-        UniqueConstraint("user_id", "matter_id", name="uq_user_matter"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "matter_id", name="uq_user_matter"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
-    user_id: Mapped[str] = mapped_column(
-        String, ForeignKey("users.id"), nullable=False, index=True
-    )
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False, index=True)
     matter_id: Mapped[str] = mapped_column(
         String, ForeignKey("matters.id"), nullable=False, index=True
     )
