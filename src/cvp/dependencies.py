@@ -145,3 +145,126 @@ async def require_system_admin(
     if user.system_role != "system_admin":
         raise HTTPException(status_code=403, detail="System admin access required")
     return user
+
+
+from sqlalchemy.orm import Session  # noqa: E402
+
+from cvp.db import get_db  # noqa: E402
+from cvp.models import Matter  # noqa: E402
+from cvp.models_access import MatterAccess  # noqa: E402
+
+ROLE_HIERARCHY: dict[str, int] = {
+    "viewer": 0,
+    "editor": 1,
+    "contributor": 2,
+    "manager": 3,
+}
+
+
+def _check_matter_access(
+    db: Session,
+    user: CurrentUser,
+    matter_id: str,
+    minimum_role: str,
+) -> bool:
+    """Check if user has at least minimum_role on a matter.
+
+    Returns True if access is granted, False otherwise.
+    """
+    # System admins have implicit manager on everything
+    if user.system_role == "system_admin":
+        return True
+
+    # Check if user's group owns the matter
+    matter = db.get(Matter, matter_id)
+    if matter is None:
+        return False
+
+    if matter.owner_group_id == user.group_id:
+        # Admins get implicit manager on their group's matters
+        if user.system_role in ("internal_admin", "external_admin"):
+            return True
+
+    # Check explicit matter_access grant
+    access = (
+        db.query(MatterAccess)
+        .filter(
+            MatterAccess.user_id == user.id,
+            MatterAccess.matter_id == matter_id,
+        )
+        .first()
+    )
+    if access is None:
+        return False
+
+    return ROLE_HIERARCHY.get(access.role, -1) >= ROLE_HIERARCHY.get(minimum_role, 999)
+
+
+def require_matter_role(minimum_role: str):
+    """Factory that returns a FastAPI dependency requiring a minimum matter role.
+
+    Usage: Depends(require_matter_role("editor"))
+    """
+
+    async def dependency(
+        request: Request,
+        user: CurrentUser = Depends(require_active_user),
+        db: Session = Depends(get_db),
+    ) -> CurrentUser:
+        # Extract matter_id from path params
+        matter_id = request.path_params.get("matter_id")
+
+        if matter_id is None:
+            # Look up matter via related resource
+            item_id = request.path_params.get("item_id")
+            if item_id:
+                from cvp.models import Item
+
+                item = db.get(Item, item_id)
+                if item:
+                    matter_id = item.matter_id
+
+            room_id = request.path_params.get("room_id")
+            if room_id and not matter_id:
+                from cvp.models import Room
+
+                room = db.get(Room, room_id)
+                if room:
+                    matter_id = room.matter_id
+
+            crop_id = request.path_params.get("crop_id")
+            if crop_id and not matter_id:
+                from cvp.models import Item, ItemCrop
+
+                crop = db.get(ItemCrop, crop_id)
+                if crop:
+                    item = db.get(Item, crop.item_id)
+                    if item:
+                        matter_id = item.matter_id
+
+            file_id = request.path_params.get("file_id")
+            if file_id and not matter_id:
+                from cvp.models import EvidenceFile
+
+                ef = db.get(EvidenceFile, file_id)
+                if ef:
+                    matter_id = ef.matter_id
+
+        if matter_id is None:
+            raise HTTPException(status_code=404, detail="Resource not found")
+
+        if not _check_matter_access(db, user, matter_id, minimum_role):
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        return user
+
+    return dependency
+
+
+async def require_group_admin(
+    user: CurrentUser = Depends(require_active_user),
+) -> CurrentUser:
+    """Require the user to be an admin (system, internal, or external)."""
+    if user.system_role not in ("system_admin", "internal_admin", "external_admin"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    return user
