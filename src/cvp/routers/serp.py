@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from cvp.config import settings
 from cvp.db import SessionLocal
-from cvp.dependencies import CurrentUser, optional_user, require_active_user
+from cvp.dependencies import CurrentUser, optional_user, require_matter_role
 from cvp.depreciation import compute_acv
 from cvp.models import Category, Item, ItemCrop, Room, SerpSearch
 from cvp.services.serp import build_crop_url, call_serp
@@ -40,7 +40,9 @@ def serve_crop(crop_path: str, user: CurrentUser | None = Depends(optional_user)
 
 
 @router.get("/api/items/{item_id}/serp-panel", response_class=HTMLResponse)
-def serp_panel(item_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
+def serp_panel(
+    item_id: str, user: CurrentUser = Depends(require_matter_role("editor"))
+) -> HTMLResponse:
     """Render the SERP panel for an item showing all crops and their latest search results."""
     db = SessionLocal()
     try:
@@ -80,7 +82,7 @@ def serp_panel(item_id: str, user: CurrentUser = Depends(require_active_user)) -
 def run_google_lens(
     item_id: str,
     crop_id: str,
-    user: CurrentUser = Depends(require_active_user),
+    user: CurrentUser = Depends(require_matter_role("editor")),
     image_url: str = Form(""),
 ) -> HTMLResponse:
     """Run a Google Lens search for a specific item crop and persist the result."""
@@ -125,7 +127,7 @@ def run_google_lens(
 @router.post("/api/items/{item_id}/serp-apply", response_class=HTMLResponse)
 def serp_apply(
     item_id: str,
-    user: CurrentUser = Depends(require_active_user),
+    user: CurrentUser = Depends(require_matter_role("editor")),
     source_url: str = Form(""),
     source_retailer: str = Form(""),
     rcv_unit_cents: str = Form(""),

@@ -10,7 +10,7 @@ from fastapi.templating import Jinja2Templates
 
 from cvp.config import settings
 from cvp.db import SessionLocal
-from cvp.dependencies import CurrentUser, require_active_user
+from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.models import EvidenceFile
 
 BASE_DIR = Path(__file__).parent.parent
@@ -33,7 +33,7 @@ def _kind_from_mime(mime: str) -> str:
 async def upload_evidence(
     matter_id: str,
     files: list[UploadFile],
-    user: CurrentUser = Depends(require_active_user),
+    user: CurrentUser = Depends(require_matter_role("contributor")),
 ) -> HTMLResponse:
     upload_base = Path(settings.upload_dir).resolve()
     matter_dir = upload_base / matter_id
@@ -79,7 +79,9 @@ async def upload_evidence(
 
 
 @router.delete("/api/evidence/{file_id}", response_class=HTMLResponse)
-def delete_evidence(file_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
+def delete_evidence(
+    file_id: str, user: CurrentUser = Depends(require_matter_role("manager"))
+) -> HTMLResponse:
     db = SessionLocal()
     try:
         ef = db.get(EvidenceFile, file_id)
@@ -101,7 +103,9 @@ def delete_evidence(file_id: str, user: CurrentUser = Depends(require_active_use
 
 
 @router.get("/files/{stored_path:path}")
-def serve_file(stored_path: str, user: CurrentUser = Depends(require_active_user)) -> FileResponse:
+def serve_file(
+    stored_path: str, user: CurrentUser = Depends(require_matter_role("viewer"))
+) -> FileResponse:
     upload_base = Path(settings.upload_dir).resolve()
     dest = (upload_base / stored_path).resolve()
     # Path-traversal guard

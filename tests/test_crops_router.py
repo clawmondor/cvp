@@ -9,6 +9,8 @@ from PIL import Image
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+import cvp.dependencies as deps
+from cvp.db import get_db
 from cvp.dependencies import CurrentUser, require_active_user
 from cvp.models import Base, Category, EvidenceFile, Item, ItemCrop, Matter
 
@@ -83,12 +85,21 @@ def client(tmp_base, db_engine):
             group_kind="internal",
         )
 
+    def override_get_db():
+        db = Session()
+        try:
+            yield db
+        finally:
+            db.close()
+
     app.dependency_overrides[require_active_user] = mock_user
+    app.dependency_overrides[get_db] = override_get_db
 
     with (
         patch.object(crops_mod, "SessionLocal", Session),
         patch("cvp.config.settings.upload_dir", str(tmp_base / "uploads")),
         patch("cvp.config.settings.crop_dir", str(tmp_base / "crops")),
+        patch.object(deps, "_check_matter_access", return_value=True),
     ):
         with TestClient(app) as c:
             yield c, Session

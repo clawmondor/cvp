@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from cvp.config import settings
 from cvp.db import SessionLocal
-from cvp.dependencies import CurrentUser, require_active_user
+from cvp.dependencies import CurrentUser, require_active_user, require_matter_role
 from cvp.models import Category, Item, Matter
 
 BASE_DIR = Path(__file__).parent.parent
@@ -80,6 +80,8 @@ def create_matter(
                 date.fromisoformat(target_delivery_date) if target_delivery_date else None
             ),
         )
+        matter.owner_group_id = user.group_id
+        matter.created_by_id = user.id
         db.add(matter)
         db.commit()
         db.refresh(matter)
@@ -92,7 +94,7 @@ def create_matter(
 
 @router.get("/matters/{matter_id}", response_class=HTMLResponse)
 def matter_detail(
-    request: Request, matter_id: str, user: CurrentUser = Depends(require_active_user)
+    request: Request, matter_id: str, user: CurrentUser = Depends(require_matter_role("viewer"))
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -143,7 +145,7 @@ def matter_detail(
 @router.post("/matters/{matter_id}/update")
 def update_matter(
     matter_id: str,
-    user: CurrentUser = Depends(require_active_user),
+    user: CurrentUser = Depends(require_matter_role("manager")),
     firm_name: str = Form(default=""),
     attorney_name: str = Form(default=""),
     attorney_email: str = Form(default=""),
@@ -191,7 +193,7 @@ def update_matter(
 @router.post("/api/matters/{matter_id}/status")
 def update_matter_status(
     matter_id: str,
-    user: CurrentUser = Depends(require_active_user),
+    user: CurrentUser = Depends(require_matter_role("manager")),
     status: str = Form(...),
 ) -> RedirectResponse:
     valid = {"draft", "in_review", "delivered", "archived"}
@@ -213,7 +215,7 @@ def update_matter_status(
 
 @router.get("/matters/{matter_id}/preview", response_class=HTMLResponse)
 def matter_preview(
-    request: Request, matter_id: str, user: CurrentUser = Depends(require_active_user)
+    request: Request, matter_id: str, user: CurrentUser = Depends(require_matter_role("viewer"))
 ) -> HTMLResponse:
     db = SessionLocal()
     try:

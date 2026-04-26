@@ -5,14 +5,16 @@ from pathlib import Path
 from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse, HTMLResponse
 
-from cvp.dependencies import CurrentUser, require_active_user
+from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.services import csv_export, pdf_generator
 
 router = APIRouter()
 
 
 @router.post("/api/matters/{matter_id}/exports/pdf", response_class=HTMLResponse)
-def export_pdf(matter_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
+def export_pdf(
+    matter_id: str, user: CurrentUser = Depends(require_matter_role("manager"))
+) -> HTMLResponse:
     try:
         out_path = pdf_generator.generate_pdf(matter_id)
     except Exception as exc:
@@ -24,7 +26,9 @@ def export_pdf(matter_id: str, user: CurrentUser = Depends(require_active_user))
 
 
 @router.post("/api/matters/{matter_id}/exports/csv", response_class=HTMLResponse)
-def export_csv(matter_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
+def export_csv(
+    matter_id: str, user: CurrentUser = Depends(require_matter_role("manager"))
+) -> HTMLResponse:
     try:
         out_path = csv_export.generate_csv(matter_id)
     except Exception as exc:
@@ -37,7 +41,7 @@ def export_csv(matter_id: str, user: CurrentUser = Depends(require_active_user))
 
 @router.get("/api/matters/{matter_id}/exports/download")
 def download_export(
-    matter_id: str, path: str, user: CurrentUser = Depends(require_active_user)
+    matter_id: str, path: str, user: CurrentUser = Depends(require_matter_role("manager"))
 ) -> FileResponse:
     """Serve a generated export file for download."""
     from cvp.config import settings

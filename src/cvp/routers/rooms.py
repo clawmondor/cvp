@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import update
 
 from cvp.db import SessionLocal
-from cvp.dependencies import CurrentUser, require_active_user
+from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.models import Item, Room
 
 BASE_DIR = Path(__file__).parent.parent
@@ -25,7 +25,7 @@ def _room_li(room: Room) -> str:
 def create_room(
     matter_id: str,
     name: str = Form(...),
-    user: CurrentUser = Depends(require_active_user),
+    user: CurrentUser = Depends(require_matter_role("manager")),
 ) -> HTMLResponse:
     name = name.strip()
     if not name:
@@ -47,7 +47,7 @@ def create_room(
 def rename_room(
     room_id: str,
     name: str = Form(...),
-    user: CurrentUser = Depends(require_active_user),
+    user: CurrentUser = Depends(require_matter_role("manager")),
 ) -> HTMLResponse:
     name = name.strip()
     if not name:
@@ -67,7 +67,9 @@ def rename_room(
 
 
 @router.delete("/api/rooms/{room_id}", response_class=HTMLResponse)
-def delete_room(room_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
+def delete_room(
+    room_id: str, user: CurrentUser = Depends(require_matter_role("manager"))
+) -> HTMLResponse:
     db = SessionLocal()
     try:
         room = db.get(Room, room_id)

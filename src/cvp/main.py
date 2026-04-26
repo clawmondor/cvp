@@ -4,13 +4,15 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import selectinload
+from sqlalchemy import or_
+from sqlalchemy.orm import Session, selectinload
 
 from cvp.config import settings
-from cvp.db import SessionLocal
+from cvp.db import get_db
 from cvp.dependencies import CurrentUser, require_active_user
 from cvp.middleware import SecurityHeadersMiddleware
 from cvp.models import Matter
+from cvp.models_access import MatterAccess
 from cvp.routers import auth, crops, evidence, exports, items, matters, rooms, serp, vision
 
 BASE_DIR = Path(__file__).parent
@@ -42,17 +44,30 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 def dashboard(
     request: Request,
     user: CurrentUser = Depends(require_active_user),
+    db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    db = SessionLocal()
-    try:
+    if user.system_role == "system_admin":
         all_matters = (
             db.query(Matter)
             .options(selectinload(Matter.items))
             .order_by(Matter.status, Matter.target_delivery_date)
             .all()
         )
-    finally:
-        db.close()
+    else:
+        all_matters = (
+            db.query(Matter)
+            .options(selectinload(Matter.items))
+            .filter(
+                or_(
+                    Matter.owner_group_id == user.group_id,
+                    Matter.id.in_(
+                        db.query(MatterAccess.matter_id).filter(MatterAccess.user_id == user.id)
+                    ),
+                )
+            )
+            .order_by(Matter.status, Matter.target_delivery_date)
+            .all()
+        )
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",

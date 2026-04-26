@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from cvp.config import settings
 from cvp.db import SessionLocal
-from cvp.dependencies import CurrentUser, require_active_user
+from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.models import EvidenceFile, ItemCrop
 from cvp.services.crop import recrop_item_crop
 
@@ -32,7 +32,7 @@ class BboxBody(BaseModel):
 
 @router.post("/api/item-crops/{crop_id}/adjust-bbox")
 def adjust_bbox(
-    crop_id: str, body: BboxBody, user: CurrentUser = Depends(require_active_user)
+    crop_id: str, body: BboxBody, user: CurrentUser = Depends(require_matter_role("contributor"))
 ) -> JSONResponse:
     db = SessionLocal()
     try:
@@ -72,7 +72,9 @@ def adjust_bbox(
 
 
 @router.delete("/api/item-crops/{crop_id}/adjust-bbox")
-def clear_bbox(crop_id: str, user: CurrentUser = Depends(require_active_user)) -> JSONResponse:
+def clear_bbox(
+    crop_id: str, user: CurrentUser = Depends(require_matter_role("contributor"))
+) -> JSONResponse:
     db = SessionLocal()
     try:
         crop = db.get(ItemCrop, crop_id)
@@ -90,7 +92,7 @@ def clear_bbox(crop_id: str, user: CurrentUser = Depends(require_active_user)) -
 
 @router.get("/api/evidence/{file_id}/crop-editor", response_class=HTMLResponse)
 def crop_editor(
-    request: Request, file_id: str, user: CurrentUser = Depends(require_active_user)
+    request: Request, file_id: str, user: CurrentUser = Depends(require_matter_role("contributor"))
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -148,7 +150,9 @@ def crop_editor(
 
 
 @router.post("/api/evidence/{file_id}/recrop")
-def recrop_evidence(file_id: str, user: CurrentUser = Depends(require_active_user)) -> JSONResponse:
+def recrop_evidence(
+    file_id: str, user: CurrentUser = Depends(require_matter_role("contributor"))
+) -> JSONResponse:
     db = SessionLocal()
     try:
         ef = db.get(EvidenceFile, file_id)

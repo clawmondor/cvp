@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from cvp.db import SessionLocal
-from cvp.dependencies import CurrentUser, require_active_user
+from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.models import EvidenceFile
 from cvp.services import vision as vision_svc
 
@@ -21,7 +21,7 @@ router = APIRouter()
 async def start_scan(
     matter_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_active_user),
+    user: CurrentUser = Depends(require_matter_role("contributor")),
     evidence_file_ids: list[str] = Form(default=[]),
 ) -> HTMLResponse:
     if not evidence_file_ids:
@@ -64,7 +64,7 @@ async def start_scan(
 
 @router.get("/api/matters/{matter_id}/vision-scan/{job_id}", response_class=HTMLResponse)
 def poll_scan(
-    matter_id: str, job_id: str, user: CurrentUser = Depends(require_active_user)
+    matter_id: str, job_id: str, user: CurrentUser = Depends(require_matter_role("contributor"))
 ) -> HTMLResponse:
     job = vision_svc.get_job(job_id)
     if job is None:

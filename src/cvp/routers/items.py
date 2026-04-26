@@ -1,6 +1,7 @@
 """Item CRUD endpoints with ACV auto-computation."""
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote_plus
 
@@ -12,7 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from cvp.config import settings
 from cvp.db import SessionLocal
-from cvp.dependencies import CurrentUser, require_active_user
+from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.depreciation import compute_acv
 from cvp.models import Category, Item, Room, SerpSearch
 from cvp.services.serp_display import extract_results
@@ -94,7 +95,7 @@ def _parse_cents(dollars_str: str) -> int:
 @router.post("/api/matters/{matter_id}/items", response_class=HTMLResponse)
 def create_item(
     matter_id: str,
-    user: CurrentUser = Depends(require_active_user),
+    user: CurrentUser = Depends(require_matter_role("contributor")),
     description: str = Form(""),
     category_id: int = Form(...),
     room_id: str = Form(""),
@@ -140,7 +141,9 @@ def create_item(
 
 
 @router.get("/api/items/{item_id}/edit", response_class=HTMLResponse)
-def item_edit_form(item_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
+def item_edit_form(
+    item_id: str, user: CurrentUser = Depends(require_matter_role("editor"))
+) -> HTMLResponse:
     db = SessionLocal()
     try:
         item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
@@ -172,7 +175,9 @@ def item_edit_form(item_id: str, user: CurrentUser = Depends(require_active_user
 
 
 @router.get("/api/items/{item_id}/view", response_class=HTMLResponse)
-def item_view_row(item_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
+def item_view_row(
+    item_id: str, user: CurrentUser = Depends(require_matter_role("viewer"))
+) -> HTMLResponse:
     db = SessionLocal()
     try:
         item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
@@ -188,7 +193,7 @@ def item_view_row(item_id: str, user: CurrentUser = Depends(require_active_user)
 @router.patch("/api/items/{item_id}", response_class=HTMLResponse)
 def update_item(
     item_id: str,
-    user: CurrentUser = Depends(require_active_user),
+    user: CurrentUser = Depends(require_matter_role("editor")),
     description: str = Form(""),
     category_id: int = Form(...),
     room_id: str = Form(""),
@@ -248,13 +253,21 @@ def update_item(
 
 
 @router.post("/api/items/{item_id}/toggle-confirm", response_class=HTMLResponse)
-def toggle_confirm(item_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
+def toggle_confirm(
+    item_id: str, user: CurrentUser = Depends(require_matter_role("manager"))
+) -> HTMLResponse:
     db = SessionLocal()
     try:
         item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
         if item is None:
             raise HTTPException(status_code=404)
         item.confirmed = not item.confirmed
+        if item.confirmed:
+            item.confirmed_by_id = user.id
+            item.confirmed_at = datetime.now(tz=timezone.utc)
+        else:
+            item.confirmed_by_id = None
+            item.confirmed_at = None
         db.commit()
         db.refresh(item)
         categories, rooms = _get_context(item.matter_id, db)
@@ -265,7 +278,9 @@ def toggle_confirm(item_id: str, user: CurrentUser = Depends(require_active_user
 
 
 @router.post("/api/items/{item_id}/toggle-exclude", response_class=HTMLResponse)
-def toggle_exclude(item_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
+def toggle_exclude(
+    item_id: str, user: CurrentUser = Depends(require_matter_role("manager"))
+) -> HTMLResponse:
     db = SessionLocal()
     try:
         item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
@@ -282,7 +297,9 @@ def toggle_exclude(item_id: str, user: CurrentUser = Depends(require_active_user
 
 
 @router.delete("/api/items/{item_id}", response_class=HTMLResponse)
-def delete_item(item_id: str, user: CurrentUser = Depends(require_active_user)) -> HTMLResponse:
+def delete_item(
+    item_id: str, user: CurrentUser = Depends(require_matter_role("manager"))
+) -> HTMLResponse:
     db = SessionLocal()
     try:
         item = db.get(Item, item_id)
