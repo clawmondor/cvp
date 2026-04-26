@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en" class="h-full bg-gray-100">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Admin{% endblock %} — CVP Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var csrf = document.cookie.split('; ').find(c => c.startsWith('cvp_csrf='));
+      if (csrf) {
+        document.body.setAttribute('hx-headers', JSON.stringify({'X-CSRF-Token': csrf.split('=')[1]}));
+      }
+    });
+  </script>
+</head>
+<body class="h-full">
+  <div class="min-h-full flex flex-col">
+    <!-- Top nav -->
+    <nav class="bg-slate-800 text-white">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex h-14 items-center justify-between">
+          <div class="flex items-center gap-6">
+            <a href="/dashboard" class="text-sm font-semibold text-slate-300 hover:text-white">CVP</a>
+            <span class="text-slate-600">/</span>
+            <span class="text-sm font-semibold text-white">{{ panel_title }}</span>
+          </div>
+          <div class="flex items-center gap-4">
+            {% if user %}
+            <span class="text-sm text-slate-400">{{ user.email }}</span>
+            <form method="POST" action="/api/auth/logout" class="inline">
+              <button type="submit" class="text-sm text-slate-400 hover:text-white">Sign out</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Breadcrumbs -->
+    {% if breadcrumbs %}
+    <div class="bg-white border-b border-gray-200">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <nav class="flex h-10 items-center gap-2 text-sm text-gray-500">
+          {% for crumb in breadcrumbs %}
+          {% if not loop.last %}
+          <a href="{{ crumb.url }}" class="hover:text-gray-700">{{ crumb.label }}</a>
+          <span class="text-gray-300">/</span>
+          {% else %}
+          <span class="text-gray-900 font-medium">{{ crumb.label }}</span>
+          {% endif %}
+          {% endfor %}
+        </nav>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="flex flex-1">
+      <!-- Sidebar -->
+      <aside class="w-56 bg-slate-800 min-h-full flex-shrink-0">
+        <nav class="px-3 py-4 space-y-1">
+          {% block sidebar %}{% endblock %}
+        </nav>
+      </aside>
+
+      <!-- Main content -->
+      <main class="flex-1 px-8 py-6">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+</body>
+</html>
