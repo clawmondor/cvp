@@ -110,6 +110,13 @@ def system_invite_user(
     user: CurrentUser = Depends(require_system_admin),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
+    valid_roles = {
+        "system_admin", "internal_admin", "internal_user",
+        "specialist", "external_admin", "external_user",
+    }
+    if system_role not in valid_roles:
+        raise HTTPException(status_code=400, detail="Invalid role")
+
     existing = db.query(User).filter(User.email == email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -132,7 +139,7 @@ def system_invite_user(
     db.add(new_user)
     db.commit()
 
-    invite_url = str(request.base_url) + f"register/{raw_code}"
+    invite_url = str(request.base_url).rstrip("/") + f"/register/{raw_code}"
     groups = db.query(Group).order_by(Group.name).all()
     users = db.query(User).order_by(User.email).all()
     return templates.TemplateResponse(
@@ -221,6 +228,8 @@ def system_create_group(
     user: CurrentUser = Depends(require_system_admin),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
+    if db.query(Group).filter(Group.name == name).first():
+        raise HTTPException(status_code=400, detail="A group with this name already exists")
     group = Group(id=str(uuid.uuid4()), name=name, kind=kind)
     db.add(group)
     db.commit()
