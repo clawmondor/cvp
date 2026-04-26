@@ -317,6 +317,50 @@ def org_matter_access(
     )
 
 
+@router.post("/matters/{matter_id}/access", response_class=HTMLResponse)
+def org_grant_matter_access(
+    matter_id: str,
+    request: Request,
+    user_id: str = Form(...),
+    role: str = Form(...),
+    group_id: str | None = Form(None),
+    user: CurrentUser = Depends(_require_org_admin_or_above),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    valid_roles = {"viewer", "editor", "contributor", "manager"}
+    if role not in valid_roles:
+        raise HTTPException(status_code=400, detail="Invalid role")
+
+    resolved = _resolve_group_id(user, group_id, db)
+    matter = db.get(Matter, matter_id)
+    if matter is None:
+        raise HTTPException(status_code=404, detail="Matter not found")
+    if resolved and matter.owner_group_id != resolved:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    existing = (
+        db.query(MatterAccess)
+        .filter(MatterAccess.user_id == user_id, MatterAccess.matter_id == matter_id)
+        .first()
+    )
+    if existing:
+        existing.role = role
+        existing.granted_by_id = user.id
+    else:
+        db.add(MatterAccess(
+            user_id=user_id,
+            matter_id=matter_id,
+            role=role,
+            granted_by_id=user.id,
+        ))
+    db.commit()
+    return org_matter_access(matter_id, request, group_id, user, db)
+
+
 @router.get("/profile", response_class=HTMLResponse)
 def org_profile(
     request: Request,
