@@ -41,9 +41,7 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String, nullable=False, default="")
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
     system_role: Mapped[str] = mapped_column(String, nullable=False)
-    group_id: Mapped[str | None] = mapped_column(
-        String, ForeignKey("groups.id"), nullable=True
-    )
+    group_id: Mapped[str | None] = mapped_column(String, ForeignKey("groups.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     mfa_secret: Mapped[str | None] = mapped_column(String, nullable=True)
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)

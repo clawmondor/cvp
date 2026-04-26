@@ -1,4 +1,5 @@
 """Integration tests for crops router."""
+
 from unittest.mock import patch
 
 import pytest
@@ -36,16 +37,29 @@ def db_engine(tmp_base):
 
     db.add(Category(id=1, name="Test", useful_life_years=10, acv_floor_pct=0.20))
     db.add(Matter(id="m1", policyholder_name="Test"))
-    db.add(EvidenceFile(
-        id="ef1", matter_id="m1", filename="photo.jpg",
-        stored_path="ef1/photo.jpg", kind="image", scanned=True,
-    ))
+    db.add(
+        EvidenceFile(
+            id="ef1",
+            matter_id="m1",
+            filename="photo.jpg",
+            stored_path="ef1/photo.jpg",
+            kind="image",
+            scanned=True,
+        )
+    )
     db.add(Item(id="item1", matter_id="m1", category_id=1, line_number=1, description="Lamp"))
-    db.add(ItemCrop(
-        id="crop1", item_id="item1", evidence_file_id="ef1",
-        bbox_left=10, bbox_upper=10, bbox_right=90, bbox_lower=90,
-        crop_path="ef1/crop1.jpg",
-    ))
+    db.add(
+        ItemCrop(
+            id="crop1",
+            item_id="item1",
+            evidence_file_id="ef1",
+            bbox_left=10,
+            bbox_upper=10,
+            bbox_right=90,
+            bbox_lower=90,
+            crop_path="ef1/crop1.jpg",
+        )
+    )
     db.commit()
     db.close()
     return engine

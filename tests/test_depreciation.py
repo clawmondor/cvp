@@ -1,7 +1,5 @@
 """Unit tests for the depreciation formula."""
 
-import pytest
-
 from cvp.depreciation import compute_acv
 
 

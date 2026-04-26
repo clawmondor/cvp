@@ -1,4 +1,5 @@
 """Unit tests for ItemCrop.effective_bbox property."""
+
 from sqlalchemy.orm import configure_mappers
 
 from cvp.models import ItemCrop

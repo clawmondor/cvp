@@ -31,8 +31,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         )
 
         if self.environment in ("production", "preview"):
-            response.headers["Strict-Transport-Security"] = (
-                "max-age=31536000; includeSubDomains"
-            )
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
         return response

@@ -1,8 +1,10 @@
 """Integration test: items tbody renders crop-edit overlay link."""
-import pytest
-from jinja2 import Environment, FileSystemLoader
+
 from pathlib import Path
 from urllib.parse import quote_plus
+
+import pytest
+from jinja2 import Environment, FileSystemLoader
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "src" / "cvp" / "templates"
 

@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from cvp.models import Base, Category, EvidenceFile, Item, Matter, Room, VisionRun
+from cvp.models import Base, Category, Item, Matter, Room
 from cvp.services.csv_export import CSV_HEADERS, _dollars, generate_csv
 
 
@@ -24,11 +24,11 @@ def db_session(tmp_path):
 def matter_with_items(db_session, tmp_path, monkeypatch):
     """Seed one matter, one room, one category, and a mix of items."""
     monkeypatch.setattr("cvp.config.settings.export_dir", str(tmp_path / "exports"))
-    monkeypatch.setattr(
-        "cvp.services.csv_export.SessionLocal", lambda: db_session
-    )
+    monkeypatch.setattr("cvp.services.csv_export.SessionLocal", lambda: db_session)
 
-    cat = Category(id=21, name="Electronics, TVs and displays", useful_life_years=7, acv_floor_pct=0.20)
+    cat = Category(
+        id=21, name="Electronics, TVs and displays", useful_life_years=7, acv_floor_pct=0.20
+    )
     db_session.add(cat)
 
     matter = Matter(id=str(uuid.uuid4()), policyholder_name="Test Person")
@@ -99,7 +99,7 @@ def _read_csv(path) -> tuple[list[str], list[dict]]:
     with open(path, newline="", encoding="utf-8") as f:
         lines = f.readlines()
     # Skip comment line
-    data_lines = [l for l in lines if not l.startswith("#")]
+    data_lines = [line for line in lines if not line.startswith("#")]
     reader = csv.DictReader(io.StringIO("".join(data_lines)))
     return reader.fieldnames or [], list(reader)
 

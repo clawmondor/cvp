@@ -255,9 +255,7 @@ class SerpSearch(Base):
     __tablename__ = "serp_searches"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
-    item_crop_id: Mapped[str] = mapped_column(
-        String, ForeignKey("item_crops.id"), nullable=False
-    )
+    item_crop_id: Mapped[str] = mapped_column(String, ForeignKey("item_crops.id"), nullable=False)
     service: Mapped[str] = mapped_column(String, default="google_lens")
     image_url: Mapped[str] = mapped_column(String, default="")
     request_url: Mapped[str] = mapped_column(String, default="")

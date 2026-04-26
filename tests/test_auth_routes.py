@@ -6,9 +6,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+import cvp.models_auth  # ensure auth tables are registered on Base.metadata  # noqa: F401
 from cvp.auth import hash_password
 from cvp.models import Base
-import cvp.models_auth  # ensure auth tables are registered on Base.metadata  # noqa: F401
 from cvp.models_auth import Group, User
 
 
@@ -46,8 +46,8 @@ def seeded_db(db_session):
 
 @pytest.fixture
 def client(seeded_db):
-    from cvp.main import app
     from cvp.db import get_db
+    from cvp.main import app
 
     def override_get_db():
         try:

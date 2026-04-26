@@ -1,4 +1,5 @@
 """Unit tests for recrop_item_crop service."""
+
 from pathlib import Path
 
 import pytest
@@ -17,20 +18,32 @@ def _make_ef(ef_id: str, stored_path: str) -> EvidenceFile:
     return ef
 
 
-def _make_crop(crop_id: str, *, left=0, upper=0, right=50, lower=50,
-               adj_left=None, adj_upper=None, adj_right=None, adj_lower=None) -> ItemCrop:
+def _make_crop(
+    crop_id: str,
+    *,
+    left=0,
+    upper=0,
+    right=50,
+    lower=50,
+    adj_left=None,
+    adj_upper=None,
+    adj_right=None,
+    adj_lower=None,
+) -> ItemCrop:
     crop = ItemCrop.__new__(ItemCrop)
-    crop.__dict__.update({
-        "id": crop_id,
-        "bbox_left": left,
-        "bbox_upper": upper,
-        "bbox_right": right,
-        "bbox_lower": lower,
-        "adjusted_bbox_left": adj_left,
-        "adjusted_bbox_upper": adj_upper,
-        "adjusted_bbox_right": adj_right,
-        "adjusted_bbox_lower": adj_lower,
-    })
+    crop.__dict__.update(
+        {
+            "id": crop_id,
+            "bbox_left": left,
+            "bbox_upper": upper,
+            "bbox_right": right,
+            "bbox_lower": lower,
+            "adjusted_bbox_left": adj_left,
+            "adjusted_bbox_upper": adj_upper,
+            "adjusted_bbox_right": adj_right,
+            "adjusted_bbox_lower": adj_lower,
+        }
+    )
     return crop
 
 
@@ -70,8 +83,14 @@ def test_recrop_uses_adjusted_bbox_when_all_four_set(tmp_dirs):
     # Claude bbox is 10×10; adjusted bbox is 80×80 — output size should differ
     crop = _make_crop(
         "crop2",
-        left=0, upper=0, right=10, lower=10,
-        adj_left=10, adj_upper=10, adj_right=90, adj_lower=90,
+        left=0,
+        upper=0,
+        right=10,
+        lower=10,
+        adj_left=10,
+        adj_upper=10,
+        adj_right=90,
+        adj_lower=90,
     )
 
     recrop_item_crop(crop, ef, upload, crop_base)
@@ -88,8 +107,14 @@ def test_recrop_uses_claude_bbox_when_adjustment_incomplete(tmp_dirs):
     ef = _make_ef("ef3", "ef3/photo.jpg")
     crop = _make_crop(
         "crop3",
-        left=0, upper=0, right=20, lower=20,
-        adj_left=50, adj_upper=None, adj_right=100, adj_lower=100,  # adj_upper is None
+        left=0,
+        upper=0,
+        right=20,
+        lower=20,
+        adj_left=50,
+        adj_upper=None,
+        adj_right=100,
+        adj_lower=100,  # adj_upper is None
     )
 
     recrop_item_crop(crop, ef, upload, crop_base)

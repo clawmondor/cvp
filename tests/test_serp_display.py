@@ -20,14 +20,34 @@ GOOGLE_LENS_FIXTURE = {
             "source_icon": None,
             "price": None,
         },
-        {"title": "Mixer 3", "source": "walmart.com", "link": "https://walmart.com/p/3",
-         "thumbnail": None, "source_icon": None},
-        {"title": "Mixer 4", "source": "homedepot.com", "link": "https://homedepot.com/p/4",
-         "thumbnail": None, "source_icon": None},
-        {"title": "Mixer 5", "source": "bestbuy.com", "link": "https://bestbuy.com/p/5",
-         "thumbnail": None, "source_icon": None},
-        {"title": "Mixer 6 — should be excluded", "source": "extra.com", "link": "https://extra.com",
-         "thumbnail": None, "source_icon": None},
+        {
+            "title": "Mixer 3",
+            "source": "walmart.com",
+            "link": "https://walmart.com/p/3",
+            "thumbnail": None,
+            "source_icon": None,
+        },
+        {
+            "title": "Mixer 4",
+            "source": "homedepot.com",
+            "link": "https://homedepot.com/p/4",
+            "thumbnail": None,
+            "source_icon": None,
+        },
+        {
+            "title": "Mixer 5",
+            "source": "bestbuy.com",
+            "link": "https://bestbuy.com/p/5",
+            "thumbnail": None,
+            "source_icon": None,
+        },
+        {
+            "title": "Mixer 6 — should be excluded",
+            "source": "extra.com",
+            "link": "https://extra.com",
+            "thumbnail": None,
+            "source_icon": None,
+        },
     ]
 }
 
