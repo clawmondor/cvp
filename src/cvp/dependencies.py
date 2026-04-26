@@ -69,8 +69,28 @@ def _validate_csrf(request: Request, source: str | None) -> None:
 async def get_current_user(request: Request) -> CurrentUser:
     """Extract and validate JWT from request. Raises 401 if invalid.
 
-    This is the base dependency — all other auth deps build on it.
+    In dev environment with AUTO_LOGIN_USER_ID set, bypasses JWT validation
+    and returns the configured user directly from the database.
     """
+    # Dev auto-login: skip JWT validation entirely
+    if settings.environment == "dev" and settings.auto_login_user_id:
+        from cvp.db import SessionLocal
+        from cvp.models_auth import User
+
+        db = SessionLocal()
+        try:
+            user = db.get(User, settings.auto_login_user_id)
+            if user:
+                return CurrentUser(
+                    id=user.id,
+                    email=user.email,
+                    system_role=user.system_role,
+                    group_id=user.group_id,
+                    group_kind=user.group.kind if user.group else None,
+                )
+        finally:
+            db.close()
+
     token, source = _extract_token(request)
     if token is None:
         # For HTMX requests, return redirect header
