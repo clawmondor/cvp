@@ -24,7 +24,7 @@ router = APIRouter(prefix="/admin/system")
 _CTX = {"panel_color": "slate", "panel_title": "System Administration"}
 
 
-def _ctx(user: CurrentUser, **kwargs) -> dict:
+def _ctx(user: CurrentUser, **kwargs) -> dict[str, object]:
     return {**_CTX, "user": user, **kwargs}
 
 

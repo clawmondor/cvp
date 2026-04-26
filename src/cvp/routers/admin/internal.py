@@ -11,6 +11,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
+from cvp.auth import generate_invite_code, hash_token
 from cvp.db import get_db
 from cvp.dependencies import CurrentUser, require_active_user
 from cvp.models import Matter
@@ -146,8 +147,6 @@ def internal_invite_user(
     user: CurrentUser = Depends(_require_internal_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    from cvp.auth import generate_invite_code, hash_token
-
     existing = db.query(User).filter(User.email == email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -359,8 +358,6 @@ def internal_invite_group_admin(
     user: CurrentUser = Depends(_require_internal_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    from cvp.auth import generate_invite_code, hash_token
-
     group = db.get(Group, group_id)
     if group is None or group.kind != "external":
         raise HTTPException(status_code=404, detail="Group not found")
