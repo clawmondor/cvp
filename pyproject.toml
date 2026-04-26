@@ -30,6 +30,7 @@ dev = [
 [project.scripts]
 dev = "cvp.main:run_dev"
 seed = "cvp.seed:main"
+seed-auth = "cvp.seed_auth:main"
 
 [build-system]
 requires = ["hatchling"]
