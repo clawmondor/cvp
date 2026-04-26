@@ -1,6 +1,18 @@
 """Tests for auth config, JWT, and password utilities."""
 
+from cvp.auth import (
+    create_access_token,
+    create_refresh_token_value,
+    decode_access_token,
+    generate_invite_code,
+    hash_password,
+    hash_token,
+    is_breached_password,
+    validate_password_strength,
+    verify_password,
+)
 from cvp.config import Settings
+from cvp.models_auth import Group, RefreshToken, User
 
 
 def test_default_settings_have_auth_fields():
@@ -31,9 +43,6 @@ def test_dev_environment_settings():
     assert s.environment == "dev"
     assert s.cookie_secure is False
     assert s.rate_limit_enabled is False
-
-
-from cvp.models_auth import Group, User, RefreshToken
 
 
 def test_group_model_fields():
@@ -70,19 +79,6 @@ def test_refresh_token_model_fields():
     assert rt.id == "rt1"
     assert rt.user_id == "u1"
     assert rt.revoked_at is None
-
-
-import time
-
-from cvp.auth import (
-    hash_password,
-    verify_password,
-    create_access_token,
-    decode_access_token,
-    create_refresh_token_value,
-    hash_token,
-    is_breached_password,
-)
 
 
 def test_hash_and_verify_password():
@@ -125,7 +121,9 @@ def test_decode_expired_token_raises():
 
 
 def test_decode_invalid_token_returns_none():
-    payload = decode_access_token("garbage.token.value", secret="testsecret123456789012345678901234")
+    payload = decode_access_token(
+        "garbage.token.value", secret="testsecret123456789012345678901234"
+    )
     assert payload is None
 
 
@@ -146,3 +144,30 @@ def test_is_breached_password():
     assert is_breached_password("password") is True
     # A random long string should not be
     assert is_breached_password("xK9$mP2vQ7wL4nR8jF5tY3hB6cD0aE1g") is False
+
+
+def test_generate_invite_code():
+    code = generate_invite_code()
+    assert len(code) > 20
+    assert code != generate_invite_code()  # unique each call
+
+
+def test_validate_password_strength_valid():
+    assert validate_password_strength("correcthorse12") is None
+
+
+def test_validate_password_strength_too_short():
+    result = validate_password_strength("short")
+    assert result is not None
+    assert "12" in result
+
+
+def test_validate_password_strength_too_long():
+    result = validate_password_strength("x" * 129)
+    assert result is not None
+
+
+def test_validate_password_strength_breached():
+    result = validate_password_strength("password123456")
+    assert result is not None
+    assert "common" in result.lower()
