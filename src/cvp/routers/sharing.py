@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import JSONResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from cvp.db import get_db
@@ -106,24 +107,22 @@ def list_access(
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     """List all users with access to a matter."""
-    grants = db.query(MatterAccess).filter(MatterAccess.matter_id == matter_id).all()
+    rows = db.execute(
+        select(MatterAccess, User)
+        .join(User, MatterAccess.user_id == User.id)
+        .where(MatterAccess.matter_id == matter_id)
+    ).all()
 
     result = []
-    for g in grants:
-        target = db.get(User, g.user_id)
-        if target is None:
-            continue
-        # Tenant isolation: external users only see their own group's users
+    for grant, target in rows:
         if user.group_kind == "external" and target.group_id != user.group_id:
             continue
-        result.append(
-            {
-                "user_id": g.user_id,
-                "email": target.email,
-                "display_name": target.display_name,
-                "role": g.role,
-                "granted_by_id": g.granted_by_id,
-            }
-        )
+        result.append({
+            "user_id": grant.user_id,
+            "email": target.email,
+            "display_name": target.display_name,
+            "role": grant.role,
+            "granted_by_id": grant.granted_by_id,
+        })
 
     return JSONResponse(result)

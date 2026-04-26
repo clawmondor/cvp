@@ -58,7 +58,7 @@ def seeded_share_db(db_session):
 
 
 @pytest.fixture
-def client(seeded_share_db):
+def client(seeded_share_db, monkeypatch):
     from cvp.db import get_db
     from cvp.dependencies import CurrentUser, require_active_user
     from cvp.main import app
@@ -81,14 +81,12 @@ def client(seeded_share_db):
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[require_active_user] = mock_admin
     # Bypass RBAC checks
-    monkeypatched = pytest.MonkeyPatch()
-    monkeypatched.setattr(deps, "_check_matter_access", lambda db, user, matter_id, role: True)
+    monkeypatch.setattr(deps, "_check_matter_access", lambda db, user, matter_id, role: True)
 
     with TestClient(app) as c:
         yield c
 
     app.dependency_overrides.clear()
-    monkeypatched.undo()
 
 
 def test_grant_access(client):
@@ -140,7 +138,7 @@ def test_revoke_grant_not_found(client):
     assert resp.status_code == 404
 
 
-def test_grant_cross_tenant_blocked(seeded_share_db):
+def test_grant_cross_tenant_blocked(seeded_share_db, monkeypatch):
     """External admin cannot grant access to a user in a different group."""
     from cvp.db import get_db
     from cvp.dependencies import CurrentUser, require_active_user
@@ -180,19 +178,18 @@ def test_grant_cross_tenant_blocked(seeded_share_db):
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[require_active_user] = mock_ext_admin
-    monkeypatched = pytest.MonkeyPatch()
-    monkeypatched.setattr(
+    monkeypatch.setattr(
         deps_local, "_check_matter_access", lambda db, user, matter_id, role: True
     )
 
-    with TestClient(app) as c:
-        # "ia" is in group "ig" (internal), external admin is in "eg" — cross-tenant
-        resp = c.post(
-            "/api/matters/m1/access",
-            data={"user_id": "ia", "role": "viewer"},
-        )
-
-    app.dependency_overrides.clear()
-    monkeypatched.undo()
+    try:
+        with TestClient(app) as c:
+            # "ia" is in group "ig" (internal), external admin is in "eg" — cross-tenant
+            resp = c.post(
+                "/api/matters/m1/access",
+                data={"user_id": "ia", "role": "viewer"},
+            )
+    finally:
+        app.dependency_overrides.clear()
 
     assert resp.status_code == 403
