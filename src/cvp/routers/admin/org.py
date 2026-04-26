@@ -39,7 +39,7 @@ async def _require_org_admin_or_above(
     return user
 
 
-def _resolve_group_id(user: CurrentUser, group_id: str | None, db: Session) -> str | None:
+def _resolve_group_id(user: CurrentUser, group_id: str | None) -> str | None:
     """Resolve which external group to operate on.
 
     Returns the group_id to use, or None if a group selector should be shown.
@@ -58,7 +58,7 @@ def org_dashboard(
     user: CurrentUser = Depends(_require_org_admin_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    resolved = _resolve_group_id(user, group_id, db)
+    resolved = _resolve_group_id(user, group_id)
     if resolved is None:
         groups = db.query(Group).filter(Group.kind == "external").order_by(Group.name).all()
         return templates.TemplateResponse(
@@ -91,7 +91,7 @@ def org_users(
     user: CurrentUser = Depends(_require_org_admin_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    resolved = _resolve_group_id(user, group_id, db)
+    resolved = _resolve_group_id(user, group_id)
     if resolved is None:
         raise HTTPException(status_code=400, detail="group_id required")
     group = db.get(Group, resolved)
@@ -121,7 +121,7 @@ def org_user_detail(
     user: CurrentUser = Depends(_require_org_admin_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    resolved = _resolve_group_id(user, group_id, db)
+    resolved = _resolve_group_id(user, group_id)
     target = db.get(User, user_id)
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -129,6 +129,10 @@ def org_user_detail(
     if resolved and target.group_id != resolved:
         raise HTTPException(status_code=404, detail="User not found")
     group = db.get(Group, target.group_id) if target.group_id else None
+    group_label = group.name if group else "Org"
+    group_url = f"/admin/org/?group_id={resolved}"
+    users_url = f"/admin/org/users?group_id={resolved}"
+    user_url = f"/admin/org/users/{user_id}?group_id={resolved}"
     return templates.TemplateResponse(
         request=request,
         name="admin/org/user_detail.html",
@@ -137,9 +141,9 @@ def org_user_detail(
             target=target,
             group=group,
             breadcrumbs=[
-                {"label": group.name if group else "Org", "url": f"/admin/org/?group_id={resolved}"},
-                {"label": "Users", "url": f"/admin/org/users?group_id={resolved}"},
-                {"label": target.email, "url": f"/admin/org/users/{user_id}?group_id={resolved}"},
+                {"label": group_label, "url": group_url},
+                {"label": "Users", "url": users_url},
+                {"label": target.email, "url": user_url},
             ],
         ),
     )
@@ -154,7 +158,7 @@ def org_invite_user(
     user: CurrentUser = Depends(_require_org_admin_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    resolved = _resolve_group_id(user, group_id_form, db)
+    resolved = _resolve_group_id(user, group_id_form)
     if resolved is None:
         raise HTTPException(status_code=400, detail="group_id required")
 
@@ -167,6 +171,7 @@ def org_invite_user(
         raise HTTPException(status_code=400, detail="Email already registered")
 
     raw_code = generate_invite_code()
+    expires_at = datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=7)
     new_user = User(
         id=str(uuid.uuid4()),
         email=email,
@@ -174,7 +179,7 @@ def org_invite_user(
         system_role="external_user",
         group_id=resolved,
         invite_code=hash_token(raw_code),
-        invite_expires_at=datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=7),
+        invite_expires_at=expires_at,
     )
     db.add(new_user)
     db.commit()
@@ -205,7 +210,7 @@ def org_deactivate_user(
     user: CurrentUser = Depends(_require_org_admin_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    resolved = _resolve_group_id(user, group_id, db)
+    resolved = _resolve_group_id(user, group_id)
     target = db.get(User, user_id)
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -224,7 +229,7 @@ def org_activate_user(
     user: CurrentUser = Depends(_require_org_admin_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    resolved = _resolve_group_id(user, group_id, db)
+    resolved = _resolve_group_id(user, group_id)
     target = db.get(User, user_id)
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -242,7 +247,7 @@ def org_matters(
     user: CurrentUser = Depends(_require_org_admin_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    resolved = _resolve_group_id(user, group_id, db)
+    resolved = _resolve_group_id(user, group_id)
     if resolved is None:
         raise HTTPException(status_code=400, detail="group_id required")
     group = db.get(Group, resolved)
@@ -277,7 +282,7 @@ def org_matter_access(
     user: CurrentUser = Depends(_require_org_admin_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    resolved = _resolve_group_id(user, group_id, db)
+    resolved = _resolve_group_id(user, group_id)
     matter = db.get(Matter, matter_id)
     if matter is None:
         raise HTTPException(status_code=404, detail="Matter not found")
@@ -299,6 +304,10 @@ def org_matter_access(
         group_users = db.query(User).order_by(User.email).all()
 
     group = db.get(Group, resolved) if resolved else None
+    group_label = group.name if group else "Org"
+    group_url = f"/admin/org/?group_id={resolved}"
+    matters_url = f"/admin/org/matters?group_id={resolved}"
+    matter_url = f"/admin/org/matters/{matter_id}/access?group_id={resolved}"
     return templates.TemplateResponse(
         request=request,
         name="admin/org/matter_access.html",
@@ -309,9 +318,9 @@ def org_matter_access(
             group_users=group_users,
             group=group,
             breadcrumbs=[
-                {"label": group.name if group else "Org", "url": f"/admin/org/?group_id={resolved}"},
-                {"label": "Matters", "url": f"/admin/org/matters?group_id={resolved}"},
-                {"label": matter_id, "url": f"/admin/org/matters/{matter_id}/access?group_id={resolved}"},
+                {"label": group_label, "url": group_url},
+                {"label": "Matters", "url": matters_url},
+                {"label": matter_id, "url": matter_url},
             ],
         ),
     )
@@ -331,7 +340,7 @@ def org_grant_matter_access(
     if role not in valid_roles:
         raise HTTPException(status_code=400, detail="Invalid role")
 
-    resolved = _resolve_group_id(user, group_id, db)
+    resolved = _resolve_group_id(user, group_id)
     matter = db.get(Matter, matter_id)
     if matter is None:
         raise HTTPException(status_code=404, detail="Matter not found")
@@ -351,12 +360,14 @@ def org_grant_matter_access(
         existing.role = role
         existing.granted_by_id = user.id
     else:
-        db.add(MatterAccess(
-            user_id=user_id,
-            matter_id=matter_id,
-            role=role,
-            granted_by_id=user.id,
-        ))
+        db.add(
+            MatterAccess(
+                user_id=user_id,
+                matter_id=matter_id,
+                role=role,
+                granted_by_id=user.id,
+            )
+        )
     db.commit()
     return org_matter_access(matter_id, request, group_id, user, db)
 
@@ -368,7 +379,7 @@ def org_profile(
     user: CurrentUser = Depends(_require_org_admin_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    resolved = _resolve_group_id(user, group_id, db)
+    resolved = _resolve_group_id(user, group_id)
     if resolved is None:
         raise HTTPException(status_code=400, detail="group_id required")
     group = db.get(Group, resolved)
@@ -396,7 +407,7 @@ def org_update_profile(
     user: CurrentUser = Depends(_require_org_admin_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    resolved = _resolve_group_id(user, group_id_form, db)
+    resolved = _resolve_group_id(user, group_id_form)
     if resolved is None:
         raise HTTPException(status_code=400, detail="group_id required")
     group = db.get(Group, resolved)
