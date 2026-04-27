@@ -490,7 +490,8 @@ def mfa_verify(
         ip_address=get_client_ip(request),
     )
 
-    redirect_url = next if next else "/dashboard"
+    redirect_url = next if (next and next.startswith("/")) else "/dashboard"
+    csrf_token = secrets.token_urlsafe(24)
     response = RedirectResponse(url=redirect_url, status_code=303)
-    _set_auth_cookies(response, access_token, raw_refresh, hash_token(access_token)[:32])
+    _set_auth_cookies(response, access_token, raw_refresh, csrf_token)
     return response
