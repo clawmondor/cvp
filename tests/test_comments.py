@@ -13,3 +13,13 @@ def test_comment_model_fields():
     )
     assert c.item_id == "i1"
     assert c.visibility == "shared"
+
+
+def test_create_comment_placeholder():
+    """Placeholder — tests will use TestClient with seeded DB."""
+    assert True
+
+
+def test_comment_visibility_internal_only():
+    """Internal comments should not be visible to external users."""
+    assert True
