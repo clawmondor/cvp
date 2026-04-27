@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Form
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -10,6 +10,7 @@ from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.models import EvidenceFile
 from cvp.services import vision as vision_svc
+from cvp.services.audit import get_client_ip, write_audit_log
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -19,6 +20,7 @@ router = APIRouter()
 
 @router.post("/api/matters/{matter_id}/vision-scan", response_class=HTMLResponse)
 async def start_scan(
+    request: Request,
     matter_id: str,
     background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_matter_role("contributor")),
@@ -54,6 +56,15 @@ async def start_scan(
 
     job_id = vision_svc.create_job(image_ids)
     background_tasks.add_task(vision_svc.run_scan, job_id, matter_id, image_ids)
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="vision.run",
+        resource_type="matter",
+        resource_id=matter_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
 
     job = vision_svc.get_job(job_id)
     html = templates.get_template("_scan_progress.html").render(

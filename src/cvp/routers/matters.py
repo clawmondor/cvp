@@ -4,7 +4,7 @@ from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import quote_plus
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import selectinload
@@ -13,6 +13,7 @@ from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, require_active_user, require_matter_role
 from cvp.models import Category, Item, Matter
+from cvp.services.audit import get_client_ip, should_debounce_view, write_audit_log
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -43,6 +44,7 @@ def new_matter_form(
 @router.post("/matters")
 def create_matter(
     request: Request,
+    background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_active_user),
     firm_name: str = Form(default=""),
     attorney_name: str = Form(default=""),
@@ -89,12 +91,24 @@ def create_matter(
     finally:
         db.close()
 
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="matter.create",
+        resource_type="matter",
+        resource_id=matter_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
     return RedirectResponse(url=f"/matters/{matter_id}", status_code=303)
 
 
 @router.get("/matters/{matter_id}", response_class=HTMLResponse)
 def matter_detail(
-    request: Request, matter_id: str, user: CurrentUser = Depends(require_matter_role("viewer"))
+    request: Request,
+    matter_id: str,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(require_matter_role("viewer")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -119,8 +133,20 @@ def matter_detail(
         evidence_files = sorted(matter.evidence_files, key=lambda f: f.created_at, reverse=True)
         rooms = sorted(matter.rooms, key=lambda r: r.sort_order)
         categories = db.query(Category).order_by(Category.id).all()
+        debounce = should_debounce_view(db, user.id, "matter.view", matter_id)
     finally:
         db.close()
+
+    if not debounce:
+        background_tasks.add_task(
+            write_audit_log,
+            user_id=user.id,
+            action="matter.view",
+            resource_type="matter",
+            resource_id=matter_id,
+            matter_id=matter_id,
+            ip_address=get_client_ip(request),
+        )
 
     return templates.TemplateResponse(
         request=request,
@@ -144,7 +170,9 @@ def matter_detail(
 
 @router.post("/matters/{matter_id}/update")
 def update_matter(
+    request: Request,
     matter_id: str,
+    background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_matter_role("manager")),
     firm_name: str = Form(default=""),
     attorney_name: str = Form(default=""),
@@ -187,12 +215,23 @@ def update_matter(
         db.commit()
     finally:
         db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="matter.update",
+        resource_type="matter",
+        resource_id=matter_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
     return RedirectResponse(url=f"/matters/{matter_id}#overview", status_code=303)
 
 
 @router.post("/api/matters/{matter_id}/status")
 def update_matter_status(
+    request: Request,
     matter_id: str,
+    background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_matter_role("manager")),
     status: str = Form(...),
 ) -> RedirectResponse:
@@ -210,6 +249,16 @@ def update_matter_status(
         db.commit()
     finally:
         db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="matter.update",
+        resource_type="matter",
+        resource_id=matter_id,
+        matter_id=matter_id,
+        detail={"status": status},
+        ip_address=get_client_ip(request),
+    )
     return RedirectResponse(url=f"/matters/{matter_id}#overview", status_code=303)
 
 

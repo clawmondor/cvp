@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote_plus
 
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import selectinload
@@ -15,6 +15,7 @@ from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, optional_user, require_matter_role
 from cvp.depreciation import compute_acv
 from cvp.models import Category, Item, ItemCrop, Room, SerpSearch
+from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.serp import build_crop_url, call_serp
 from cvp.services.serp_display import extract_results
 
@@ -80,8 +81,10 @@ def serp_panel(
 
 @router.post("/api/items/{item_id}/crops/{crop_id}/serp/google_lens", response_class=HTMLResponse)
 def run_google_lens(
+    request: Request,
     item_id: str,
     crop_id: str,
+    background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_matter_role("editor")),
     image_url: str = Form(""),
 ) -> HTMLResponse:
@@ -114,6 +117,9 @@ def run_google_lens(
 
         display_results = extract_results("google_lens", response_dict)
 
+        item = db.get(Item, item_id)
+        matter_id = item.matter_id if item else None
+
         html = templates.get_template("_serp_result.html").render(
             s=search,
             display_results=display_results,
@@ -121,12 +127,23 @@ def run_google_lens(
         )
     finally:
         db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="serp.run",
+        resource_type="item",
+        resource_id=item_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
     return HTMLResponse(html)
 
 
 @router.post("/api/items/{item_id}/serp-apply", response_class=HTMLResponse)
 def serp_apply(
+    request: Request,
     item_id: str,
+    background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_matter_role("editor")),
     source_url: str = Form(""),
     source_retailer: str = Form(""),
@@ -163,14 +180,22 @@ def serp_apply(
         db.commit()
         db.refresh(item)
 
+        matter_id = item.matter_id
         categories = db.query(Category).order_by(Category.id).all()
-        rooms = (
-            db.query(Room).filter(Room.matter_id == item.matter_id).order_by(Room.sort_order).all()
-        )
+        rooms = db.query(Room).filter(Room.matter_id == matter_id).order_by(Room.sort_order).all()
 
         html = templates.get_template("_item_row.html").render(
             item=item, categories=categories, rooms=rooms
         )
     finally:
         db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="serp.run",
+        resource_type="item",
+        resource_id=item_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
     return HTMLResponse(html)

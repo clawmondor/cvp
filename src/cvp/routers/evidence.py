@@ -4,7 +4,7 @@ import mimetypes
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -12,6 +12,7 @@ from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.models import EvidenceFile
+from cvp.services.audit import get_client_ip, write_audit_log
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -31,7 +32,9 @@ def _kind_from_mime(mime: str) -> str:
 
 @router.post("/api/matters/{matter_id}/evidence", response_class=HTMLResponse)
 async def upload_evidence(
+    request: Request,
     matter_id: str,
+    background_tasks: BackgroundTasks,
     files: list[UploadFile],
     user: CurrentUser = Depends(require_matter_role("contributor")),
 ) -> HTMLResponse:
@@ -71,6 +74,15 @@ async def upload_evidence(
     finally:
         db.close()
 
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="evidence.create",
+        resource_type="evidence",
+        resource_id=matter_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
     return HTMLResponse(
         templates.get_template("_evidence_grid.html").render(
             evidence_files=evidence_files, matter_id=matter_id
@@ -80,7 +92,10 @@ async def upload_evidence(
 
 @router.delete("/api/evidence/{file_id}", response_class=HTMLResponse)
 def delete_evidence(
-    file_id: str, user: CurrentUser = Depends(require_matter_role("manager"))
+    request: Request,
+    file_id: str,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(require_matter_role("manager")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -94,11 +109,21 @@ def delete_evidence(
             raise HTTPException(status_code=400, detail="Invalid path")
         if dest.exists():
             dest.unlink()
+        matter_id = ef.matter_id
         db.delete(ef)
         db.commit()
     finally:
         db.close()
 
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="evidence.delete",
+        resource_type="evidence",
+        resource_id=file_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
     return HTMLResponse("", status_code=200)
 
 

@@ -3,7 +3,7 @@
 import json as _json
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from PIL import Image
@@ -14,7 +14,8 @@ from sqlalchemy.orm import selectinload
 from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, require_matter_role
-from cvp.models import EvidenceFile, ItemCrop
+from cvp.models import EvidenceFile, Item, ItemCrop
+from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.crop import recrop_item_crop
 
 BASE_DIR = Path(__file__).parent.parent
@@ -32,7 +33,11 @@ class BboxBody(BaseModel):
 
 @router.post("/api/item-crops/{crop_id}/adjust-bbox")
 def adjust_bbox(
-    crop_id: str, body: BboxBody, user: CurrentUser = Depends(require_matter_role("contributor"))
+    request: Request,
+    crop_id: str,
+    body: BboxBody,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(require_matter_role("contributor")),
 ) -> JSONResponse:
     db = SessionLocal()
     try:
@@ -66,14 +71,28 @@ def adjust_bbox(
         crop.adjusted_bbox_right = body.right
         crop.adjusted_bbox_lower = body.lower
         db.commit()
+        item = db.get(Item, crop.item_id)
+        matter_id = item.matter_id if item else None
     finally:
         db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="crop.update",
+        resource_type="crop",
+        resource_id=crop_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
     return JSONResponse({"ok": True})
 
 
 @router.delete("/api/item-crops/{crop_id}/adjust-bbox")
 def clear_bbox(
-    crop_id: str, user: CurrentUser = Depends(require_matter_role("contributor"))
+    request: Request,
+    crop_id: str,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(require_matter_role("contributor")),
 ) -> JSONResponse:
     db = SessionLocal()
     try:
@@ -85,8 +104,19 @@ def clear_bbox(
         crop.adjusted_bbox_right = None
         crop.adjusted_bbox_lower = None
         db.commit()
+        item = db.get(Item, crop.item_id)
+        matter_id = item.matter_id if item else None
     finally:
         db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="crop.update",
+        resource_type="crop",
+        resource_id=crop_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
     return JSONResponse({"ok": True})
 
 
@@ -151,7 +181,10 @@ def crop_editor(
 
 @router.post("/api/evidence/{file_id}/recrop")
 def recrop_evidence(
-    file_id: str, user: CurrentUser = Depends(require_matter_role("contributor"))
+    request: Request,
+    file_id: str,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(require_matter_role("contributor")),
 ) -> JSONResponse:
     db = SessionLocal()
     try:
@@ -181,8 +214,18 @@ def recrop_evidence(
             crop.crop_path = recrop_item_crop(crop, ef, upload_base, crop_base)
             recropped_ids.append(crop.id)
 
+        matter_id = ef.matter_id
         db.commit()
     finally:
         db.close()
 
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="crop.update",
+        resource_type="crop",
+        resource_id=file_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
     return JSONResponse({"recropped": recropped_ids})

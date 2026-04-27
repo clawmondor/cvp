@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote_plus
 
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
@@ -16,6 +16,7 @@ from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.depreciation import compute_acv
 from cvp.models import Category, Item, Room, SerpSearch
+from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.serp_display import extract_results
 
 BASE_DIR = Path(__file__).parent.parent
@@ -94,7 +95,9 @@ def _parse_cents(dollars_str: str) -> int:
 
 @router.post("/api/matters/{matter_id}/items", response_class=HTMLResponse)
 def create_item(
+    request: Request,
     matter_id: str,
+    background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_matter_role("contributor")),
     description: str = Form(""),
     category_id: int = Form(...),
@@ -134,9 +137,19 @@ def create_item(
         _compute_and_set_totals(item, cat)
         db.add(item)
         db.commit()
+        item_id = item.id
         html = _items_tbody_html(matter_id, db)
     finally:
         db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="item.create",
+        resource_type="item",
+        resource_id=item_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
     return HTMLResponse(html)
 
 
@@ -192,7 +205,9 @@ def item_view_row(
 
 @router.patch("/api/items/{item_id}", response_class=HTMLResponse)
 def update_item(
+    request: Request,
     item_id: str,
+    background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_matter_role("editor")),
     description: str = Form(""),
     category_id: int = Form(...),
@@ -245,16 +260,29 @@ def update_item(
         _compute_and_set_totals(item, cat)
         db.commit()
         db.refresh(item)
-        categories, rooms = _get_context(item.matter_id, db)
+        matter_id = item.matter_id
+        categories, rooms = _get_context(matter_id, db)
         html = _item_row_html(item, categories, rooms)
     finally:
         db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="item.update",
+        resource_type="item",
+        resource_id=item_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
     return HTMLResponse(html)
 
 
 @router.post("/api/items/{item_id}/toggle-confirm", response_class=HTMLResponse)
 def toggle_confirm(
-    item_id: str, user: CurrentUser = Depends(require_matter_role("manager"))
+    request: Request,
+    item_id: str,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(require_matter_role("manager")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -270,16 +298,29 @@ def toggle_confirm(
             item.confirmed_at = None
         db.commit()
         db.refresh(item)
-        categories, rooms = _get_context(item.matter_id, db)
+        matter_id = item.matter_id
+        categories, rooms = _get_context(matter_id, db)
         html = _item_row_html(item, categories, rooms)
     finally:
         db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="item.update",
+        resource_type="item",
+        resource_id=item_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
     return HTMLResponse(html)
 
 
 @router.post("/api/items/{item_id}/toggle-exclude", response_class=HTMLResponse)
 def toggle_exclude(
-    item_id: str, user: CurrentUser = Depends(require_matter_role("manager"))
+    request: Request,
+    item_id: str,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(require_matter_role("manager")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -289,24 +330,47 @@ def toggle_exclude(
         item.excluded = not item.excluded
         db.commit()
         db.refresh(item)
-        categories, rooms = _get_context(item.matter_id, db)
+        matter_id = item.matter_id
+        categories, rooms = _get_context(matter_id, db)
         html = _item_row_html(item, categories, rooms)
     finally:
         db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="item.update",
+        resource_type="item",
+        resource_id=item_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
     return HTMLResponse(html)
 
 
 @router.delete("/api/items/{item_id}", response_class=HTMLResponse)
 def delete_item(
-    item_id: str, user: CurrentUser = Depends(require_matter_role("manager"))
+    request: Request,
+    item_id: str,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(require_matter_role("manager")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
         item = db.get(Item, item_id)
         if item is None:
             raise HTTPException(status_code=404)
+        matter_id = item.matter_id
         db.delete(item)
         db.commit()
     finally:
         db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="item.delete",
+        resource_type="item",
+        resource_id=item_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
     return HTMLResponse("", status_code=200)
