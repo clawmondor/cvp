@@ -4,7 +4,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -18,6 +18,7 @@ from cvp.auth import (
     verify_password,
 )
 from cvp.config import settings
+from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.db import get_db
 from cvp.dependencies import CurrentUser, optional_user
 from cvp.models_auth import RefreshToken, User
@@ -97,6 +98,7 @@ def login_page(
 @router.post("/api/auth/login", response_model=None)
 def login(
     request: Request,
+    background_tasks: BackgroundTasks,
     email: str = Form(...),
     password: str = Form(...),
     next: str = Form(""),
@@ -107,6 +109,13 @@ def login(
     user = db.query(User).filter(User.email == email).first()
 
     if user is None or not verify_password(password, user.password_hash):
+        background_tasks.add_task(
+            write_audit_log,
+            user_id=None,
+            action="auth.login_failed",
+            detail={"email": email, "user_agent": request.headers.get("user-agent", "")},
+            ip_address=get_client_ip(request),
+        )
         return templates.TemplateResponse(
             request=request,
             name="login.html",
@@ -115,6 +124,13 @@ def login(
         )
 
     if not user.is_active:
+        background_tasks.add_task(
+            write_audit_log,
+            user_id=None,
+            action="auth.login_failed",
+            detail={"email": email, "user_agent": request.headers.get("user-agent", "")},
+            ip_address=get_client_ip(request),
+        )
         return templates.TemplateResponse(
             request=request,
             name="login.html",
@@ -154,12 +170,20 @@ def login(
     csrf_token = secrets.token_urlsafe(24)
     _set_auth_cookies(response, access_token, raw_refresh, csrf_token)
 
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="auth.login",
+        detail={"user_agent": request.headers.get("user-agent", "")},
+        ip_address=get_client_ip(request),
+    )
     return response
 
 
 @router.post("/api/auth/logout")
 def logout(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: CurrentUser | None = Depends(optional_user),
 ) -> RedirectResponse:
@@ -172,6 +196,12 @@ def logout(
             rt.revoked_at = datetime.now(tz=timezone.utc)
             db.commit()
 
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id if user else None,
+        action="auth.logout",
+        ip_address=get_client_ip(request),
+    )
     response = RedirectResponse(url="/", status_code=303)
     _clear_auth_cookies(response)
     return response
@@ -180,6 +210,7 @@ def logout(
 @router.post("/api/auth/refresh")
 def refresh_token(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
     """Refresh an access token using the refresh cookie."""
@@ -243,6 +274,13 @@ def refresh_token(
     response = RedirectResponse(url=next_url, status_code=303)
     csrf_token = secrets.token_urlsafe(24)
     _set_auth_cookies(response, access_token, raw_refresh, csrf_token)
+
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="auth.token_refresh",
+        ip_address=get_client_ip(request),
+    )
     return response
 
 
@@ -278,6 +316,7 @@ def register_page(
 @router.post("/api/auth/register", response_model=None)
 def register(
     request: Request,
+    background_tasks: BackgroundTasks,
     invite_code: str = Form(...),
     display_name: str = Form(...),
     password: str = Form(...),
@@ -342,4 +381,10 @@ def register(
     user.password_changed_at = datetime.now(tz=timezone.utc)
     db.commit()
 
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="auth.register",
+        ip_address=get_client_ip(request),
+    )
     return RedirectResponse(url="/login?message=Account+created.+Please+sign+in.", status_code=303)
