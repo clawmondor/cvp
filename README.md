@@ -59,13 +59,33 @@ This creates a `.venv/` in the project root and installs all runtime and dev dep
 cp .env.example .env
 ```
 
-Open `.env` and fill in your values. At minimum you need:
+Open `.env` and fill in the values below. The auth variables are new and required — the app will start without them but login will not work.
 
+**Required for Vision scans:**
 ```
-ANTHROPIC_API_KEY=sk-ant-...    # Required for Vision scans
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-The other variables have sensible defaults and can be left as-is for local development.
+**Required for authentication:**
+```
+# Generate with: python3 -c "import secrets; print(secrets.token_hex(32))"
+JWT_SECRET=<64-char hex string>
+
+# Generate with: uv run python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+MFA_ENCRYPTION_KEY=<fernet key>
+
+# Base URL used when generating invite registration links
+PUBLIC_BASE_URL=http://localhost:8000
+```
+
+**Local development convenience (disables login entirely — never use in production):**
+```
+ENVIRONMENT=dev
+COOKIE_SECURE=false
+# AUTO_LOGIN_USER_ID=<system_admin_uuid>   # fill in after step 6 below
+```
+
+See [Configuration reference](#configuration-reference) for all variables.
 
 ### 4. Apply database migrations
 
@@ -73,7 +93,7 @@ The other variables have sensible defaults and can be left as-is for local devel
 uv run alembic upgrade head
 ```
 
-This creates `./data/cvp.db` (SQLite) and applies all schema migrations. The `./data/uploads/` and `./data/exports/` directories are created automatically on first run.
+Creates `./data/cvp.db` and applies all schema migrations. The `./data/uploads/`, `./data/exports/`, and `./data/crops/` directories are created automatically on first run.
 
 ### 5. Seed the category table
 
@@ -81,9 +101,54 @@ This creates `./data/cvp.db` (SQLite) and applies all schema migrations. The `./
 uv run seed
 ```
 
-Populates the 42 depreciation categories from `docs/depreciation-schedule.md`. This command is idempotent — safe to run multiple times.
+Populates the 42 depreciation categories from `docs/depreciation-schedule.md`. Idempotent — safe to run multiple times.
 
-### 6. Start the development server
+### 6. Create the initial System Admin account
+
+There is no default admin account. You must bootstrap one manually on a fresh database. Run this once:
+
+```bash
+uv run python - <<'EOF'
+from cvp.db import SessionLocal
+from cvp.auth import hash_password
+from cvp.models_auth import Group, User
+
+EMAIL = "admin@example.com"   # change this
+PASSWORD = "replace-me-now"   # change this — min 12 chars
+
+db = SessionLocal()
+try:
+    # Create the internal group if it doesn't exist
+    group = db.query(Group).filter(Group.kind == "internal").first()
+    if group is None:
+        group = Group(name="Internal", kind="internal")
+        db.add(group)
+        db.flush()
+
+    if db.query(User).filter(User.email == EMAIL).first():
+        print(f"User {EMAIL} already exists — skipping.")
+    else:
+        user = User(
+            email=EMAIL,
+            display_name="Admin",
+            password_hash=hash_password(PASSWORD),
+            system_role="system_admin",
+            group_id=group.id,
+        )
+        db.add(user)
+        db.commit()
+        print(f"Created system_admin: {user.id}")
+        print(f"Add to .env:  AUTO_LOGIN_USER_ID={user.id}")
+finally:
+    db.close()
+EOF
+```
+
+Copy the printed UUID into `.env` as `AUTO_LOGIN_USER_ID` to bypass login during local development (the app will load as that user on every request without a login form). Leave the variable unset or empty for production.
+
+> Once logged in as System Admin, all subsequent users are created and invited through the admin panel at `/admin/system/users`. See [docs/RBAC.md](docs/RBAC.md) for the invite flow and role hierarchy.
+
+### 7. Start the development server
 
 ```bash
 uv run dev
@@ -91,23 +156,50 @@ uv run dev
 
 Opens the app at **http://127.0.0.1:8000** with auto-reload enabled.
 
+If `AUTO_LOGIN_USER_ID` is set, the app skips login entirely and goes straight to the dashboard. If it is not set, navigate to `/login` and sign in with the credentials you set in step 6.
+
 ---
 
 ## Project layout
 
 ```
 src/cvp/
-├── main.py            # FastAPI app entry point, dashboard route
+├── main.py            # FastAPI app entry point, router mounting
 ├── config.py          # pydantic-settings — reads from .env
 ├── db.py              # SQLAlchemy engine, WAL mode, session factory
+├── auth.py            # Password hashing, JWT creation/validation, invite code helpers
+├── dependencies.py    # FastAPI auth dependencies: require_active_user, require_matter_role, etc.
 ├── models.py          # ORM models: matters, rooms, items, categories, evidence_files, vision_runs
+├── models_auth.py     # Auth models: Group, User, RefreshToken
+├── models_access.py   # MatterAccess (per-user, per-matter permission grants)
+├── models_comments.py # Comment model (item-level, visibility: internal/shared)
+├── models_audit.py    # AuditLog model
 ├── seed.py            # 42-category seed data (idempotent)
-├── depreciation.py    # Depreciation formula — pure functions, unit-tested  [Phase 4]
-├── routers/           # FastAPI routers: matters, evidence, items, rooms, vision, exports
-├── services/          # vision.py, pdf_generator.py, csv_export.py
+├── depreciation.py    # Depreciation formula — pure functions, unit-tested
+├── routers/
+│   ├── auth.py        # Login, logout, register, token refresh, MFA verify
+│   ├── profile.py     # Password change, MFA setup/disable
+│   ├── sharing.py     # Matter access grant/revoke API
+│   ├── comments.py    # Item comment CRUD
+│   ├── matters.py     # Matter CRUD
+│   ├── evidence.py    # Evidence file upload/delete
+│   ├── items.py       # Item CRUD, confirm/exclude toggles
+│   ├── rooms.py       # Room CRUD
+│   ├── crops.py       # Bounding-box adjustments, recrop
+│   ├── vision.py      # Claude Vision scan trigger
+│   ├── serp.py        # Google Lens / SERP price lookup
+│   ├── exports.py     # PDF and CSV export
+│   └── admin/
+│       ├── system.py  # System Admin panel (/admin/system/)
+│       ├── internal.py # Internal Admin panel (/admin/internal/)
+│       └── org.py     # Org Admin panel (/admin/org/)
+├── services/          # vision.py, pdf_generator.py, csv_export.py, audit.py, mfa.py
 ├── templates/         # Jinja2 templates
 │   ├── base.html
+│   ├── login.html / login_mfa.html / register.html / splash.html
+│   ├── profile.html
 │   ├── dashboard.html
+│   ├── admin/         # Admin panel templates (system/, internal/, org/)
 │   └── report/        # Report section templates for preview and PDF
 └── static/
     └── app.js
@@ -117,10 +209,14 @@ tests/                 # pytest test suite
 docs/
 ├── PRD.md                      # Full product requirements
 ├── data-model.md               # Schema rationale and migration history
-└── depreciation-schedule.md    # The 42-category useful-life table (source of truth)
+├── depreciation-schedule.md    # The 42-category useful-life table (source of truth)
+├── AUTH.md                     # Authentication: sessions, MFA, invites, dev bypass
+├── RBAC.md                     # Role-based access control: system roles, matter roles, admin panels
+└── QA.md                       # Automated QA testing with Playwright
 data/                  # gitignored — created at runtime
 ├── cvp.db             # SQLite database
 ├── uploads/           # Evidence files (photos, PDFs, etc.)
+├── crops/             # Cropped evidence thumbnails
 └── exports/           # Generated PDFs and CSVs
 ```
 
@@ -176,7 +272,7 @@ uv run pytest tests/test_seed.py -v
 
 ## Data model overview
 
-Six tables:
+**Core tables:**
 
 - **matters** — one row per insurance claim; holds all policy metadata, status, and delivery tracking
 - **rooms** — named spaces within the insured property (bedroom, kitchen, etc.), linked to a matter
@@ -185,9 +281,18 @@ Six tables:
 - **evidence_files** — uploaded photos, PDFs, and other files; tracks scan status
 - **vision_runs** — one row per Claude Vision API call; stores the raw response for auditing
 
+**Auth and access tables:**
+
+- **groups** — organizations: one `internal` group (the company) plus one `external` group per law firm / client
+- **users** — authenticated users with a `system_role`, `group_id`, optional MFA secret, and invite state
+- **refresh_tokens** — server-side refresh token records (hashed); supports revocation
+- **matter_access** — per-user, per-matter permission grants (`viewer` / `editor` / `contributor` / `manager`)
+- **comments** — item-level comments with `visibility` (`internal` or `shared`)
+- **audit_logs** — append-only event log for auth and data mutations
+
 All currency is stored as **integer cents**. Conversion to dollars happens only at the display and export layer.
 
-Full schema rationale in `docs/data-model.md`.
+Full schema rationale in `docs/data-model.md`. For access control design see `docs/RBAC.md`.
 
 ---
 
@@ -216,7 +321,9 @@ Items in non-depreciable categories (artwork, jewelry, collectibles, precious me
 
 ## Configuration reference
 
-All settings are read from `.env` at startup via pydantic-settings. Every variable has a default so the app works for development without a complete `.env` file (except Vision scans, which require `ANTHROPIC_API_KEY`).
+All settings are read from `.env` at startup via pydantic-settings. Every variable has a default so the app starts without a complete `.env`, but authentication will not work until the auth variables are set.
+
+**Application:**
 
 | Variable | Default | Description |
 |---|---|---|
@@ -231,17 +338,56 @@ All settings are read from `.env` at startup via pydantic-settings. Every variab
 | `COMPANY_ADDRESS` | `""` | Appears in report cover page |
 | `COMPANY_EMAIL` | `""` | Appears in report cover page |
 | `COMPANY_PHONE` | `""` | Appears in report cover page |
+| `PUBLIC_BASE_URL` | `""` | Base URL prepended to invite registration links (e.g., `http://localhost:8000`) |
+
+**Authentication:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `ENVIRONMENT` | `production` | Set to `dev` to enable dev-mode bypasses |
+| `JWT_SECRET` | `""` | Secret key for signing JWTs. Generate with `python3 -c "import secrets; print(secrets.token_hex(32))"`. **Required for login to work.** |
+| `JWT_ACCESS_TTL_MINUTES` | `60` | Access token lifetime in minutes |
+| `JWT_REFRESH_TTL_DAYS` | `7` | Refresh token lifetime in days |
+| `MFA_ENCRYPTION_KEY` | `""` | Fernet key for encrypting TOTP secrets at rest. Required before MFA can be enabled. |
+| `COOKIE_SECURE` | `true` | Set to `false` for local HTTP development |
+| `AUTO_LOGIN_USER_ID` | `""` | **Dev only.** UUID of a user to load on every request without JWT validation. Only active when `ENVIRONMENT=dev`. |
+
+---
+
+## Local QA testing
+
+Automated browser-based QA tests verify auth, RBAC, evidence uploads, item management, comments, and exports against the running dev server.
+
+See **[docs/QA.md](docs/QA.md)** for full setup and usage.
+
+Quick start:
+```bash
+# Install browser
+uv run playwright install chromium
+
+# Add to .env
+# QA_ADMIN_EMAIL=admin@example.com
+# QA_ADMIN_PASSWORD=your-admin-password
+
+# Run all suites
+uv run python skills/qa/runner.py
+
+# Run a specific suite
+uv run python skills/qa/runner.py --suite auth
+```
 
 ---
 
 ## Important constraints
 
 - **No cloud services** beyond the Anthropic API. Everything runs on localhost.
-- **No authentication.** Single-user tool. Do not add login, sessions, or roles.
 - **Currency is always integer cents.** Never use Python `float` for currency math.
 - **Vision scans are sequential** with a 500ms pause between images. Do not parallelize.
 - **Do not commit** `.env`, `./data/`, or `./backups/` — all are gitignored.
 - Reports are **attorney work product** and include a "Confidential — Attorney Work Product" marker.
+- **`AUTO_LOGIN_USER_ID` is for local development only.** It bypasses all authentication. Never set it in production (`ENVIRONMENT=production` will not activate the bypass regardless, but do not set it).
+- **`JWT_SECRET` and `MFA_ENCRYPTION_KEY` must be kept secret.** Rotating `JWT_SECRET` invalidates all active sessions. Rotating `MFA_ENCRYPTION_KEY` breaks all stored MFA secrets — users will need MFA reset.
+- **No self-registration.** All users are created by an admin via an admin panel and receive an invite link. See [docs/AUTH.md](docs/AUTH.md).
 
 ---
 
