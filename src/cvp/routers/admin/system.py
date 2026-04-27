@@ -1,12 +1,14 @@
 """System Admin panel router."""
 
+import csv
 import datetime
+import io
 import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.requests import Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -14,6 +16,7 @@ from cvp.auth import generate_invite_code, hash_token
 from cvp.db import get_db
 from cvp.dependencies import CurrentUser, require_system_admin
 from cvp.models import Matter
+from cvp.models_audit import AuditLog
 from cvp.models_auth import Group, User
 
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -305,4 +308,131 @@ def system_matters(
                 {"label": "Matters", "url": "/admin/system/matters"},
             ],
         ),
+    )
+
+
+def _build_audit_query(
+    db: Session,
+    action: str,
+    user_filter: str,
+    matter_id: str,
+    date_from: str,
+    date_to: str,
+):
+    query = db.query(AuditLog).order_by(AuditLog.created_at.desc())
+    if action:
+        query = query.filter(AuditLog.action.like(f"{action}%"))
+    if user_filter:
+        query = query.filter(AuditLog.user_id == user_filter)
+    if matter_id:
+        query = query.filter(AuditLog.matter_id == matter_id)
+    if date_from:
+        try:
+            dt_from = datetime.datetime.strptime(date_from, "%Y-%m-%d")
+            query = query.filter(AuditLog.created_at >= dt_from)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            dt_to = datetime.datetime.strptime(date_to, "%Y-%m-%d") + datetime.timedelta(days=1)
+            query = query.filter(AuditLog.created_at < dt_to)
+        except ValueError:
+            pass
+    return query
+
+
+@router.get("/audit", response_class=HTMLResponse)
+def audit_log_viewer(
+    request: Request,
+    user: CurrentUser = Depends(require_system_admin),
+    db: Session = Depends(get_db),
+    action: str = "",
+    user_filter: str = "",
+    matter_id: str = "",
+    date_from: str = "",
+    date_to: str = "",
+    page: int = 1,
+) -> HTMLResponse:
+    """Filterable audit log viewer with pagination."""
+    query = _build_audit_query(db, action, user_filter, matter_id, date_from, date_to)
+    per_page = 50
+    total = query.count()
+    pages = (total + per_page - 1) // per_page
+    logs = query.offset((page - 1) * per_page).limit(per_page).all()
+    user_ids = {log.user_id for log in logs if log.user_id}
+    users_map = (
+        {u.id: u for u in db.query(User).filter(User.id.in_(user_ids)).all()} if user_ids else {}
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/system/audit.html",
+        context=_ctx(
+            user,
+            logs=logs,
+            users_map=users_map,
+            page=page,
+            pages=pages,
+            total=total,
+            filters={
+                "action": action,
+                "user_filter": user_filter,
+                "matter_id": matter_id,
+                "date_from": date_from,
+                "date_to": date_to,
+            },
+            breadcrumbs=[
+                {"label": "System Admin", "url": "/admin/system/"},
+                {"label": "Audit Log", "url": "/admin/system/audit"},
+            ],
+        ),
+    )
+
+
+@router.get("/audit/export")
+def export_audit_csv(
+    user: CurrentUser = Depends(require_system_admin),
+    db: Session = Depends(get_db),
+    action: str = "",
+    user_filter: str = "",
+    matter_id: str = "",
+    date_from: str = "",
+    date_to: str = "",
+) -> StreamingResponse:
+    """Export filtered audit logs as CSV."""
+    query = _build_audit_query(db, action, user_filter, matter_id, date_from, date_to)
+    logs = query.all()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "id",
+            "user_id",
+            "action",
+            "resource_type",
+            "resource_id",
+            "matter_id",
+            "detail",
+            "ip_address",
+            "created_at",
+        ]
+    )
+    for log in logs:
+        writer.writerow(
+            [
+                log.id,
+                log.user_id or "",
+                log.action,
+                log.resource_type,
+                log.resource_id or "",
+                log.matter_id or "",
+                log.detail or "",
+                log.ip_address,
+                log.created_at.isoformat(),
+            ]
+        )
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=audit_log.csv"},
     )
