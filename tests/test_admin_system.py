@@ -155,3 +155,19 @@ def test_system_deactivate_user(seeded_client):
     db.expire_all()
     user = db.get(User, "existing-user-id")
     assert user.is_active is False
+
+
+def test_audit_log_viewer_accessible(admin_client):
+    resp = admin_client.get("/admin/system/audit")
+    assert resp.status_code == 200
+
+
+def test_audit_log_export_returns_csv(admin_client):
+    resp = admin_client.get("/admin/system/audit/export")
+    assert resp.status_code == 200
+    assert "text/csv" in resp.headers["content-type"]
+    lines = resp.text.splitlines()
+    expected_header = (
+        "id,user_id,action,resource_type,resource_id,matter_id,detail,ip_address,created_at"
+    )
+    assert lines[0] == expected_header
