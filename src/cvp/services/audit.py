@@ -1,6 +1,6 @@
 """Audit logging service — write, debounce, query."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -45,7 +45,7 @@ def should_debounce_view(
     resource_id: str,
 ) -> bool:
     """Return True if a view event should be skipped (same user+resource within 5 min)."""
-    cutoff = datetime.now(tz=timezone.utc) - timedelta(minutes=VIEW_DEBOUNCE_MINUTES)
+    cutoff = datetime.utcnow() - timedelta(minutes=VIEW_DEBOUNCE_MINUTES)
     existing = (
         db.query(AuditLog)
         .filter(
