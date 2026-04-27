@@ -3,13 +3,12 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import cvp.models_auth  # ensure auth tables are registered on Base.metadata  # noqa: F401
-from cvp.models import Base, Matter
-from cvp.models_auth import Group, User
-from cvp.auth import hash_password
+from cvp.models import Base
+from cvp.models_auth import Group
 
 
 @pytest.fixture
@@ -27,9 +26,8 @@ def db_session():
 
 @pytest.fixture
 def internal_client(db_session):
-    from cvp.main import app
     from cvp.db import get_db
-    import cvp.dependencies as deps
+    from cvp.main import app
 
     ig = Group(id="ig", name="Internal", kind="internal")
     db_session.add(ig)
@@ -40,13 +38,18 @@ def internal_client(db_session):
 
     async def mock_internal_admin():
         from cvp.dependencies import CurrentUser
+
         return CurrentUser(
-            id="ia", email="ia@test.com", system_role="internal_admin",
-            group_id="ig", group_kind="internal",
+            id="ia",
+            email="ia@test.com",
+            system_role="internal_admin",
+            group_id="ig",
+            group_kind="internal",
         )
 
     from cvp.dependencies import require_active_user
     from cvp.routers.admin.internal import _require_internal_or_above
+
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[require_active_user] = mock_internal_admin
     app.dependency_overrides[_require_internal_or_above] = mock_internal_admin

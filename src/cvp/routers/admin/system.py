@@ -111,8 +111,12 @@ def system_invite_user(
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     valid_roles = {
-        "system_admin", "internal_admin", "internal_user",
-        "specialist", "external_admin", "external_user",
+        "system_admin",
+        "internal_admin",
+        "internal_user",
+        "specialist",
+        "external_admin",
+        "external_user",
     }
     if system_role not in valid_roles:
         raise HTTPException(status_code=400, detail="Invalid role")
@@ -145,11 +149,16 @@ def system_invite_user(
     return templates.TemplateResponse(
         request=request,
         name="admin/system/users.html",
-        context=_ctx(user, users=users, groups=groups, invite_url=invite_url,
-                     breadcrumbs=[
-                         {"label": "System Admin", "url": "/admin/system/"},
-                         {"label": "Users", "url": "/admin/system/users"},
-                     ]),
+        context=_ctx(
+            user,
+            users=users,
+            groups=groups,
+            invite_url=invite_url,
+            breadcrumbs=[
+                {"label": "System Admin", "url": "/admin/system/"},
+                {"label": "Users", "url": "/admin/system/users"},
+            ],
+        ),
     )
 
 

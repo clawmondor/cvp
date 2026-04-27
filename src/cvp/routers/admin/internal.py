@@ -8,8 +8,8 @@ from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.requests import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from cvp.auth import generate_invite_code, hash_token
 from cvp.db import get_db
@@ -276,12 +276,14 @@ def internal_grant_matter_access(
         existing.role = role
         existing.granted_by_id = user.id
     else:
-        db.add(MatterAccess(
-            user_id=user_id,
-            matter_id=matter_id,
-            role=role,
-            granted_by_id=user.id,
-        ))
+        db.add(
+            MatterAccess(
+                user_id=user_id,
+                matter_id=matter_id,
+                role=role,
+                granted_by_id=user.id,
+            )
+        )
     db.commit()
     return internal_matter_access(matter_id, request, user, db)
 

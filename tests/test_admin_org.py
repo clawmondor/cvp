@@ -6,10 +6,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from cvp.models import Base, Matter
-from cvp.models_auth import Group, User
-from cvp.auth import hash_password
 import cvp.models_auth  # noqa: F401 — register models with Base
+from cvp.models import Base
+from cvp.models_auth import Group
 
 
 @pytest.fixture
@@ -27,8 +26,8 @@ def db_session():
 
 @pytest.fixture
 def org_client(db_session):
-    from cvp.main import app
     from cvp.db import get_db
+    from cvp.main import app
     from cvp.routers.admin.org import _require_org_admin_or_above
 
     eg = Group(id="eg", name="Acme Law", kind="external")
@@ -40,9 +39,13 @@ def org_client(db_session):
 
     async def mock_external_admin():
         from cvp.dependencies import CurrentUser
+
         return CurrentUser(
-            id="ea", email="ea@test.com", system_role="external_admin",
-            group_id="eg", group_kind="external",
+            id="ea",
+            email="ea@test.com",
+            system_role="external_admin",
+            group_id="eg",
+            group_kind="external",
         )
 
     app.dependency_overrides[get_db] = override_get_db

@@ -1,7 +1,5 @@
 """Tests for System Admin panel."""
 
-import uuid
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -9,9 +7,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import cvp.models_auth  # ensure auth tables are registered on Base.metadata  # noqa: F401
+from cvp.dependencies import CurrentUser, require_system_admin
 from cvp.models import Base
 from cvp.models_auth import Group, User
-from cvp.dependencies import require_system_admin, CurrentUser
 
 
 @pytest.fixture
@@ -35,8 +33,11 @@ def admin_client(db_session):
 
     async def mock_admin():
         return CurrentUser(
-            id="sa", email="sa@test.com", system_role="system_admin",
-            group_id="ig", group_kind="internal",
+            id="sa",
+            email="sa@test.com",
+            system_role="system_admin",
+            group_id="ig",
+            group_kind="internal",
         )
 
     def override_get_db():
@@ -73,8 +74,11 @@ def seeded_client(db_session):
 
     async def mock_admin():
         return CurrentUser(
-            id="sa", email="sa@test.com", system_role="system_admin",
-            group_id="ig", group_kind="internal",
+            id="sa",
+            email="sa@test.com",
+            system_role="system_admin",
+            group_id="ig",
+            group_kind="internal",
         )
 
     def override_get_db():
