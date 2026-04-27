@@ -4,6 +4,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import jwt
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
@@ -22,6 +23,7 @@ from cvp.db import get_db
 from cvp.dependencies import CurrentUser, optional_user
 from cvp.models_auth import RefreshToken, User
 from cvp.services.audit import get_client_ip, write_audit_log
+from cvp.services.mfa import decrypt_secret, verify_totp_code
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -139,6 +141,23 @@ def login(
                 "next_url": next,
             },
             status_code=401,
+        )
+
+    # MFA check — if enabled, issue short-lived MFA token and redirect to verification step
+    if user.mfa_enabled and user.mfa_secret:
+        mfa_token = jwt.encode(
+            {
+                "sub": user.id,
+                "purpose": "mfa_verification",
+                "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=5),
+            },
+            settings.jwt_secret,
+            algorithm="HS256",
+        )
+        return templates.TemplateResponse(
+            request=request,
+            name="login_mfa.html",
+            context={"mfa_token": mfa_token, "next_url": next},
         )
 
     # Create tokens
@@ -388,3 +407,90 @@ def register(
         ip_address=get_client_ip(request),
     )
     return RedirectResponse(url="/login?message=Account+created.+Please+sign+in.", status_code=303)
+
+
+@router.post("/api/auth/mfa/verify", response_model=None)
+def mfa_verify(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    mfa_token: str = Form(...),
+    code: str = Form(...),
+    next: str = Form(""),
+    db: Session = Depends(get_db),
+) -> RedirectResponse | HTMLResponse:
+    """Verify TOTP code after successful password authentication."""
+    try:
+        payload = jwt.decode(mfa_token, settings.jwt_secret, algorithms=["HS256"])
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"error": "MFA session expired. Please sign in again.", "next_url": next},
+            status_code=401,
+        )
+
+    if payload.get("purpose") != "mfa_verification":
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"error": "Invalid MFA session.", "next_url": next},
+            status_code=401,
+        )
+
+    user = db.get(User, payload["sub"])
+    if user is None or not user.is_active or not user.mfa_secret:
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"error": "Account error. Contact your administrator.", "next_url": next},
+            status_code=401,
+        )
+
+    decrypted_secret = decrypt_secret(user.mfa_secret, settings.mfa_encryption_key)
+    if not verify_totp_code(decrypted_secret, code.strip()):
+        background_tasks.add_task(
+            write_audit_log,
+            user_id=user.id,
+            action="auth.mfa_failed",
+            detail={"attempt": True},
+            ip_address=get_client_ip(request),
+        )
+        return templates.TemplateResponse(
+            request=request,
+            name="login_mfa.html",
+            context={"mfa_token": mfa_token, "next_url": next, "error": "Invalid code. Try again."},
+            status_code=401,
+        )
+
+    # MFA passed — create full session
+    access_token = create_access_token(
+        user_id=user.id,
+        email=user.email,
+        system_role=user.system_role,
+        group_id=user.group_id,
+        group_kind=user.group.kind if user.group else None,
+        secret=settings.jwt_secret,
+        ttl_minutes=settings.jwt_access_ttl_minutes,
+    )
+    raw_refresh = create_refresh_token_value()
+    refresh_record = RefreshToken(
+        user_id=user.id,
+        token_hash=hash_token(raw_refresh),
+        expires_at=datetime.now(tz=timezone.utc) + timedelta(days=settings.jwt_refresh_ttl_days),
+    )
+    db.add(refresh_record)
+    user.last_login_at = datetime.now(tz=timezone.utc)
+    db.commit()
+
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="auth.login",
+        detail={"mfa": True, "user_agent": request.headers.get("user-agent", "")},
+        ip_address=get_client_ip(request),
+    )
+
+    redirect_url = next if next else "/dashboard"
+    response = RedirectResponse(url=redirect_url, status_code=303)
+    _set_auth_cookies(response, access_token, raw_refresh, hash_token(access_token)[:32])
+    return response
