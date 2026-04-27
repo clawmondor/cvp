@@ -22,7 +22,7 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 EDIT_WINDOW_MINUTES = 15
 
 
-async def _get_comment_and_check_access(
+def _get_comment_and_check_access(
     comment_id: str,
     minimum_role: str,
     user: CurrentUser,
