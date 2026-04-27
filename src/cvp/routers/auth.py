@@ -18,10 +18,10 @@ from cvp.auth import (
     verify_password,
 )
 from cvp.config import settings
-from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.db import get_db
 from cvp.dependencies import CurrentUser, optional_user
 from cvp.models_auth import RefreshToken, User
+from cvp.services.audit import get_client_ip, write_audit_log
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")

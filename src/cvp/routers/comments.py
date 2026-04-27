@@ -9,7 +9,12 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from cvp.db import get_db
-from cvp.dependencies import CurrentUser, _check_matter_access, require_active_user, require_matter_role
+from cvp.dependencies import (
+    CurrentUser,
+    _check_matter_access,
+    require_active_user,
+    require_matter_role,
+)
 from cvp.models import Item
 from cvp.models_auth import User
 from cvp.models_comments import Comment
@@ -57,9 +62,7 @@ def list_comments(
 
     user_ids = {c.user_id for c in comments}
     users = (
-        {u.id: u for u in db.query(User).filter(User.id.in_(user_ids)).all()}
-        if user_ids
-        else {}
+        {u.id: u for u in db.query(User).filter(User.id.in_(user_ids)).all()} if user_ids else {}
     )
 
     html = templates.get_template("_comments.html").render(

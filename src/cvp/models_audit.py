@@ -22,9 +22,7 @@ class AuditLog(Base):
     )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
-    user_id: Mapped[str | None] = mapped_column(
-        String, ForeignKey("users.id"), nullable=True
-    )
+    user_id: Mapped[str | None] = mapped_column(String, ForeignKey("users.id"), nullable=True)
     action: Mapped[str] = mapped_column(String, nullable=False)
     resource_type: Mapped[str] = mapped_column(String, nullable=True, default="")
     resource_id: Mapped[str | None] = mapped_column(String, nullable=True)
