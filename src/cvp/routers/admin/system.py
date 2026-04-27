@@ -6,9 +6,9 @@ import io
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException
 from fastapi.requests import Request
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -18,6 +18,7 @@ from cvp.dependencies import CurrentUser, require_system_admin
 from cvp.models import Matter
 from cvp.models_audit import AuditLog
 from cvp.models_auth import Group, User
+from cvp.services.audit import get_client_ip, write_audit_log
 
 BASE_DIR = Path(__file__).parent.parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -195,20 +196,30 @@ def system_activate_user(
     return system_user_detail(user_id, request, user, db)
 
 
-@router.post("/users/{user_id}/reset-mfa", response_class=HTMLResponse)
+@router.post("/users/{user_id}/reset-mfa")
 def system_reset_mfa(
     user_id: str,
     request: Request,
-    user: CurrentUser = Depends(require_system_admin),
+    background_tasks: BackgroundTasks,
+    admin: CurrentUser = Depends(require_system_admin),
     db: Session = Depends(get_db),
-) -> HTMLResponse:
+) -> RedirectResponse:
+    """Reset MFA for a user (admin action)."""
     target = db.get(User, user_id)
     if target is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    target.mfa_enabled = False
+        raise HTTPException(status_code=404)
     target.mfa_secret = None
+    target.mfa_enabled = False
     db.commit()
-    return system_user_detail(user_id, request, user, db)
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=admin.id,
+        action="admin.mfa_reset",
+        resource_type="user",
+        resource_id=user_id,
+        ip_address=get_client_ip(request),
+    )
+    return RedirectResponse(url=f"/admin/system/users/{user_id}", status_code=303)
 
 
 @router.get("/groups", response_class=HTMLResponse)

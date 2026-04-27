@@ -30,6 +30,8 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 router = APIRouter()
 
+_mfa_attempts: dict[str, int] = {}
+
 
 def _set_auth_cookies(
     response: Response,
@@ -446,6 +448,20 @@ def mfa_verify(
             status_code=401,
         )
 
+    # Check lockout before trying the code
+    attempt_key = user.id
+    if _mfa_attempts.get(attempt_key, 0) >= 3:
+        _mfa_attempts.pop(attempt_key, None)
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={
+                "error": "Too many failed MFA attempts. Please sign in again.",
+                "next_url": next,
+            },
+            status_code=401,
+        )
+
     decrypted_secret = decrypt_secret(user.mfa_secret, settings.mfa_encryption_key)
     if not verify_totp_code(decrypted_secret, code.strip()):
         background_tasks.add_task(
@@ -455,6 +471,18 @@ def mfa_verify(
             detail={"attempt": True},
             ip_address=get_client_ip(request),
         )
+        _mfa_attempts[attempt_key] = _mfa_attempts.get(attempt_key, 0) + 1
+        if _mfa_attempts.get(attempt_key, 0) >= 3:
+            _mfa_attempts.pop(attempt_key, None)
+            return templates.TemplateResponse(
+                request=request,
+                name="login.html",
+                context={
+                    "error": "Too many failed MFA attempts. Please sign in again.",
+                    "next_url": next,
+                },
+                status_code=401,
+            )
         return templates.TemplateResponse(
             request=request,
             name="login_mfa.html",
@@ -462,7 +490,8 @@ def mfa_verify(
             status_code=401,
         )
 
-    # MFA passed — create full session
+    # MFA passed — clear attempt counter and create full session
+    _mfa_attempts.pop(user.id, None)
     access_token = create_access_token(
         user_id=user.id,
         email=user.email,
