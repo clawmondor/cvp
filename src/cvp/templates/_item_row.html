@@ -37,6 +37,17 @@
       <a href="https://www.homedepot.com/s/{{ _q }}" target="_blank" rel="noopener" class="text-xs text-indigo-500 hover:underline">Home Depot</a>
     </span>
     {% endif %}
+    <!-- Comments toggle -->
+    <div class="mt-2">
+      <button
+        hx-get="/api/items/{{ item.id }}/comments"
+        hx-target="#comments-{{ item.id }}"
+        hx-swap="innerHTML"
+        hx-trigger="click once"
+        class="text-xs text-indigo-600 hover:text-indigo-500 cursor-pointer"
+      >Comments</button>
+      <div id="comments-{{ item.id }}" class="mt-2"></div>
+    </div>
   </td>
   <td class="whitespace-nowrap px-3 py-2 text-gray-600 text-xs">{{ room_map.get(item.room_id, "—") }}</td>
   <td class="whitespace-nowrap px-3 py-2 text-gray-600 text-xs">{{ cat_map.get(item.category_id, "—") }}</td>
