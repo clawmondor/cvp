@@ -1,0 +1,31 @@
+# Known-safe test credentials and documentation examples.
+# All values below are obviously fake (prefixed "test", "testsecret", etc.)
+# and exist only in test fixtures and implementation-plan docs.
+# Verified 2026-05-05 — no production credentials were ever committed.
+
+# tests/test_auth_routes.py — fake JWT/MFA test keys
+ff542a896effac2bcd848248a50824ff1b6b7ec0:tests/test_auth_routes.py:generic-api-key:113
+ff542a896effac2bcd848248a50824ff1b6b7ec0:tests/test_auth_routes.py:generic-api-key:114
+
+# tests/test_mfa.py — fake MFA encryption test key
+e3ea22bf414213bbd987d16b68499ef789b30915:tests/test_mfa.py:generic-api-key:15
+
+# tests/test_dependencies.py — fake JWT secret
+1af87a24527fb2b224c5d2b86f8219d512f251c3:tests/test_dependencies.py:generic-api-key:11
+
+# tests/test_auth.py — fake JWT secret used across auth unit tests
+efb451305d46c6a77c8480eba4e40f1ba9cefa01:tests/test_auth.py:generic-api-key:125
+dfc1d6bdd8e09592ba249b701b46bc64189a1585:tests/test_auth.py:generic-api-key:102
+dfc1d6bdd8e09592ba249b701b46bc64189a1585:tests/test_auth.py:generic-api-key:105
+dfc1d6bdd8e09592ba249b701b46bc64189a1585:tests/test_auth.py:generic-api-key:120
+dfc1d6bdd8e09592ba249b701b46bc64189a1585:tests/test_auth.py:generic-api-key:123
+dfc1d6bdd8e09592ba249b701b46bc64189a1585:tests/test_auth.py:generic-api-key:128
+
+# docs/superpowers/plans/ — example values in implementation plan code blocks
+1dd8727f2b4106f367b1fc403da5100b400988c4:docs/superpowers/plans/2026-04-25-auth-phase5-mfa-passwords.md:generic-api-key:90
+1dd8727f2b4106f367b1fc403da5100b400988c4:docs/superpowers/plans/2026-04-25-auth-phase1-core-auth.md:generic-api-key:414
+1dd8727f2b4106f367b1fc403da5100b400988c4:docs/superpowers/plans/2026-04-25-auth-phase1-core-auth.md:generic-api-key:417
+1dd8727f2b4106f367b1fc403da5100b400988c4:docs/superpowers/plans/2026-04-25-auth-phase1-core-auth.md:generic-api-key:432
+1dd8727f2b4106f367b1fc403da5100b400988c4:docs/superpowers/plans/2026-04-25-auth-phase1-core-auth.md:generic-api-key:435
+1dd8727f2b4106f367b1fc403da5100b400988c4:docs/superpowers/plans/2026-04-25-auth-phase1-core-auth.md:generic-api-key:440
+1dd8727f2b4106f367b1fc403da5100b400988c4:docs/superpowers/plans/2026-04-25-auth-phase1-core-auth.md:generic-api-key:623
