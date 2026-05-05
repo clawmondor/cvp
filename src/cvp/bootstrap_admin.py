@@ -1,4 +1,5 @@
 """Idempotent admin bootstrap. Called from Railway pre-deploy (release) command."""
+
 from __future__ import annotations
 
 import os
