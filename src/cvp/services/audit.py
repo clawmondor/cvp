@@ -60,10 +60,20 @@ def should_debounce_view(
 
 
 def get_client_ip(request: object) -> str:
-    """Extract client IP from request, checking X-Forwarded-For."""
+    """Extract client IP from request.
+
+    Priority order:
+    1. CF-Connecting-IP  — Cloudflare's dedicated real-IP header (most reliable)
+    2. X-Forwarded-For   — standard proxy header; use the first (leftmost) IP
+    3. request.client.host — direct connection fallback
+    4. "unknown"         — final fallback if nothing is available
+    """
+    cf_ip = request.headers.get("cf-connecting-ip")
+    if cf_ip:
+        return cf_ip.strip()
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.split(",")[0].strip()
     if request.client:
         return request.client.host
-    return ""
+    return "unknown"
