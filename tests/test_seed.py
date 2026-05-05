@@ -1,3 +1,5 @@
+import pathlib
+
 import pytest
 from alembic import command
 from alembic.config import Config as AlembicConfig
@@ -48,7 +50,7 @@ def test_non_depreciable_categories_have_null_useful_life(db: Session) -> None:
 
 
 def test_seed_is_idempotent_on_double_run(
-    tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Verify seed idempotency after real Alembic migrations (not just metadata.create_all)."""
     db_url = f"sqlite:///{tmp_path}/seed_test.db"
