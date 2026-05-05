@@ -19,6 +19,7 @@ from cvp.routers import (
     crops,
     evidence,
     exports,
+    health,
     items,
     matters,
     profile,
@@ -39,6 +40,9 @@ app = FastAPI(title="Contents Valuation Platform")
 app.add_middleware(SecurityHeadersMiddleware, environment=settings.environment)
 
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+
+# Health router (public — no auth required, used by Railway healthcheck)
+app.include_router(health.router)
 
 # Auth router (public routes — splash, login, register)
 app.include_router(auth.router)
