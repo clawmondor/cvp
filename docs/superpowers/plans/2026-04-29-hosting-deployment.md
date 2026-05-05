@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the CVP application deployable to Render (Web Starter + Postgres Standard) behind Cloudflare, with a Dockerfile, GitHub Actions CI, idempotent pre-deploy bootstrap, and the supporting documentation. Keep SQLite working for local development. Do not change application behavior beyond what the production deployment requires.
+**Goal:** Make the CVP application deployable to Railway (service + Postgres + volume) behind Cloudflare, with a Dockerfile, `railway.toml`, GitHub Actions CI, idempotent pre-deploy bootstrap, and the supporting documentation. Keep SQLite working for local development. Do not change application behavior beyond what the production deployment requires.
 
-**Architecture:** Adopt Postgres in production while keeping SQLite for local dev (URL-driven). Containerize with a Dockerfile that includes WeasyPrint native libs. Add a `/healthz` route, a `bootstrap-admin` script, and a fix for client-IP handling behind Cloudflare's proxy. Wrap the whole thing in a GitHub Actions CI workflow (lint + test + secrets scan). Defer offsite backups and R2 evidence storage to a separate effort tracked in `docs/BACKLOG.md`.
+**Architecture:** Adopt Postgres in production while keeping SQLite for local dev (URL-driven). Containerize with a Dockerfile that includes WeasyPrint native libs. Pin Railway's builder to `DOCKERFILE` via `railway.toml` so Nixpacks doesn't pre-empt our image. Add a `/healthz` route, a `bootstrap-admin` script, and a fix for client-IP handling behind Cloudflare's proxy. Wrap the whole thing in a GitHub Actions CI workflow (lint + test + secrets scan). Defer offsite backups and R2 evidence storage to a separate effort tracked in `docs/BACKLOG.md` — note that offsite `pg_dump` backups are elevated in priority because Railway Postgres lacks PITR (see spec §1.3).
 
-**Tech Stack:** Python 3.11+, FastAPI, SQLAlchemy 2.x, Alembic, uv, psycopg 3, Docker, GitHub Actions, gitleaks, Render, Cloudflare.
+**Tech Stack:** Python 3.11+, FastAPI, SQLAlchemy 2.x, Alembic, uv, psycopg 3, Docker, GitHub Actions, gitleaks, Railway, Cloudflare.
 
 **Source spec:** `docs/superpowers/specs/2026-04-29-hosting-design.md` — read this first; it explains every "why" the tasks below assume.
 
@@ -476,7 +476,7 @@ from cvp.routers import health
 app.include_router(health.router)
 ```
 
-`/healthz` must NOT be behind auth — it's polled by Render's load balancer with no credentials. Confirm it's added before any global auth middleware that would block it, or that auth middleware exempts `/healthz`. If not exempt, add it to the exempt list.
+`/healthz` must NOT be behind auth — it's polled by Railway's healthcheck with no credentials. Confirm it's added before any global auth middleware that would block it, or that auth middleware exempts `/healthz`. If not exempt, add it to the exempt list.
 
 - [ ] **Step 5: Run the test — expect pass.**
 
@@ -503,7 +503,7 @@ Expected: `HTTP/1.1 200 OK` with body `{"status":"ok"}`, no redirect to login.
 
 ```bash
 git add src/cvp/routers/health.py src/cvp/main.py tests/test_health.py
-git commit -m "feat(health): add /healthz endpoint for Render healthcheck"
+git commit -m "feat(health): add /healthz endpoint for Railway healthcheck"
 ```
 
 ---
@@ -676,7 +676,7 @@ Expected: FAIL — module doesn't exist.
 `src/cvp/bootstrap_admin.py` — adjust imports for the actual User model name and the actual password-hashing helper:
 
 ```python
-"""Idempotent admin bootstrap. Called from Render pre-deploy command."""
+"""Idempotent admin bootstrap. Called from Railway pre-deploy (release) command."""
 from __future__ import annotations
 
 import os
@@ -840,11 +840,12 @@ If anything in this task failed, fix the offending code and re-run the smoke fro
 
 ---
 
-## Task 11: Create the Dockerfile
+## Task 11: Create the Dockerfile and `railway.toml`
 
 **Files:**
 - Create: `Dockerfile`
 - Create: `.dockerignore`
+- Create: `railway.toml`
 
 - [ ] **Step 1: Create `.dockerignore`.**
 
@@ -906,7 +907,7 @@ RUN uv sync --frozen --no-dev
 
 EXPOSE 8000
 
-# proxy-headers needed because we sit behind Cloudflare + Render's LB
+# proxy-headers needed because we sit behind Cloudflare + Railway's edge
 CMD ["uv", "run", "uvicorn", "cvp.main:app", \
      "--host", "0.0.0.0", \
      "--port", "8000", \
@@ -950,11 +951,43 @@ Expected: `200`. If it's anything else, exec into the running container and insp
 docker logs cvp-image-smoke
 ```
 
-- [ ] **Step 5: Commit.**
+- [ ] **Step 5: Create `railway.toml` at repo root.**
+
+Railway's default builder is Nixpacks, which does not install WeasyPrint's native deps. Pinning `builder = "DOCKERFILE"` is mandatory; the rest of the file makes deploy behavior version-controlled instead of dashboard-only.
+
+`railway.toml`:
+
+```toml
+[build]
+builder = "DOCKERFILE"
+
+[deploy]
+startCommand = "uv run uvicorn cvp.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips '*'"
+preDeployCommand = "uv run alembic upgrade head && uv run seed && uv run bootstrap-admin"
+healthcheckPath = "/healthz"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+```
+
+Notes:
+- `startCommand` here overrides the Dockerfile's `CMD` so the port comes from Railway's `$PORT` env var. (Dockerfile's `EXPOSE 8000` and `CMD` remain useful for local docker runs without Railway.)
+- `preDeployCommand` runs in a one-shot release container before the new version takes traffic. Non-zero exit fails the deploy and traffic stays on the previous version.
+- `restartPolicyMaxRetries` = 3 prevents an endlessly-crashing container from burning RAM-seconds.
+
+Validate the TOML parses:
 
 ```bash
-git add Dockerfile .dockerignore
-git commit -m "feat(docker): add production Dockerfile for Render deployment"
+python -c "import tomllib; tomllib.load(open('railway.toml','rb'))"
+```
+
+Expected: no output (valid TOML).
+
+- [ ] **Step 6: Commit.**
+
+```bash
+git add Dockerfile .dockerignore railway.toml
+git commit -m "feat(docker): add production Dockerfile and railway.toml for Railway deployment"
 ```
 
 ---
@@ -1102,49 +1135,64 @@ The workflow won't actually run until pushed to GitHub on a branch CI watches.
 ```markdown
 # Production Runbook
 
-Operational runbook for the production deployment on Render. Linked from `docs/superpowers/specs/2026-04-29-hosting-design.md`.
+Operational runbook for the production deployment on Railway. Linked from `docs/superpowers/specs/2026-04-29-hosting-design.md`.
+
+> **Important context (read once):** Railway Postgres provides daily snapshots only — there is no point-in-time recovery. RPO is up to 24 hours. The offsite-`pg_dump` backlog item is the recommended next step after first deploy to compress that window. See spec §1.3 for the full tradeoff rationale.
 
 ---
 
 ## First-time deployment
 
-1. **Provision Render Web Service**
-   - New → Web Service → connect to GitHub repo, `main` branch.
-   - Runtime: Docker (auto-detected from Dockerfile).
-   - Plan: Starter ($7/mo).
-   - Region: Oregon (or Virginia — pick once and stick with it).
-   - Health check path: `/healthz`.
-   - Pre-deploy command: `uv run alembic upgrade head && uv run seed && uv run bootstrap-admin`.
-   - Persistent disk: 10 GB, mount path `/app/data`.
+1. **Create the Railway project**
+   - Railway dashboard → New Project → Deploy from GitHub repo.
+   - Pick this repo and the `main` branch.
+   - Railway will auto-detect the Dockerfile because `railway.toml` pins `builder = "DOCKERFILE"`. If Railway suggests Nixpacks, something is wrong — check that `railway.toml` is committed and on `main`.
 
-2. **Provision Render Postgres**
-   - New → Postgres → Standard tier ($19/mo).
-   - Same region as the web service.
-   - Render auto-injects `DATABASE_URL` into the web service when linked.
+2. **Add Railway Postgres**
+   - Inside the project → New → Database → Add Postgres.
+   - Once created, Railway exposes a `DATABASE_URL` reference variable on the Postgres service.
+   - Go to the web service → Variables → Add Variable Reference → select Postgres' `DATABASE_URL`. This injects the private-network URL at runtime; no manual copy.
 
-3. **Set environment variables (Secret type)**
+3. **Add a persistent volume**
+   - Web service → Settings → Volumes → New Volume.
+   - Size: 10 GB. Mount path: `/app/data`.
+   - Restart the service if Railway doesn't do it automatically.
+
+4. **Set environment variables (web service → Variables)**
    - `ANTHROPIC_API_KEY`
    - `SECRET_KEY` (generate fresh: `python -c "import secrets; print(secrets.token_hex(64))"`)
    - `INITIAL_ADMIN_EMAIL`
    - `INITIAL_ADMIN_PASSWORD`
    - `APP_BASE_URL` (e.g. `https://cvp.your-domain.tld`)
    - `ENVIRONMENT` = `production`
+   - (Do NOT manually set `DATABASE_URL` or `PORT` — Railway provides both.)
 
-4. **Configure Cloudflare DNS**
-   - In Cloudflare dashboard → DNS for your-domain.tld:
-     - Add CNAME `cvp` → `<app-name>.onrender.com`, **proxied (orange cloud)**.
+5. **Confirm service settings**
+   - Settings → Deploy → confirm Auto Deploy is enabled and the watched branch is `main`.
+   - Settings → Networking → Generate Domain (creates `<service>.up.railway.app`). You'll point Cloudflare at this.
+   - Healthcheck path is configured by `railway.toml` (`/healthz`); verify it shows in the UI.
+   - Pre-deploy command is configured by `railway.toml`; verify it shows in the UI.
+
+6. **Set a usage alert**
+   - Project Settings → Usage → set a monthly cap or alert (e.g. $40/mo). This is the mitigation for the usage-based billing tradeoff documented in spec §1.3.
+
+7. **Configure Cloudflare DNS**
+   - Cloudflare dashboard → DNS for your-domain.tld:
+     - Add CNAME `cvp` → `<service>.up.railway.app`, **proxied (orange cloud)**.
    - SSL/TLS → Overview → encryption mode: **Full (strict)**.
    - Page Rules / Cache Rules → "Bypass cache" for `cvp.your-domain.tld/*`.
-   - If first cert issuance hangs (Render shows "issuing"), gray-cloud the
-     CNAME for ~5 minutes until Render shows the cert as live, then orange
-     it again.
+   - In Railway: Settings → Networking → Custom Domain → add `cvp.your-domain.tld`. Railway will issue a cert.
+   - If cert issuance stalls (Railway shows "Pending" for >5 min), gray-cloud the CNAME briefly until Railway issues, then re-orange.
 
-5. **First login**
+8. **First login**
    - Visit `https://cvp.your-domain.tld`.
    - Sign in with the bootstrap admin credentials.
    - Complete MFA setup via the user-profile flow.
    - Create real admin accounts for any other founders.
-   - **Remove `INITIAL_ADMIN_PASSWORD` from Render env vars.**
+   - **Remove `INITIAL_ADMIN_PASSWORD` from Railway Variables.**
+
+9. **Set up offsite Postgres backups (recommended, not strictly required for v0)**
+   - Tracked in `docs/BACKLOG.md`. Until done, RPO is up to 24 hours.
 
 ---
 
@@ -1152,41 +1200,55 @@ Operational runbook for the production deployment on Render. Linked from `docs/s
 
 ### Scenario 1: Bad deploy went live
 
-1. Render dashboard → Web Service → Events.
-2. Find the previous successful deploy → "Rollback to this deploy".
+1. Railway dashboard → service → Deployments tab.
+2. Find the previous successful deployment → ⋯ menu → "Redeploy".
 3. ~30 seconds to swap. Healthcheck verifies before traffic moves.
 
-### Scenario 2: Wrong matter deleted (data loss in last 7 days)
+### Scenario 2: Wrong matter deleted (data loss)
 
-**Destructive — all data after the recovery point will be lost. Coordinate with the team before clicking.**
+**Destructive — Railway snapshots are daily, so up to 24 hours of writes since the snapshot will be lost. Coordinate with the team before clicking. If an offsite `pg_dump` ran more recently than the latest Railway snapshot, prefer the offsite copy.**
 
-1. Render dashboard → Postgres service → Recovery → Point-in-time recovery.
-2. Pick the timestamp just before the deletion.
-3. Render restores into a NEW database. Verify the data, then update the web service's `DATABASE_URL` to point at the new instance, OR have Render swap.
-4. Decommission the old DB once the new one is verified.
+1. Railway dashboard → Postgres plugin → Backups tab.
+2. Pick the most recent backup before the deletion.
+3. Railway's restore flow replaces the database in place. Confirm the project name twice before clicking.
+4. After restore: redeploy the web service so connections reset, then verify data integrity.
 
-### Scenario 3: Render is down (extended)
+If the deletion happened very recently (within the same day, before the next snapshot), Railway snapshots will not help. Recovery options in that case:
+- Restore from the offsite `pg_dump` if one exists for that day.
+- If no offsite copy: data is unrecoverable. Document the loss; this is the gap the offsite-backup backlog item closes.
 
-For outages over a few hours, restore the most recent Postgres snapshot to a temporary host and redeploy the container elsewhere. Don't pre-build automation for this — it's vanishingly rare. Re-evaluate if it ever happens once.
+### Scenario 3: Railway is down (extended)
+
+For outages over a few hours:
+1. Pull the most recent offsite `pg_dump` (if backups are wired in).
+2. Spin up Postgres on another provider (or local Docker for emergency).
+3. Restore the dump and redeploy the container against the temporary database.
+
+Don't pre-build automation for this — it's vanishingly rare. Re-evaluate if it ever happens once.
 
 ---
 
 ## Routine operations
 
+### Running ad-hoc commands against production
+
+Two paths:
+- **Railway CLI:** `railway run --service <web-service-name> <command>` from the operator's terminal (requires `railway login` and project link).
+- **Railway Shell** (web): service → ⋯ menu → "Open Shell". Useful when you don't have CLI set up.
+
 ### Updating the bootstrap admin password (forgot the password before MFA was set)
 
-1. SSH into Render Shell.
-2. Set `INITIAL_ADMIN_PASSWORD` to a new value in env vars.
-3. Open a Render Shell → run `uv run bootstrap-admin`. **It will skip** because the admin already exists.
-4. Better path: use the admin password-reset flow added in commit `001b760` from another admin account.
-5. If no other admin exists and password is lost: connect to Postgres directly (Render dashboard → Connect → External connection string) and update the `password_hash` for the user. This is a last-resort manual operation.
+1. Set `INITIAL_ADMIN_PASSWORD` to a new value in the web service Variables tab.
+2. Run `railway run uv run bootstrap-admin`. **It will skip** because the admin already exists.
+3. Better path: use the admin password-reset flow added in commit `001b760` from another admin account.
+4. If no other admin exists and the password is lost: open the Railway Postgres plugin → Connect → copy the public connection string, then update the `password_hash` for the user with a SQL client. This is a last-resort manual operation.
 
 ### Manually re-running the seed
 
 Pre-deploy already runs it on every deploy; manual re-runs are rarely needed. If required:
 
 ```
-Render Shell → uv run seed
+railway run uv run seed
 ```
 
 Idempotent; safe to run anytime.
@@ -1215,18 +1277,17 @@ Insert this block at an appropriate spot:
 ```markdown
 ## Production deployment
 
-This app is designed to run on Render (web + Postgres) behind Cloudflare. See `docs/RUNBOOK.md` for the full first-deploy runbook and `docs/superpowers/specs/2026-04-29-hosting-design.md` for the architecture rationale.
+This app is designed to run on Railway (service + Postgres + volume) behind Cloudflare. See `docs/RUNBOOK.md` for the full first-deploy runbook and `docs/superpowers/specs/2026-04-29-hosting-design.md` for the architecture rationale (including the no-PITR / usage-billing tradeoffs that drove the choice).
 
 Quick summary:
 
-1. Create a Render Web Service from this repo (Dockerfile auto-detected).
-2. Provision Render Postgres Standard, link it to the web service.
-3. Set required env vars (see `.env.example` — `SECRET_KEY`, `ANTHROPIC_API_KEY`, `APP_BASE_URL`, `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD`, `ENVIRONMENT=production`).
-4. Configure pre-deploy command: `uv run alembic upgrade head && uv run seed && uv run bootstrap-admin`.
-5. Configure healthcheck path: `/healthz`.
-6. Add 10 GB persistent disk mounted at `/app/data`.
-7. Configure Cloudflare CNAME (proxied) and SSL mode Full (strict).
-8. Deploy. Log in with bootstrap credentials, complete MFA, **then remove `INITIAL_ADMIN_PASSWORD` from Render env vars**.
+1. Create a Railway project from this repo. `railway.toml` pins the builder to Docker and configures healthcheck + pre-deploy command.
+2. Add a Railway Postgres plugin; reference its `DATABASE_URL` from the web service's Variables.
+3. Add a 10 GB volume mounted at `/app/data`.
+4. Set required env vars (see `.env.example` — `SECRET_KEY`, `ANTHROPIC_API_KEY`, `APP_BASE_URL`, `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD`, `ENVIRONMENT=production`). Do NOT set `DATABASE_URL` or `PORT` — Railway provides them.
+5. Configure Cloudflare CNAME (proxied) → `<service>.up.railway.app`, SSL mode Full (strict). Add the custom domain on the Railway side too.
+6. Set a Railway usage alert (recommended) to catch unexpected cost changes.
+7. Deploy. Log in with bootstrap credentials, complete MFA, **then remove `INITIAL_ADMIN_PASSWORD` from Railway Variables**.
 ```
 
 - [ ] **Step 3: Commit.**
@@ -1249,14 +1310,14 @@ git commit -m "docs: add production deployment section to README"
 
 Specifically:
 
-1. In "Tech stack" section: change "SQLite + SQLAlchemy 2.x + Alembic" → "Postgres in production (Render); SQLite supported for local development. SQLAlchemy 2.x + Alembic."
+1. In "Tech stack" section: change "SQLite + SQLAlchemy 2.x + Alembic" → "Postgres in production (Railway); SQLite supported for local development. SQLAlchemy 2.x + Alembic."
 
 2. In "Tech stack" section, "Do not add" line: remove `Postgres` from the deny list. (Leave Docker if currently denied — Docker for the production runtime is now approved; update the line accordingly.)
 
 3. In "Immutable domain rules" section, **rule 7**: replace with —
 
 ```
-7. **Approved cloud services: Anthropic API, Render (web + Postgres + persistent disk), Cloudflare (DNS, registrar, proxy).** Not approved without re-discussion: S3/R2, Redis, Vercel, Celery, additional managed services. Docker is approved as the production runtime; local development still runs on host Python.
+7. **Approved cloud services: Anthropic API, Railway (web + Postgres + volume), Cloudflare (DNS, registrar, proxy).** Not approved without re-discussion: S3/R2, Redis, Vercel, Celery, additional managed services. Docker is approved as the production runtime; local development still runs on host Python.
 ```
 
 4. In "Immutable domain rules" section, **rule 6** (the "no customer-facing auth" rule): replace with —
@@ -1269,6 +1330,7 @@ Specifically:
 
 6. In "Project layout" section: add the new top-level files to the directory tree:
    - `Dockerfile`
+   - `railway.toml`
    - `docs/RUNBOOK.md`
    - `docs/BACKLOG.md`
    - `.github/workflows/ci.yml`
@@ -1283,7 +1345,7 @@ Specifically:
 
 ```bash
 git add CLAUDE.md
-git commit -m "docs(claude): update project rules to reflect Render+Postgres deployment"
+git commit -m "docs(claude): update project rules to reflect Railway+Postgres deployment"
 ```
 
 ---
@@ -1382,12 +1444,12 @@ Output a summary covering:
 - Any spec acceptance criteria still open (should be none).
 - Any TODOs added to `docs/BACKLOG.md` during execution.
 
-The operator then takes over for the actual Render + Cloudflare provisioning (Task 14 runbook).
+The operator then takes over for the actual Railway + Cloudflare provisioning (Task 14 runbook).
 
 ---
 
 ## Done
 
-The implementation phase is complete when Task 18 passes cleanly. Provisioning the Render and Cloudflare resources is a manual operator step; the runbook in `docs/RUNBOOK.md` walks through it.
+The implementation phase is complete when Task 18 passes cleanly. Provisioning the Railway and Cloudflare resources is a manual operator step; the runbook in `docs/RUNBOOK.md` walks through it.
 
 The R2 evidence-storage migration and offsite-backup work are tracked in `docs/BACKLOG.md` and are explicitly out of scope for this plan.
