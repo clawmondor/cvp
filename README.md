@@ -160,6 +160,22 @@ If `AUTO_LOGIN_USER_ID` is set, the app skips login entirely and goes straight t
 
 ---
 
+## Production deployment
+
+This app is designed to run on Railway (service + Postgres + volume) behind Cloudflare. See `docs/RUNBOOK.md` for the full first-deploy runbook and `docs/superpowers/specs/2026-04-29-hosting-design.md` for the architecture rationale (including the no-PITR / usage-billing tradeoffs that drove the choice).
+
+Quick summary:
+
+1. Create a Railway project from this repo. `railway.toml` pins the builder to Docker and configures healthcheck + pre-deploy command.
+2. Add a Railway Postgres plugin; reference its `DATABASE_URL` from the web service's Variables.
+3. Add a 10 GB volume mounted at `/app/data`.
+4. Set required env vars (see `.env.example` — `SECRET_KEY`, `ANTHROPIC_API_KEY`, `APP_BASE_URL`, `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD`, `ENVIRONMENT=production`). Do NOT set `DATABASE_URL` or `PORT` — Railway provides them.
+5. Configure Cloudflare CNAME (proxied) → `<service>.up.railway.app`, SSL mode Full (strict). Add the custom domain on the Railway side too.
+6. Set a Railway usage alert (recommended) to catch unexpected cost changes.
+7. Deploy. Log in with bootstrap credentials, complete MFA, **then remove `INITIAL_ADMIN_PASSWORD` from Railway Variables**.
+
+---
+
 ## Project layout
 
 ```
