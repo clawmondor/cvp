@@ -12,13 +12,13 @@ The full product requirements are in `@docs/PRD.md`. Read it before starting any
 
 - **Python 3.11+** with `uv` as the package manager
 - **FastAPI** for the web server, **Jinja2** for server-rendered HTML, **HTMX** for interactivity
-- **SQLite + SQLAlchemy 2.x + Alembic** for data
+- **Postgres in production (Railway); SQLite supported for local development. SQLAlchemy 2.x + Alembic.**
 - **Tailwind via CDN** (no build step)
 - **WeasyPrint** for PDF generation
 - **Anthropic Python SDK** for Claude Vision
 - **pytest + ruff** for tests and lint
 
-Do not add: React, Next.js, Docker, Postgres, Redis, Celery, any cloud services. Every one of those is explicitly deferred.
+Do not add: React, Next.js, Redis, Celery, any additional cloud services. Docker is approved as the production runtime. Postgres is approved (Railway). Every other addition is explicitly deferred.
 
 ## Commands
 
@@ -28,6 +28,7 @@ uv run dev             # start FastAPI on localhost:8000 with autoreload
 uv run alembic upgrade head   # apply migrations
 uv run alembic revision --autogenerate -m "msg"  # new migration
 uv run seed            # populate the 42 category rows (idempotent)
+uv run bootstrap-admin   # idempotent first-deploy admin bootstrap (see docs/RUNBOOK.md)
 uv run pytest          # run tests
 uv run ruff check .    # lint
 uv run ruff format .   # format
@@ -43,6 +44,16 @@ brew install pango cairo libffi
 ## Project layout (target — build toward this)
 
 ```
+Dockerfile             # Production container (WeasyPrint native libs + uv)
+railway.toml           # Railway builder pin, healthcheck, pre-deploy command
+.env.example           # Template for local .env (never commit the real one)
+.github/
+└── workflows/
+    └── ci.yml         # Lint + test + secrets-scan on push/PR
+docs/
+├── RUNBOOK.md         # First-deploy and disaster recovery runbook
+├── BACKLOG.md         # Deferred work tracker
+└── ...                # PRD, data-model, depreciation-schedule, AUTH, RBAC, QA
 src/cvp/
 ├── main.py            # FastAPI app entry
 ├── config.py          # pydantic-settings, reads .env
@@ -65,8 +76,8 @@ Full layout in `@docs/PRD.md` section 17.
 3. **ACV is computed, not entered.** The ACV of an item is always derived from the formula in `src/cvp/depreciation.py` unless an explicit `acv_override_cents` with a non-empty `acv_override_reason` is set. The UI must make overrides visually obvious.
 4. **Depreciation methodology is the one in `@docs/depreciation-schedule.md`.** Do not invent new useful lives, new categories, or new floor percentages without a code review and a note in the docs file.
 5. **No live retailer scraping in v0.** The specialist pastes URLs and captures screenshots manually (or via Playwright if it's already wired up). Scrapers are a v1 topic.
-6. **No customer-facing auth.** Single user on localhost. Do not add login, sessions, JWTs, or role-based access. If a feature seems to need auth, you're building something the PRD explicitly excluded.
-7. **No cloud services beyond the Anthropic API.** No S3, no Postgres, no Redis, no Vercel, no Docker. Local filesystem and SQLite.
+6. **No public registration. Attorneys do not log in (they receive PDF/CSV by email). Internal specialists and approved external collaborators authenticate via the existing auth/MFA/RBAC system.**
+7. **Approved cloud services: Anthropic API, Railway (web + Postgres + volume), Cloudflare (DNS, registrar, proxy).** Not approved without re-discussion: S3/R2, Redis, Vercel, Celery, additional managed services. Docker is approved as the production runtime; local development still runs on host Python.
 8. **Vision calls are sequential with a 500ms pause.** Do not parallelize them in v0 — rate limits and cost predictability come first.
 9. **Never commit `.env`, `./data/`, or `./backups/`.** All of these are in `.gitignore`.
 
@@ -116,3 +127,6 @@ When writing any user-facing text, report template content, UI copy, README, or 
 - `@docs/PRD.md` — full product requirements, data model, API surface, acceptance criteria
 - `@docs/data-model.md` — schema rationale and migration history
 - `@docs/depreciation-schedule.md` — the 42-category useful-life table (source of truth for the seed script)
+- `@docs/RUNBOOK.md` — production runbook (first deploy, disaster recovery, routine ops)
+- `@docs/BACKLOG.md` — deferred work tracker
+- `@docs/superpowers/specs/2026-04-29-hosting-design.md` — hosting design (Railway + Cloudflare architecture, tradeoffs)
