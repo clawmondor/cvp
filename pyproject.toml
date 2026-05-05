@@ -16,6 +16,7 @@ dependencies = [
     "pandas>=2.2",
     "pillow>=10.0",
     "httpx>=0.27",
+    "psycopg[binary]>=3.2",
     "pyjwt>=2.8",
     "bcrypt>=4.1",
     "cryptography>=42.0",
@@ -33,6 +34,7 @@ dev = [
 dev = "cvp.main:run_dev"
 seed = "cvp.seed:main"
 seed-auth = "cvp.seed_auth:main"
+bootstrap-admin = "cvp.bootstrap_admin:main"
 
 [build-system]
 requires = ["hatchling"]

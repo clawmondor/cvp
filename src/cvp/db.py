@@ -9,6 +9,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from cvp.config import settings
 
 
+def _is_sqlite_url(url: str) -> bool:
+    return url.startswith("sqlite:") or url.startswith("sqlite+")
+
+
 def _ensure_data_dirs() -> None:
     """Create required data directories at module import time."""
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
@@ -17,20 +21,29 @@ def _ensure_data_dirs() -> None:
     Path(db_file).parent.mkdir(parents=True, exist_ok=True)
 
 
-_ensure_data_dirs()
+_is_sqlite = _is_sqlite_url(settings.database_url)
 
-engine = create_engine(
-    settings.database_url,
-    connect_args={"check_same_thread": False},
-)
+if _is_sqlite:
+    _ensure_data_dirs()
+    engine = create_engine(
+        settings.database_url,
+        connect_args={"check_same_thread": False},
+    )
 
+    @event.listens_for(engine, "connect")
+    def _set_wal_mode(dbapi_connection, connection_record) -> None:  # noqa: ANN001
+        """Enable WAL journal mode for SQLite."""
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.close()
 
-@event.listens_for(engine, "connect")
-def _set_wal_mode(dbapi_connection, connection_record) -> None:  # noqa: ANN001
-    """Enable WAL journal mode for SQLite."""
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.close()
+else:
+    engine = create_engine(
+        settings.database_url,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=5,
+    )
 
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
