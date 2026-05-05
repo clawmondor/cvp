@@ -1,4 +1,3 @@
-import pytest
 from cvp.config import get_settings
 
 
