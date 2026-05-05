@@ -34,6 +34,7 @@ dev = [
 dev = "cvp.main:run_dev"
 seed = "cvp.seed:main"
 seed-auth = "cvp.seed_auth:main"
+bootstrap-admin = "cvp.bootstrap_admin:main"
 
 [build-system]
 requires = ["hatchling"]
