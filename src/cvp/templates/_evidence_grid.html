@@ -1,3 +1,6 @@
+{% if vision_models is defined and vision_models %}
+{% include "_vision_model_picker.html" %}
+{% endif %}
 <div id="evidence-grid"
      class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
   {% for f in evidence_files %}
@@ -26,6 +29,7 @@
         {% else %}
         <form hx-post="/api/matters/{{ matter_id }}/vision-scan"
               hx-target="#scan-progress-{{ f.id }}"
+              hx-include="#model_slug"
               hx-swap="innerHTML"
               class="mt-1">
           <input type="hidden" name="evidence_file_ids" value="{{ f.id }}">

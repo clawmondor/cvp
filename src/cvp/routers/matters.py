@@ -13,6 +13,8 @@ from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, require_active_user, require_matter_role
 from cvp.models import Category, Item, Matter
+from cvp.models_auth import User as UserORM
+from cvp.models_vision import VisionModel
 from cvp.services.audit import get_client_ip, should_debounce_view, write_audit_log
 
 BASE_DIR = Path(__file__).parent.parent
@@ -133,6 +135,19 @@ def matter_detail(
         evidence_files = sorted(matter.evidence_files, key=lambda f: f.created_at, reverse=True)
         rooms = sorted(matter.rooms, key=lambda r: r.sort_order)
         categories = db.query(Category).order_by(Category.id).all()
+        vision_models = (
+            db.query(VisionModel)
+            .filter_by(is_enabled=True)
+            .order_by(VisionModel.recommended.desc(), VisionModel.display_name.asc())
+            .all()
+        )
+        db_user = db.query(UserORM).filter_by(id=user.id).first()
+        last_slug = db_user.last_vision_model_slug if db_user else None
+        default_vision_slug = None
+        if last_slug and any(vm.slug == last_slug for vm in vision_models):
+            default_vision_slug = last_slug
+        if default_vision_slug is None:
+            default_vision_slug = next((vm.slug for vm in vision_models if vm.is_default), None)
         debounce = should_debounce_view(db, user.id, "matter.view", matter_id)
     finally:
         db.close()
@@ -164,6 +179,8 @@ def matter_detail(
             "loss_types": LOSS_TYPES,
             "loss_events": LOSS_EVENTS,
             "user": user,
+            "vision_models": vision_models,
+            "default_vision_slug": default_vision_slug,
         },
     )
 

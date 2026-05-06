@@ -1,0 +1,17 @@
+<div id="vision-model-picker-row" class="mb-3 flex flex-wrap items-center gap-3 text-sm">
+  <label for="model_slug" class="font-medium text-gray-700">Vision model:</label>
+  <select id="model_slug" name="model_slug"
+          hx-get="/api/matters/{{ matter_id }}/vision-scan-estimate"
+          hx-trigger="change"
+          hx-target="#cost-estimate"
+          hx-swap="outerHTML"
+          hx-vals='{"count": {{ evidence_files | selectattr("kind", "equalto", "image") | list | length }}}'
+          class="rounded border px-2 py-1 text-sm">
+    {% for vm in vision_models %}
+    <option value="{{ vm.slug }}" {% if vm.slug == default_vision_slug %}selected{% endif %}>
+      {{ vm.display_name }}{% if vm.prompt_image_cost_cents is not none %} — ~${{ "%.4f"|format(vm.prompt_image_cost_cents / 100) }}/img{% endif %}{% if not vm.supports_bbox %} (no auto-crop){% endif %}{% if vm.recommended %} ★{% endif %}
+    </option>
+    {% endfor %}
+  </select>
+  <span id="cost-estimate" class="text-xs text-gray-500"></span>
+</div>
