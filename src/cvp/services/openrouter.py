@@ -109,13 +109,15 @@ def fetch_models() -> list[dict[str, Any]]:
 
 def parse_pricing_to_cents(value: Any) -> int | None:
     """OpenRouter returns pricing as decimal-string USD-per-image (e.g. '0.025').
-    Convert to integer cents.  Returns None for missing, zero, or unparseable inputs."""
+    Convert to integer cents.  Returns None for missing, negative, or unparseable inputs.
+    Sub-cent prices (e.g. '$0.003/img') round to 0 cents and are stored as 0 — shown
+    as '~$0.00' rather than '~$?' so the specialist knows the pricing was captured."""
     if value is None or value == "":
         return None
     try:
         f = float(value)
     except (TypeError, ValueError):
         return None
-    if f <= 0:
+    if f < 0:
         return None
     return round(f * 100)

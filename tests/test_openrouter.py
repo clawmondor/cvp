@@ -83,7 +83,7 @@ class TestParsePricing:
         result_025 = parse_pricing_to_cents("0.025")
         assert result_025 in (2, 3)  # accept either due to float precision
         assert parse_pricing_to_cents("0.10") == 10
-        assert parse_pricing_to_cents("0") is None
+        assert parse_pricing_to_cents("0") == 0  # known-free: stored as 0, not None
         assert parse_pricing_to_cents("") is None
         assert parse_pricing_to_cents(None) is None
         assert parse_pricing_to_cents("not-a-number") is None
