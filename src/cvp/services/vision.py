@@ -1,25 +1,30 @@
-"""Vision scan service — sequential image processing via Anthropic API."""
+"""Vision scan service — sequential image processing via OpenRouter."""
 
-import base64
 import json
+import logging
 import re
 import threading
 import time
 import uuid
 from pathlib import Path
 
-import anthropic
+import httpx
 from PIL import Image
 from sqlalchemy import func as sqlfunc
 
 from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.models import Category, EvidenceFile, Item, ItemCrop, VisionRun
+from cvp.models_vision import VisionModel
+from cvp.services import openrouter
 from cvp.services.crop import recrop_item_crop
+from cvp.services.vision_adapters import resolve as resolve_adapter
 from cvp.services.vision_prompts import SCAN_PROMPT_VERSION, build_scan_prompt
 
+logger = logging.getLogger(__name__)
+
 # ---------------------------------------------------------------------------
-# In-memory job registry (single-user local app — no persistence needed)
+# In-memory job registry
 # ---------------------------------------------------------------------------
 
 _jobs: dict[str, dict] = {}
@@ -30,7 +35,7 @@ def create_job(file_ids: list[str]) -> str:
     job_id = str(uuid.uuid4())[:8]
     with _lock:
         _jobs[job_id] = {
-            "status": "running",  # running | done | error
+            "status": "running",
             "progress": 0,
             "total": len(file_ids),
             "items_created": 0,
@@ -54,16 +59,12 @@ def _update_job(job_id: str, **kwargs) -> None:
 
 
 def _match_category_id(hint: str | None, categories: list[Category]) -> int:
-    """Best-effort fuzzy match of Vision's category_hint to a DB category id."""
-    if not hint:
-        return categories[-1].id  # Miscellaneous household goods
-
+    if not hint or not categories:
+        return categories[-1].id if categories else 1
     hint_lower = hint.lower()
-    # Exact or substring match
     for cat in categories:
         if hint_lower in cat.name.lower() or cat.name.lower() in hint_lower:
             return cat.id
-    # Word-level match
     hint_words = set(hint_lower.split())
     best_id, best_score = categories[-1].id, 0
     for cat in categories:
@@ -80,7 +81,6 @@ def _match_category_id(hint: str | None, categories: list[Category]) -> int:
 
 
 def _parse_response(text: str) -> list[dict]:
-    """Extract a JSON array from the model response, tolerating markdown fences."""
     text = text.strip()
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
@@ -102,50 +102,27 @@ def _parse_response(text: str) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Bounding box helpers
+# Core scan logic
 # ---------------------------------------------------------------------------
 
 
-def _parse_bbox(raw: object, img_width: int, img_height: int) -> tuple[int, int, int, int] | None:
-    """
-    Parse and validate a bounding_box value from the Vision response.
-
-    Returns (left, upper, right, lower) clamped to image bounds with 15% padding,
-    or None if the bbox is missing or malformed.
-    """
-    if not isinstance(raw, (list, tuple)) or len(raw) != 4:
-        return None
-    try:
-        left, upper, right, lower = (int(v) for v in raw)
-    except (TypeError, ValueError):
-        return None
-
-    # Apply 15% generous padding
-    pad_x = round((right - left) * 0.15)
-    pad_y = round((lower - upper) * 0.15)
-    left = max(0, left - pad_x)
-    upper = max(0, upper - pad_y)
-    right = min(img_width, right + pad_x)
-    lower = min(img_height, lower + pad_y)
-
-    if left >= right or upper >= lower:
-        return None
-    return left, upper, right, lower
-
-
-# ---------------------------------------------------------------------------
-# Core scan logic (called from BackgroundTasks thread)
-# ---------------------------------------------------------------------------
-
-
-def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
-    """Process each evidence file sequentially, creating Item + ItemCrop rows."""
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+def run_scan(job_id: str, matter_id: str, file_ids: list[str], model_slug: str) -> None:
+    """Process each evidence file sequentially via OpenRouter."""
     upload_base = Path(settings.upload_dir).resolve()
     crop_base = Path(settings.crop_dir).resolve()
 
     db = SessionLocal()
     try:
+        vm = db.query(VisionModel).filter_by(slug=model_slug, is_enabled=True).first()
+        if vm is None:
+            with _lock:
+                _jobs[job_id]["errors"].append(f"unknown or disabled model: {model_slug}")
+                _jobs[job_id]["status"] = "error"
+            return
+        adapter_name = vm.adapter
+        adapter_fn = resolve_adapter(adapter_name)
+        cost_snapshot = vm.prompt_image_cost_cents
+
         categories = db.query(Category).order_by(Category.id).all()
 
         for idx, file_id in enumerate(file_ids):
@@ -155,40 +132,26 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                     _update_job(job_id, progress=idx + 1)
                     continue
 
-                image_path = (upload_base / ef.stored_path).resolve()
+                # Support both absolute paths (test) and relative paths (production)
+                image_path = Path(ef.stored_path)
+                if not image_path.is_absolute():
+                    image_path = (upload_base / ef.stored_path).resolve()
                 if not image_path.exists():
                     _update_job(job_id, progress=idx + 1)
                     continue
 
-                # Read image dimensions for the prompt
                 with Image.open(image_path) as img:
                     img_width, img_height = img.size
 
                 mime = ef.mime_type or "image/jpeg"
-                image_data = base64.standard_b64encode(image_path.read_bytes()).decode()
+                image_bytes = image_path.read_bytes()
 
-                response = client.messages.create(
-                    model=settings.vision_model,
-                    max_tokens=4096,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "image",
-                                    "source": {
-                                        "type": "base64",
-                                        "media_type": mime,
-                                        "data": image_data,
-                                    },
-                                },
-                                {"type": "text", "text": build_scan_prompt(img_width, img_height)},
-                            ],
-                        }
-                    ],
+                raw_text = openrouter.call_vision(
+                    model_slug=model_slug,
+                    image_bytes=image_bytes,
+                    mime_type=mime,
+                    prompt=build_scan_prompt(img_width, img_height),
                 )
-
-                raw_text = response.content[0].text if response.content else ""
                 parsed = _parse_response(raw_text)
                 items_this_file = 0
 
@@ -211,12 +174,7 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                     if qty < 1:
                         qty = 1
                     condition = str(raw_item.get("condition") or "average")
-                    if condition not in (
-                        "excellent",
-                        "above_average",
-                        "average",
-                        "below_average",
-                    ):
+                    if condition not in ("excellent", "above_average", "average", "below_average"):
                         condition = "average"
 
                     search_hint = str(raw_item.get("search_hint") or "").strip() or None
@@ -243,11 +201,10 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                         ),
                     )
                     db.add(item)
-                    db.flush()  # get item.id before creating ItemCrop
+                    db.flush()
 
-                    # Attempt crop
-                    bbox = _parse_bbox(raw_item.get("bounding_box"), img_width, img_height)
-                    if bbox:
+                    bbox = adapter_fn(raw_item.get("bounding_box"), img_width, img_height)
+                    if bbox is not None:
                         left, upper, right, lower = bbox
                         item_crop = ItemCrop(
                             item_id=item.id,
@@ -267,10 +224,12 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                 vr = VisionRun(
                     matter_id=matter_id,
                     evidence_file_id=file_id,
-                    model=settings.vision_model,
+                    model=model_slug,
                     prompt_version=SCAN_PROMPT_VERSION,
                     raw_response=raw_text,
                     items_created=items_this_file,
+                    adapter=adapter_name,
+                    cost_cents_estimated=cost_snapshot,
                 )
                 db.add(vr)
                 ef.scanned = True
@@ -280,13 +239,21 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
                     _jobs[job_id]["progress"] = idx + 1
                     _jobs[job_id]["items_created"] += items_this_file
 
-            except anthropic.APIError as exc:
+            except openrouter.OpenRouterError as exc:
                 db.rollback()
                 with _lock:
-                    _jobs[job_id]["errors"].append(f"File {file_id}: API error — {exc}")
+                    _jobs[job_id]["errors"].append(
+                        f"File {file_id}: API error — {exc.status} {exc.message}"
+                    )
+                    _jobs[job_id]["progress"] = idx + 1
+            except httpx.TimeoutException:
+                db.rollback()
+                with _lock:
+                    _jobs[job_id]["errors"].append(f"File {file_id}: timeout")
                     _jobs[job_id]["progress"] = idx + 1
             except Exception as exc:  # noqa: BLE001
                 db.rollback()
+                logger.exception("vision scan failure")
                 with _lock:
                     _jobs[job_id]["errors"].append(f"File {file_id}: {exc}")
                     _jobs[job_id]["progress"] = idx + 1
@@ -301,12 +268,17 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Cost estimate (rough — shown in UI before scan)
+# Cost estimate
 # ---------------------------------------------------------------------------
 
-_COST_PER_IMAGE_USD = 0.025
 
-
-def estimate_cost(n_images: int) -> str:
-    total = n_images * _COST_PER_IMAGE_USD
-    return f"~${total:.2f}"
+def estimate_cost(n_images: int, model_slug: str) -> str:
+    db = SessionLocal()
+    try:
+        vm = db.query(VisionModel).filter_by(slug=model_slug).first()
+    finally:
+        db.close()
+    if vm is None or vm.prompt_image_cost_cents is None:
+        return "~$?"
+    total_cents = n_images * vm.prompt_image_cost_cents
+    return f"~${total_cents / 100:.2f}"

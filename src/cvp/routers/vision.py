@@ -55,7 +55,9 @@ async def start_scan(
         )
 
     job_id = vision_svc.create_job(image_ids)
-    background_tasks.add_task(vision_svc.run_scan, job_id, matter_id, image_ids)
+    background_tasks.add_task(
+        vision_svc.run_scan, job_id, matter_id, image_ids, "anthropic/claude-opus-4"
+    )
     background_tasks.add_task(
         write_audit_log,
         user_id=user.id,
