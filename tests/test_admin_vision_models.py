@@ -188,3 +188,50 @@ def test_disable_non_default_works(client_admin, db_session):
     assert resp.status_code == 200
     db_session.expire_all()
     assert db_session.query(VisionModel).filter_by(id=nd_id).one().is_enabled is False
+
+
+from cvp.models_audit import AuditLog  # noqa: E402
+
+
+def test_add_model_writes_audit_log(client_admin, db_session, monkeypatch):
+    fake_catalog = [{"id": "x/audit-test", "name": "Audit Test",
+                     "architecture": {"input_modalities": ["image", "text"]},
+                     "pricing": {"image": "0.001"}, "context_length": 100000, "description": ""}]
+    monkeypatch.setattr(
+        "cvp.routers.admin.vision_models.openrouter.fetch_models", lambda: fake_catalog
+    )
+    vm_router._catalog_cache = None
+
+    client_admin.post("/admin/vision-models", data={"slug": "x/audit-test", "adapter": "none"})
+
+    # Check the shared real DB for the audit log (write_audit_log uses SessionLocal directly)
+    from cvp.db import SessionLocal as RealSession
+    real_db = RealSession()
+    try:
+        logs = real_db.query(AuditLog).filter_by(action="vision_model.add").all()
+        matched = [log for log in logs if "x/audit-test" in str(log.detail or "")]
+        assert matched, "Expected an audit log entry for vision_model.add with slug x/audit-test"
+    finally:
+        real_db.close()
+
+
+def test_set_default_writes_audit_log(client_admin, db_session):
+    second = VisionModel(slug="x/for-default-audit", display_name="D", adapter="none",
+                         supports_bbox=False, is_default=False, is_enabled=True)
+    db_session.add(second)
+    db_session.commit()
+
+    client_admin.post(f"/admin/vision-models/{second.id}/set-default")
+
+    from cvp.db import SessionLocal as RealSession
+    real_db = RealSession()
+    try:
+        log = (
+            real_db.query(AuditLog)
+            .filter_by(action="vision_model.set_default")
+            .order_by(AuditLog.id.desc())
+            .first()
+        )
+        assert log is not None
+    finally:
+        real_db.close()

@@ -14,6 +14,7 @@ from cvp.dependencies import CurrentUser, require_system_admin
 from cvp.models import VisionRun
 from cvp.models_vision import VisionModel
 from cvp.services import openrouter
+from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.vision_models import is_recommended, suggest_adapter
 
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -111,6 +112,14 @@ def add_model(
     )
     db.add(row)
     db.commit()
+    write_audit_log(
+        user_id=user.id,
+        action="vision_model.add",
+        resource_type="vision_model",
+        resource_id=str(row.id),
+        detail={"slug": slug, "adapter": adapter},
+        ip_address=get_client_ip(request),
+    )
     return RedirectResponse(url="/admin/vision-models", status_code=303)
 
 
@@ -131,6 +140,14 @@ def set_default(
     )
     target.is_default = True
     db.commit()
+    write_audit_log(
+        user_id=user.id,
+        action="vision_model.set_default",
+        resource_type="vision_model",
+        resource_id=str(model_id),
+        detail={"slug": target.slug},
+        ip_address=get_client_ip(request),
+    )
     return RedirectResponse("/admin/vision-models", status_code=303)
 
 
@@ -148,6 +165,14 @@ def disable_model(
         raise HTTPException(400, "cannot disable the default model")
     row.is_enabled = False
     db.commit()
+    write_audit_log(
+        user_id=user.id,
+        action="vision_model.disable",
+        resource_type="vision_model",
+        resource_id=str(model_id),
+        detail={"slug": row.slug},
+        ip_address=get_client_ip(request),
+    )
     return _render_row(request, row, user)
 
 
@@ -163,6 +188,14 @@ def enable_model(
         raise HTTPException(404)
     row.is_enabled = True
     db.commit()
+    write_audit_log(
+        user_id=user.id,
+        action="vision_model.enable",
+        resource_type="vision_model",
+        resource_id=str(model_id),
+        detail={"slug": row.slug},
+        ip_address=get_client_ip(request),
+    )
     return _render_row(request, row, user)
 
 
@@ -187,6 +220,14 @@ def refresh_pricing(
     )
     row.context_length = entry.get("context_length")
     db.commit()
+    write_audit_log(
+        user_id=user.id,
+        action="vision_model.refresh_pricing",
+        resource_type="vision_model",
+        resource_id=str(model_id),
+        detail={"slug": row.slug},
+        ip_address=get_client_ip(request),
+    )
     return _render_row(request, row, user)
 
 
@@ -205,8 +246,17 @@ def delete_model(
     in_use = db.query(VisionRun).filter(VisionRun.model == row.slug).first() is not None
     if in_use:
         raise HTTPException(409, "model in use by historical scans — disable instead")
+    slug = row.slug
     db.delete(row)
     db.commit()
+    write_audit_log(
+        user_id=user.id,
+        action="vision_model.delete",
+        resource_type="vision_model",
+        resource_id=str(model_id),
+        detail={"slug": slug},
+        ip_address=get_client_ip(request),
+    )
     return HTMLResponse("")
 
 
