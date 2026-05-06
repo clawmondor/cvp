@@ -153,8 +153,12 @@ def test_admin_vision_models_add_rejects_duplicate(client_admin, monkeypatch):
 def test_set_default_flips_previous(client_admin, db_session):
     # Add a second model
     second = VisionModel(
-        slug="x/second", display_name="Second", adapter="none",
-        supports_bbox=False, is_default=False, is_enabled=True,
+        slug="x/second",
+        display_name="Second",
+        adapter="none",
+        supports_bbox=False,
+        is_default=False,
+        is_enabled=True,
     )
     db_session.add(second)
     db_session.commit()
@@ -177,8 +181,12 @@ def test_disable_default_is_rejected(client_admin, db_session):
 
 def test_disable_non_default_works(client_admin, db_session):
     non_default = VisionModel(
-        slug="x/ndisable", display_name="ND", adapter="none",
-        supports_bbox=False, is_default=False, is_enabled=True,
+        slug="x/ndisable",
+        display_name="ND",
+        adapter="none",
+        supports_bbox=False,
+        is_default=False,
+        is_enabled=True,
     )
     db_session.add(non_default)
     db_session.commit()
@@ -194,9 +202,16 @@ from cvp.models_audit import AuditLog  # noqa: E402
 
 
 def test_add_model_writes_audit_log(client_admin, db_session, monkeypatch):
-    fake_catalog = [{"id": "x/audit-test", "name": "Audit Test",
-                     "architecture": {"input_modalities": ["image", "text"]},
-                     "pricing": {"image": "0.001"}, "context_length": 100000, "description": ""}]
+    fake_catalog = [
+        {
+            "id": "x/audit-test",
+            "name": "Audit Test",
+            "architecture": {"input_modalities": ["image", "text"]},
+            "pricing": {"image": "0.001"},
+            "context_length": 100000,
+            "description": "",
+        }
+    ]
     monkeypatch.setattr(
         "cvp.routers.admin.vision_models.openrouter.fetch_models", lambda: fake_catalog
     )
@@ -206,6 +221,7 @@ def test_add_model_writes_audit_log(client_admin, db_session, monkeypatch):
 
     # Check the shared real DB for the audit log (write_audit_log uses SessionLocal directly)
     from cvp.db import SessionLocal as RealSession
+
     real_db = RealSession()
     try:
         logs = real_db.query(AuditLog).filter_by(action="vision_model.add").all()
@@ -216,14 +232,21 @@ def test_add_model_writes_audit_log(client_admin, db_session, monkeypatch):
 
 
 def test_set_default_writes_audit_log(client_admin, db_session):
-    second = VisionModel(slug="x/for-default-audit", display_name="D", adapter="none",
-                         supports_bbox=False, is_default=False, is_enabled=True)
+    second = VisionModel(
+        slug="x/for-default-audit",
+        display_name="D",
+        adapter="none",
+        supports_bbox=False,
+        is_default=False,
+        is_enabled=True,
+    )
     db_session.add(second)
     db_session.commit()
 
     client_admin.post(f"/admin/vision-models/{second.id}/set-default")
 
     from cvp.db import SessionLocal as RealSession
+
     real_db = RealSession()
     try:
         log = (

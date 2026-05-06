@@ -135,9 +135,7 @@ def set_default(
         raise HTTPException(404)
     if not target.is_enabled:
         raise HTTPException(400, "cannot make a disabled model the default")
-    db.query(VisionModel).filter(VisionModel.is_default.is_(True)).update(
-        {"is_default": False}
-    )
+    db.query(VisionModel).filter(VisionModel.is_default.is_(True)).update({"is_default": False})
     target.is_default = True
     db.commit()
     write_audit_log(

@@ -59,14 +59,10 @@ async def start_scan(
         db.close()
 
     if not image_ids:
-        return HTMLResponse(
-            '<p class="text-sm text-red-600">No image files selected.</p>'
-        )
+        return HTMLResponse('<p class="text-sm text-red-600">No image files selected.</p>')
 
     job_id = vision_svc.create_job(image_ids)
-    background_tasks.add_task(
-        vision_svc.run_scan, job_id, matter_id, image_ids, model_slug
-    )
+    background_tasks.add_task(vision_svc.run_scan, job_id, matter_id, image_ids, model_slug)
     background_tasks.add_task(
         write_audit_log,
         user_id=user.id,
@@ -108,6 +104,4 @@ def estimate(
     user: CurrentUser = Depends(require_matter_role("contributor")),
 ) -> HTMLResponse:
     label = vision_svc.estimate_cost(count, model_slug)
-    return HTMLResponse(
-        f'<span id="cost-estimate" class="text-xs text-gray-500">{label}</span>'
-    )
+    return HTMLResponse(f'<span id="cost-estimate" class="text-xs text-gray-500">{label}</span>')

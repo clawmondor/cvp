@@ -26,6 +26,7 @@ CONTRIBUTOR_ID = "contrib-id"
 MATTER_ID = "matter-123"
 FILE_ID = "file-456"
 
+
 # The dependency function instance actually registered on the router endpoints.
 # require_matter_role() is a factory — each call returns a NEW closure, so we
 # must grab the exact object that was wired into start_scan / poll_scan /
@@ -149,8 +150,7 @@ def test_start_scan_records_last_used(client_contributor, db_session, monkeypatc
 def test_cost_estimate_endpoint(client_contributor, db_session, monkeypatch):
     monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: db_session)
     resp = client_contributor.get(
-        f"/api/matters/{MATTER_ID}/vision-scan-estimate"
-        "?count=4&model_slug=anthropic/claude-opus-4"
+        f"/api/matters/{MATTER_ID}/vision-scan-estimate?count=4&model_slug=anthropic/claude-opus-4"
     )
     assert resp.status_code == 200
     assert "$" in resp.text

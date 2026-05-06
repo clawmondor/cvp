@@ -22,6 +22,7 @@ def test_settings_has_openrouter_fields(monkeypatch):
     monkeypatch.setenv("OPENROUTER_REFERER", "https://cvp.example")
     monkeypatch.setenv("OPENROUTER_APP_TITLE", "CVP-test")
     from cvp.config import Settings
+
     s = Settings()
     assert s.openrouter_api_key == "sk-or-v1-test"
     assert s.openrouter_referer == "https://cvp.example"
@@ -30,6 +31,7 @@ def test_settings_has_openrouter_fields(monkeypatch):
 
 def test_settings_openrouter_defaults():
     from cvp.config import Settings
+
     s = Settings(_env_file=None)
     assert s.openrouter_api_key == ""
     assert s.openrouter_referer == ""

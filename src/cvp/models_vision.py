@@ -8,7 +8,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
-from cvp.models import Base, _new_uuid
+from cvp.models import Base
 
 
 class VisionModel(Base):
