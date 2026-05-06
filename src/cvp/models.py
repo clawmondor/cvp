@@ -200,6 +200,8 @@ class VisionRun(Base):
     prompt_version: Mapped[str] = mapped_column(String, default="")
     raw_response: Mapped[str] = mapped_column(Text, default="")
     items_created: Mapped[int] = mapped_column(Integer, default=0)
+    adapter: Mapped[str] = mapped_column(String, nullable=False, default="none")
+    cost_cents_estimated: Mapped[int | None] = mapped_column(Integer, nullable=True)
     ran_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relationships
@@ -280,3 +282,4 @@ import cvp.models_access as _access_models  # noqa: F401, E402 — register acce
 import cvp.models_audit as _audit_models  # noqa: F401, E402
 import cvp.models_auth as _auth_models  # noqa: F401, E402 — register auth tables with Base
 import cvp.models_comments as _comment_models  # noqa: F401, E402 — register comments table with Base
+import cvp.models_vision as _vision_models  # noqa: F401, E402 — register vision_models table with Base
