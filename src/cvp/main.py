@@ -31,6 +31,7 @@ from cvp.routers import (
 from cvp.routers.admin import internal as admin_internal
 from cvp.routers.admin import org as admin_org
 from cvp.routers.admin import system as admin_system
+from cvp.routers.admin import vision_models as admin_vision_models
 
 BASE_DIR = Path(__file__).parent
 
@@ -62,6 +63,7 @@ app.include_router(profile.router)
 app.include_router(admin_system.router)
 app.include_router(admin_internal.router)
 app.include_router(admin_org.router)
+app.include_router(admin_vision_models.router)
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 

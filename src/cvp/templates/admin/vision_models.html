@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Vision Models — Admin{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl p-6">
+  <div class="mb-4 flex items-center justify-between">
+    <h1 class="text-xl font-semibold">Vision Models</h1>
+    <button hx-get="/admin/vision-models/add"
+            hx-target="#add-modal"
+            class="rounded bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white">
+      Add model
+    </button>
+  </div>
+
+  <table class="w-full text-sm">
+    <thead class="border-b text-left text-xs uppercase text-gray-500">
+      <tr>
+        <th class="py-2">Name</th>
+        <th>Slug</th>
+        <th>Per-image</th>
+        <th>Bbox</th>
+        <th>Default</th>
+        <th>Enabled</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="vision-models-tbody">
+      {% for r in rows %}
+        {% include "admin/_vision_models_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div id="add-modal"></div>
+</div>
+{% endblock %}

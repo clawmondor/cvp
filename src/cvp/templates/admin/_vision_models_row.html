@@ -1,0 +1,39 @@
+<tr id="vm-row-{{ r.id }}" class="border-b">
+  <td class="py-2 font-medium">
+    {{ r.display_name }}
+    {% if r.recommended %}<span title="Recommended" class="ml-1 text-amber-500">&#9733;</span>{% endif %}
+  </td>
+  <td class="font-mono text-xs">{{ r.slug }}</td>
+  <td>
+    {% if r.prompt_image_cost_cents is none %}<span class="text-gray-400">?</span>
+    {% else %}${{ "%.4f"|format(r.prompt_image_cost_cents / 100) }}
+    {% endif %}
+  </td>
+  <td>{% if r.supports_bbox %}&#10003;{% else %}&mdash;{% endif %}</td>
+  <td>
+    <form hx-post="/admin/vision-models/{{ r.id }}/set-default"
+          hx-target="#vision-models-tbody" hx-swap="outerHTML">
+      <input type="radio" name="default-radio" {% if r.is_default %}checked{% endif %}
+             onchange="this.form.requestSubmit()">
+    </form>
+  </td>
+  <td>
+    <form hx-post="/admin/vision-models/{{ r.id }}/{% if r.is_enabled %}disable{% else %}enable{% endif %}"
+          hx-target="#vm-row-{{ r.id }}" hx-swap="outerHTML">
+      <button class="text-xs {% if r.is_enabled %}text-green-600{% else %}text-gray-400{% endif %}">
+        {% if r.is_enabled %}enabled{% else %}disabled{% endif %}
+      </button>
+    </form>
+  </td>
+  <td class="space-x-2 text-xs">
+    <button hx-post="/admin/vision-models/{{ r.id }}/refresh-pricing"
+            hx-target="#vm-row-{{ r.id }}" hx-swap="outerHTML"
+            class="text-blue-600">refresh</button>
+    {% if not r.is_default %}
+    <button hx-delete="/admin/vision-models/{{ r.id }}"
+            hx-confirm="Delete {{ r.slug }}? Only allowed if no scans reference it."
+            hx-target="#vm-row-{{ r.id }}" hx-swap="outerHTML"
+            class="text-red-600">delete</button>
+    {% endif %}
+  </td>
+</tr>
