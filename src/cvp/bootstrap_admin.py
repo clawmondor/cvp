@@ -24,9 +24,7 @@ def main() -> None:
     db_url = _coerce_pg_url(settings.database_url)
     engine = create_engine(
         db_url,
-        connect_args={"check_same_thread": False}
-        if db_url.startswith("sqlite")
-        else {},
+        connect_args={"check_same_thread": False} if db_url.startswith("sqlite") else {},
     )
     Session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
