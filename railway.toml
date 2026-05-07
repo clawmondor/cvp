@@ -2,7 +2,7 @@
 builder = "DOCKERFILE"
 
 [deploy]
-startCommand = "uv run uvicorn cvp.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips '*'"
+startCommand = "uv run uvicorn cvp.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips '*'"
 preDeployCommand = "uv run alembic upgrade head && uv run seed && uv run bootstrap-admin"
 healthcheckPath = "/healthz"
 healthcheckTimeout = 30
