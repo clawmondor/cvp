@@ -48,11 +48,12 @@ def _decode_and_build_user(token: str, secret: str) -> "CurrentUser | None":
     )
 
 
-def _validate_csrf(request: Request, source: str | None) -> None:
+async def _validate_csrf(request: Request, source: str | None) -> None:
     """Validate CSRF double-submit cookie for cookie-based auth.
 
-    Only required for mutating methods (POST, PATCH, PUT, DELETE)
-    when auth came from a cookie (not Authorization header).
+    Accepts the token from either the X-CSRF-Token header (HTMX requests)
+    or a hidden _csrf form field (plain HTML form POSTs).
+    Only required for mutating methods when auth came from a cookie.
     """
     if source != "cookie":
         return
@@ -60,10 +61,23 @@ def _validate_csrf(request: Request, source: str | None) -> None:
         return
 
     csrf_cookie = request.cookies.get("cvp_csrf", "")
-    csrf_header = request.headers.get("x-csrf-token", "")
-
-    if not csrf_cookie or not csrf_header or csrf_cookie != csrf_header:
+    if not csrf_cookie:
         raise HTTPException(status_code=403, detail="CSRF validation failed")
+
+    # HTMX path: token arrives as a request header
+    csrf_header = request.headers.get("x-csrf-token", "")
+    if csrf_header and csrf_cookie == csrf_header:
+        return
+
+    # Plain form POST path: token arrives as a hidden body field
+    content_type = request.headers.get("content-type", "")
+    if "application/x-www-form-urlencoded" in content_type or "multipart/form-data" in content_type:
+        form = await request.form()
+        csrf_form = str(form.get("_csrf", ""))
+        if csrf_form and csrf_cookie == csrf_form:
+            return
+
+    raise HTTPException(status_code=403, detail="CSRF validation failed")
 
 
 async def get_current_user(request: Request) -> CurrentUser:
@@ -111,7 +125,7 @@ async def get_current_user(request: Request) -> CurrentUser:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
     # CSRF validation for cookie-based auth on mutating requests
-    _validate_csrf(request, source)
+    await _validate_csrf(request, source)
 
     return user
 

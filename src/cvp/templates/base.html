@@ -3,19 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="csrf-token" content="{{ request.cookies.get('cvp_csrf', '') }}" />
   <title>{% block title %}CVP{% endblock %} — Contents Valuation Platform</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="/static/app.js" defer></script>
-  <script>
-    // CSRF: read cvp_csrf cookie and set it as X-CSRF-Token header on all HTMX requests
-    document.addEventListener('DOMContentLoaded', function() {
-      var csrf = document.cookie.split('; ').find(c => c.startsWith('cvp_csrf='));
-      if (csrf) {
-        document.body.setAttribute('hx-headers', JSON.stringify({'X-CSRF-Token': csrf.split('=')[1]}));
-      }
-    });
-  </script>
 </head>
 <body class="h-full">
   <nav class="bg-white border-b border-gray-200">
