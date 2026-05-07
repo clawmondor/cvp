@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from cvp.auth import hash_password
 from cvp.config import settings
+from cvp.db import _coerce_pg_url
 from cvp.models_auth import User
 
 
@@ -20,11 +21,10 @@ def main() -> None:
     # Create a fresh engine/session so the test-monkeypatched DATABASE_URL is honoured.
     # (The module-level SessionLocal in db.py is bound at import time and would use
     # whatever URL was active when db.py was first imported.)
+    db_url = _coerce_pg_url(settings.database_url)
     engine = create_engine(
-        settings.database_url,
-        connect_args={"check_same_thread": False}
-        if settings.database_url.startswith("sqlite")
-        else {},
+        db_url,
+        connect_args={"check_same_thread": False} if db_url.startswith("sqlite") else {},
     )
     Session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
