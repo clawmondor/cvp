@@ -13,6 +13,16 @@ def _is_sqlite_url(url: str) -> bool:
     return url.startswith("sqlite:") or url.startswith("sqlite+")
 
 
+def _coerce_pg_url(url: str) -> str:
+    """Railway and other providers supply postgresql:// or postgres://.
+    SQLAlchemy uses psycopg2 for those schemes by default; we ship psycopg3
+    (psycopg[binary]), so rewrite the scheme to use the psycopg3 driver."""
+    for prefix in ("postgresql://", "postgres://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
 def _ensure_data_dirs() -> None:
     """Create required data directories at module import time."""
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
@@ -21,12 +31,13 @@ def _ensure_data_dirs() -> None:
     Path(db_file).parent.mkdir(parents=True, exist_ok=True)
 
 
-_is_sqlite = _is_sqlite_url(settings.database_url)
+_db_url = _coerce_pg_url(settings.database_url)
+_is_sqlite = _is_sqlite_url(_db_url)
 
 if _is_sqlite:
     _ensure_data_dirs()
     engine = create_engine(
-        settings.database_url,
+        _db_url,
         connect_args={"check_same_thread": False},
     )
 
@@ -39,7 +50,7 @@ if _is_sqlite:
 
 else:
     engine = create_engine(
-        settings.database_url,
+        _db_url,
         pool_pre_ping=True,
         pool_size=5,
         max_overflow=5,
