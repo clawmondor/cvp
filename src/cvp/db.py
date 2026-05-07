@@ -19,7 +19,7 @@ def _coerce_pg_url(url: str) -> str:
     (psycopg[binary]), so rewrite the scheme to use the psycopg3 driver."""
     for prefix in ("postgresql://", "postgres://"):
         if url.startswith(prefix):
-            return "postgresql+psycopg://" + url[len(prefix):]
+            return "postgresql+psycopg://" + url[len(prefix) :]
     return url
 
 
