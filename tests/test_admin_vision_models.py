@@ -151,7 +151,6 @@ def test_admin_vision_models_add_rejects_duplicate(client_admin, monkeypatch):
 
 
 def test_set_default_flips_previous(client_admin, db_session):
-    # Add a second model
     second = VisionModel(
         slug="x/second",
         display_name="Second",
@@ -164,7 +163,35 @@ def test_set_default_flips_previous(client_admin, db_session):
     db_session.commit()
     second_id = second.id
 
-    resp = client_admin.post(f"/admin/vision-models/{second_id}/set-default")
+    resp = client_admin.post(
+        "/admin/vision-models/set-default",
+        data={"default_model_id": str(second_id)},
+    )
+    assert resp.status_code in (200, 303)
+
+    db_session.expire_all()
+    defaults = db_session.query(VisionModel).filter_by(is_default=True).all()
+    assert len(defaults) == 1
+    assert defaults[0].id == second_id
+
+
+def test_set_default_form_flips_previous(client_admin, db_session):
+    second = VisionModel(
+        slug="x/form-default",
+        display_name="Form Default",
+        adapter="none",
+        supports_bbox=False,
+        is_default=False,
+        is_enabled=True,
+    )
+    db_session.add(second)
+    db_session.commit()
+    second_id = second.id
+
+    resp = client_admin.post(
+        "/admin/vision-models/set-default",
+        data={"default_model_id": str(second_id)},
+    )
     assert resp.status_code in (200, 303)
 
     db_session.expire_all()
@@ -243,7 +270,10 @@ def test_set_default_writes_audit_log(client_admin, db_session):
     db_session.add(second)
     db_session.commit()
 
-    client_admin.post(f"/admin/vision-models/{second.id}/set-default")
+    client_admin.post(
+        "/admin/vision-models/set-default",
+        data={"default_model_id": str(second.id)},
+    )
 
     from cvp.db import SessionLocal as RealSession
 
