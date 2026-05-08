@@ -11,11 +11,8 @@
   </td>
   <td>{% if r.supports_bbox %}&#10003;{% else %}&mdash;{% endif %}</td>
   <td>
-    <form hx-post="/admin/vision-models/{{ r.id }}/set-default"
-          hx-target="#vision-models-tbody" hx-swap="outerHTML">
-      <input type="radio" name="default-radio" {% if r.is_default %}checked{% endif %}
-             onchange="this.form.requestSubmit()">
-    </form>
+    <input type="radio" name="default_model_id" value="{{ r.id }}"
+           {% if r.is_default %}checked{% endif %}>
   </td>
   <td>
     <form hx-post="/admin/vision-models/{{ r.id }}/{% if r.is_enabled %}disable{% else %}enable{% endif %}"
