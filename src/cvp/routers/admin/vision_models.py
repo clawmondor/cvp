@@ -132,7 +132,7 @@ def set_default_form(
 ) -> HTMLResponse:
     target = db.query(VisionModel).filter_by(id=default_model_id).first()
     if target is None:
-        raise HTTPException(404)
+        raise HTTPException(404, "model not found")
     if not target.is_enabled:
         raise HTTPException(400, "cannot make a disabled model the default")
     db.query(VisionModel).filter(VisionModel.is_default.is_(True)).update({"is_default": False})
