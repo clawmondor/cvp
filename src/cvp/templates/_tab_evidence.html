@@ -7,8 +7,7 @@
         hx-swap="outerHTML"
         hx-encoding="multipart/form-data">
     <div id="drop-zone"
-         class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white px-6 py-10 text-center transition-colors hover:border-indigo-400 cursor-pointer"
-         onclick="document.getElementById('evidence-input').click()">
+         class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white px-6 py-10 text-center transition-colors hover:border-indigo-400 cursor-pointer">
       <svg class="mx-auto mb-3 h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
               d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
@@ -23,35 +22,3 @@
   {% set matter_id = matter.id %}
   {% include "_evidence_grid.html" %}
 </div>
-
-<script>
-(function () {
-  // Drag-and-drop upload
-  const zone = document.getElementById('drop-zone');
-  const input = document.getElementById('evidence-input');
-  const form  = document.getElementById('evidence-form');
-
-  function submitFiles(fileList) {
-    if (!fileList || fileList.length === 0) return;
-    const dt = new DataTransfer();
-    Array.from(fileList).forEach(f => dt.items.add(f));
-    input.files = dt.files;
-    htmx.trigger(form, 'submit');
-  }
-
-  input.addEventListener('change', () => submitFiles(input.files));
-  zone.addEventListener('dragover', e => {
-    e.preventDefault();
-    zone.classList.add('border-indigo-500', 'bg-indigo-50');
-  });
-  zone.addEventListener('dragleave', () => {
-    zone.classList.remove('border-indigo-500', 'bg-indigo-50');
-  });
-  zone.addEventListener('drop', e => {
-    e.preventDefault();
-    zone.classList.remove('border-indigo-500', 'bg-indigo-50');
-    submitFiles(e.dataTransfer.files);
-  });
-})();
-
-</script>

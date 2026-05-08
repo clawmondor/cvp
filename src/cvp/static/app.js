@@ -147,3 +147,36 @@ document.addEventListener('DOMContentLoaded', function () {
     }, 10000);
   }
 });
+
+// ── Evidence drag-drop upload ─────────────────────────────────────────────
+function initEvidenceUpload() {
+    var zone = document.getElementById('drop-zone');
+    var input = document.getElementById('evidence-input');
+    var form = document.getElementById('evidence-form');
+    if (!zone) return;
+
+    function submitFiles(fileList) {
+        if (!fileList || fileList.length === 0) return;
+        var dt = new DataTransfer();
+        Array.from(fileList).forEach(function (f) { dt.items.add(f); });
+        input.files = dt.files;
+        htmx.trigger(form, 'submit');
+    }
+
+    zone.addEventListener('click', function () { input.click(); });
+    input.addEventListener('change', function () { submitFiles(input.files); });
+    zone.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        zone.classList.add('border-indigo-500', 'bg-indigo-50');
+    });
+    zone.addEventListener('dragleave', function () {
+        zone.classList.remove('border-indigo-500', 'bg-indigo-50');
+    });
+    zone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        zone.classList.remove('border-indigo-500', 'bg-indigo-50');
+        submitFiles(e.dataTransfer.files);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', initEvidenceUpload);
