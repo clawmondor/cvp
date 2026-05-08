@@ -224,8 +224,8 @@ function startRename(roomId) {
 
 // Delegated click: rename buttons use data-rename-room-id instead of onclick
 document.addEventListener('click', function (e) {
-    var roomId = e.target.dataset.renameRoomId;
-    if (roomId) startRename(roomId);
+    var btn = e.target.closest('[data-rename-room-id]');
+    if (btn) startRename(btn.dataset.renameRoomId);
 });
 
 // Replace hx-on::after-request on add-room form (HTMX uses new Function() for hx-on, blocked by CSP)
