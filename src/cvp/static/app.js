@@ -180,3 +180,59 @@ function initEvidenceUpload() {
 }
 
 document.addEventListener('DOMContentLoaded', initEvidenceUpload);
+
+// ── Room rename ───────────────────────────────────────────────────────────
+function startRename(roomId) {
+    var li = document.getElementById('room-' + roomId);
+    var nameSpan = document.getElementById('room-name-' + roomId);
+    var currentName = nameSpan.textContent.trim();
+
+    var form = document.createElement('form');
+    form.style.display = 'contents';
+    form.setAttribute('hx-patch', '/api/rooms/' + roomId);
+    form.setAttribute('hx-target', '#room-' + roomId);
+    form.setAttribute('hx-swap', 'outerHTML');
+
+    var input = document.createElement('input');
+    input.name = 'name';
+    input.value = currentName;
+    input.required = true;
+    input.maxLength = 100;
+    input.className = 'rounded border border-indigo-400 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-1';
+
+    var save = document.createElement('button');
+    save.type = 'submit';
+    save.textContent = 'Save';
+    save.className = 'rounded px-2 py-0.5 text-xs bg-indigo-600 text-white hover:bg-indigo-500';
+
+    var cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.textContent = 'Cancel';
+    cancel.className = 'rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100';
+    cancel.addEventListener('click', function () { location.reload(); });
+
+    form.appendChild(input);
+    form.appendChild(save);
+    form.appendChild(cancel);
+
+    li.innerHTML = '';
+    li.appendChild(form);
+    htmx.process(form);
+    input.focus();
+    input.select();
+}
+
+// Delegated click: rename buttons use data-rename-room-id instead of onclick
+document.addEventListener('click', function (e) {
+    var roomId = e.target.dataset.renameRoomId;
+    if (roomId) startRename(roomId);
+});
+
+// Replace hx-on::after-request on add-room form (HTMX uses new Function() for hx-on, blocked by CSP)
+document.addEventListener('htmx:afterRequest', function (e) {
+    if (e.detail.elt && e.detail.elt.id === 'add-room-form' && e.detail.successful) {
+        e.detail.elt.reset();
+        var empty = document.getElementById('rooms-empty');
+        if (empty) empty.remove();
+    }
+});

@@ -1,10 +1,10 @@
 <div class="space-y-4">
   <div class="flex items-center justify-between">
     <h3 class="text-sm font-semibold text-gray-700">Rooms ({{ rooms | length }})</h3>
-    <form hx-post="/api/matters/{{ matter.id }}/rooms"
+    <form id="add-room-form"
+          hx-post="/api/matters/{{ matter.id }}/rooms"
           hx-target="#rooms-list"
           hx-swap="beforeend"
-          hx-on::after-request="if(event.detail.successful){ this.reset(); const e=document.getElementById('rooms-empty'); if(e) e.remove(); }"
           class="flex items-center gap-2">
       <input name="name" placeholder="Room name" required maxlength="100"
              class="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
@@ -23,47 +23,3 @@
     {% endfor %}
   </ul>
 </div>
-
-<script>
-function startRename(roomId) {
-  const li = document.getElementById('room-' + roomId);
-  const nameSpan = document.getElementById('room-name-' + roomId);
-  const currentName = nameSpan.textContent.trim();
-
-  const form = document.createElement('form');
-  form.style.display = 'contents';
-  form.setAttribute('hx-patch', '/api/rooms/' + roomId);
-  form.setAttribute('hx-target', '#room-' + roomId);
-  form.setAttribute('hx-swap', 'outerHTML');
-
-  const input = document.createElement('input');
-  input.name = 'name';
-  input.value = currentName;
-  input.required = true;
-  input.maxLength = 100;
-  input.className = 'rounded border border-indigo-400 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-1';
-
-  const save = document.createElement('button');
-  save.type = 'submit';
-  save.textContent = 'Save';
-  save.className = 'rounded px-2 py-0.5 text-xs bg-indigo-600 text-white hover:bg-indigo-500';
-
-  const cancel = document.createElement('button');
-  cancel.type = 'button';
-  cancel.textContent = 'Cancel';
-  cancel.className = 'rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100';
-  cancel.onclick = () => htmx.ajax('GET', '/api/items/' + roomId + '/view', {target: '#room-' + roomId, swap: 'outerHTML'});
-  // Simpler: just reload the room from server
-  cancel.onclick = () => location.reload();
-
-  form.appendChild(input);
-  form.appendChild(save);
-  form.appendChild(cancel);
-
-  li.innerHTML = '';
-  li.appendChild(form);
-  htmx.process(form);
-  input.focus();
-  input.select();
-}
-</script>
