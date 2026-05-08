@@ -127,10 +127,13 @@ def delete_evidence(
     return HTMLResponse("", status_code=200)
 
 
-@router.get("/files/{stored_path:path}")
+@router.get("/files/{matter_id}/{filename:path}")
 def serve_file(
-    stored_path: str, user: CurrentUser = Depends(require_matter_role("viewer"))
+    matter_id: str,
+    filename: str,
+    user: CurrentUser = Depends(require_matter_role("viewer")),
 ) -> FileResponse:
+    stored_path = f"{matter_id}/{filename}"
     upload_base = Path(settings.upload_dir).resolve()
     dest = (upload_base / stored_path).resolve()
     # Path-traversal guard
