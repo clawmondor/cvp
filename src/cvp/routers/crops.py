@@ -1,6 +1,5 @@
 """Crop adjustment and re-crop endpoints."""
 
-import json as _json
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
@@ -141,26 +140,24 @@ def crop_editor(
         with Image.open((upload_base / ef.stored_path).resolve()) as img:
             img_w, img_h = img.size
 
-        crops_json = _json.dumps(
-            [
-                {
-                    "id": c.id,
-                    "description": (c.item.description if c.item else None) or f"Item {i + 1}",
-                    "bbox": list(c.effective_bbox),
-                    "claude_bbox": [c.bbox_left, c.bbox_upper, c.bbox_right, c.bbox_lower],
-                    "adjusted": all(
-                        v is not None
-                        for v in (
-                            c.adjusted_bbox_left,
-                            c.adjusted_bbox_upper,
-                            c.adjusted_bbox_right,
-                            c.adjusted_bbox_lower,
-                        )
-                    ),
-                }
-                for i, c in enumerate(crops)
-            ]
-        )
+        crops_data = [
+            {
+                "id": c.id,
+                "description": (c.item.description if c.item else None) or f"Item {i + 1}",
+                "bbox": list(c.effective_bbox),
+                "claude_bbox": [c.bbox_left, c.bbox_upper, c.bbox_right, c.bbox_lower],
+                "adjusted": all(
+                    v is not None
+                    for v in (
+                        c.adjusted_bbox_left,
+                        c.adjusted_bbox_upper,
+                        c.adjusted_bbox_right,
+                        c.adjusted_bbox_lower,
+                    )
+                ),
+            }
+            for i, c in enumerate(crops)
+        ]
 
         stored_path = ef.stored_path
     finally:
@@ -173,7 +170,7 @@ def crop_editor(
             "evidence_file": ef,
             "img_w": img_w,
             "img_h": img_h,
-            "crops_json": crops_json,
+            "crops_json": crops_data,
             "stored_path": stored_path,
         },
     )

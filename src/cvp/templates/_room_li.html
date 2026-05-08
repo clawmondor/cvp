@@ -3,7 +3,7 @@
   <span id="room-name-{{ room.id }}" class="text-sm font-medium text-gray-800">{{ room.name }}</span>
   <div class="flex items-center gap-2">
     <button
-      onclick="startRename('{{ room.id }}')"
+      data-rename-room-id="{{ room.id }}"
       class="hidden rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100 group-hover:inline-flex">
       Rename
     </button>
