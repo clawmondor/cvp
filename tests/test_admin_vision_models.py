@@ -150,8 +150,7 @@ def test_admin_vision_models_add_rejects_duplicate(client_admin, monkeypatch):
     assert resp.status_code in (400, 409)
 
 
-def test_set_default_flips_previous(client_admin, db_session):
-    # Add a second model
+def test_set_default_changes_default_model(client_admin, db_session):
     second = VisionModel(
         slug="x/second",
         display_name="Second",
@@ -164,8 +163,12 @@ def test_set_default_flips_previous(client_admin, db_session):
     db_session.commit()
     second_id = second.id
 
-    resp = client_admin.post(f"/admin/vision-models/{second_id}/set-default")
-    assert resp.status_code in (200, 303)
+    resp = client_admin.post(
+        "/admin/vision-models/set-default",
+        data={"default_model_id": str(second_id)},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
 
     db_session.expire_all()
     defaults = db_session.query(VisionModel).filter_by(is_default=True).all()
@@ -243,7 +246,12 @@ def test_set_default_writes_audit_log(client_admin, db_session):
     db_session.add(second)
     db_session.commit()
 
-    client_admin.post(f"/admin/vision-models/{second.id}/set-default")
+    resp = client_admin.post(
+        "/admin/vision-models/set-default",
+        data={"default_model_id": str(second.id)},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
 
     from cvp.db import SessionLocal as RealSession
 

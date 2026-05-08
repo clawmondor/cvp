@@ -123,16 +123,16 @@ def add_model(
     return RedirectResponse(url="/admin/vision-models", status_code=303)
 
 
-@router.post("/{model_id}/set-default", response_class=HTMLResponse)
-def set_default(
+@router.post("/set-default", response_class=HTMLResponse)
+def set_default_form(
     request: Request,
-    model_id: int,
+    default_model_id: int = Form(...),
     user: CurrentUser = Depends(require_system_admin),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    target = db.query(VisionModel).filter_by(id=model_id).first()
+    target = db.query(VisionModel).filter_by(id=default_model_id).first()
     if target is None:
-        raise HTTPException(404)
+        raise HTTPException(404, "model not found")
     if not target.is_enabled:
         raise HTTPException(400, "cannot make a disabled model the default")
     db.query(VisionModel).filter(VisionModel.is_default.is_(True)).update({"is_default": False})
@@ -142,7 +142,7 @@ def set_default(
         user_id=user.id,
         action="vision_model.set_default",
         resource_type="vision_model",
-        resource_id=str(model_id),
+        resource_id=str(default_model_id),
         detail={"slug": target.slug},
         ip_address=get_client_ip(request),
     )
