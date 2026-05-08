@@ -2,9 +2,9 @@
 
   // Close button: data-crop-editor-close="<ef-id>" removes the editor container
   document.addEventListener('click', function (e) {
-    var efId = e.target.dataset.cropEditorClose;
-    if (!efId) return;
-    var container = document.getElementById('crop-editor-' + efId);
+    var btn = e.target.closest('[data-crop-editor-close]');
+    if (!btn) return;
+    var container = document.getElementById('crop-editor-' + btn.dataset.cropEditorClose);
     if (container) container.remove();
   });
 
@@ -225,6 +225,7 @@
       });
     }
 
+    // toggleCropEditor() prevents two editors for the same EF_ID from coexisting in the DOM.
     window['ceReset_' + EF_ID.replace(/-/g, '_')] = function () {
       if (selectedIdx === null) return;
       var box = boxes[selectedIdx];
