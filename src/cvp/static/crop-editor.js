@@ -16,6 +16,11 @@
     });
   });
 
+  function csrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.content : '';
+  }
+
   function initCropEditor(container) {
     var EF_ID = container.dataset.efId;
     var IMG_W = parseInt(container.dataset.imgW, 10);
@@ -229,7 +234,7 @@
     window['ceReset_' + EF_ID.replace(/-/g, '_')] = function () {
       if (selectedIdx === null) return;
       var box = boxes[selectedIdx];
-      fetch('/api/item-crops/' + box.id + '/adjust-bbox', {method: 'DELETE'}).then(function (r) {
+      fetch('/api/item-crops/' + box.id + '/adjust-bbox', {method: 'DELETE', headers: {'X-CSRF-Token': csrfToken()}}).then(function (r) {
         if (!r.ok) return;
         box.left = box.claudeLeft; box.upper = box.claudeUpper;
         box.right = box.claudeRight; box.lower = box.claudeLower;
@@ -279,7 +284,7 @@
       var box = boxes[idx];
       fetch('/api/item-crops/' + box.id + '/adjust-bbox', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken()},
         body: JSON.stringify({left: box.left, upper: box.upper, right: box.right, lower: box.lower}),
       }).then(function (r) {
         if (r.ok) { box.adjusted = true; draw(); updateRecropButton(); }
@@ -295,7 +300,7 @@
     recropBtn.addEventListener('click', function () {
       recropBtn.disabled = true;
       statusEl.textContent = 'Re-cropping…';
-      fetch('/api/evidence/' + EF_ID + '/recrop', {method: 'POST'})
+      fetch('/api/evidence/' + EF_ID + '/recrop', {method: 'POST', headers: {'X-CSRF-Token': csrfToken()}})
         .then(function (r) { return r.json(); })
         .then(function (data) {
           statusEl.textContent = 'Done — ' + data.recropped.length + ' crop(s) updated.';
