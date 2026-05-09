@@ -22,7 +22,7 @@
       <p class="text-xs text-gray-400">{{ (f.size_bytes / 1024) | round(1) }} KB</p>
       {% if f.kind == "image" %}
         {% if f.scanned %}
-        <button onclick="toggleCropEditor('{{ f.id }}')"
+        <button data-toggle-crop-editor="{{ f.id }}"
                 class="mt-1 rounded border border-indigo-200 px-1.5 py-0.5 text-xs text-indigo-600 hover:bg-indigo-50">
           Edit crops
         </button>

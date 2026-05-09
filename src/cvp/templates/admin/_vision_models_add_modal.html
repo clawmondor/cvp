@@ -2,7 +2,7 @@
   <div class="max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded bg-white p-6 shadow-xl">
     <div class="mb-3 flex items-center justify-between">
       <h2 class="text-lg font-semibold">Add a vision model</h2>
-      <button onclick="document.getElementById('add-modal').innerHTML=''" class="text-gray-500">✕</button>
+      <button data-clear-element="add-modal" class="text-gray-500">✕</button>
     </div>
     {% if not catalog %}
       <p class="text-sm text-gray-500">No new models available — every vision-capable model from OpenRouter is already added.</p>

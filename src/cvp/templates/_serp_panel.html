@@ -2,7 +2,7 @@
   <td colspan="13" class="px-4 py-4 bg-violet-50 border-b border-violet-100">
     <div class="flex items-center justify-between mb-3">
       <h4 class="text-xs font-semibold text-violet-800">Google Lens — {{ item.description }}</h4>
-      <button onclick="document.getElementById('serp-panel-{{ item.id }}').remove()"
+      <button data-serp-panel-close="{{ item.id }}"
               class="text-xs text-gray-400 hover:text-gray-600">✕ Close</button>
     </div>
 
@@ -14,7 +14,7 @@
       {% if item.crops | length > 1 %}
       <div class="flex gap-2 mb-3">
         {% for crop in item.crops %}
-        <button onclick="showCropPanel('{{ item.id }}', '{{ crop.id }}')"
+        <button data-show-crop-panel-item="{{ item.id }}" data-show-crop-panel-crop="{{ crop.id }}"
                 id="crop-tab-{{ crop.id }}"
                 class="border-2 rounded overflow-hidden focus:outline-none
                        {% if loop.first %}border-violet-500{% else %}border-transparent hover:border-violet-300{% endif %}">

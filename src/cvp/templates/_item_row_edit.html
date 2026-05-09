@@ -169,7 +169,7 @@
       <div class="flex gap-2 mb-3">
         {% for crop in item.crops %}
         <button type="button"
-                onclick="showEditCrop('{{ item.id }}', '{{ crop.id }}')"
+                data-show-edit-crop-item="{{ item.id }}" data-show-edit-crop-crop="{{ crop.id }}"
                 id="edit-crop-tab-{{ crop.id }}"
                 class="border-2 rounded overflow-hidden focus:outline-none
                        {% if loop.first %}border-violet-500{% else %}border-transparent hover:border-violet-300{% endif %}">

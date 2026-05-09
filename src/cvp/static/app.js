@@ -228,6 +228,52 @@ document.addEventListener('click', function (e) {
     if (btn) startRename(btn.dataset.renameRoomId);
 });
 
+// Delegated click: data-toggle-crop-editor → toggleCropEditor(fileId)
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-toggle-crop-editor]');
+    if (btn) toggleCropEditor(btn.dataset.toggleCropEditor);
+});
+
+// Delegated click: data-serp-panel-close → remove serp panel row
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-serp-panel-close]');
+    if (btn) {
+        var el = document.getElementById('serp-panel-' + btn.dataset.serpPanelClose);
+        if (el) el.remove();
+    }
+});
+
+// Delegated click: data-show-crop-panel-item / data-show-crop-panel-crop → showCropPanel
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-show-crop-panel-item]');
+    if (btn) showCropPanel(btn.dataset.showCropPanelItem, btn.dataset.showCropPanelCrop);
+});
+
+// Delegated click: data-show-edit-crop-item / data-show-edit-crop-crop → showEditCrop
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-show-edit-crop-item]');
+    if (btn) showEditCrop(btn.dataset.showEditCropItem, btn.dataset.showEditCropCrop);
+});
+
+// Delegated click: data-reload-on-click → location.reload()
+document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-reload-on-click]')) location.reload();
+});
+
+// Delegated click: data-clear-element="<id>" → element.innerHTML = ''
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-clear-element]');
+    if (btn) {
+        var el = document.getElementById(btn.dataset.clearElement);
+        if (el) el.innerHTML = '';
+    }
+});
+
+// Delegated click: data-print-page → window.print()
+document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-print-page]')) window.print();
+});
+
 // Replace hx-on::after-request on add-room form (HTMX uses new Function() for hx-on, blocked by CSP)
 document.addEventListener('htmx:afterRequest', function (e) {
     if (e.detail.elt && e.detail.elt.id === 'add-room-form' && e.detail.successful) {
