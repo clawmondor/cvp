@@ -42,6 +42,10 @@ app.add_middleware(SecurityHeadersMiddleware, environment=settings.environment)
 
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
+_crop_dir = Path(settings.crop_dir).resolve()
+_crop_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/crops", StaticFiles(directory=_crop_dir), name="crops")
+
 # Health router (public — no auth required, used by Railway healthcheck)
 app.include_router(health.router)
 

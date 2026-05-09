@@ -50,18 +50,19 @@ def pixel_passthrough(raw: Any, w: int, h: int) -> _PadResult:
 
 
 def gemini_normalized_1000(raw: Any, w: int, h: int) -> _PadResult:
+    """Gemini native bbox format: [y_min, x_min, y_max, x_max], normalized 0–1000."""
     if not isinstance(raw, (list, tuple)) or len(raw) != 4:
         return None
     try:
-        nl, nu, nr, nlo = (int(v) for v in raw)
+        n_ymin, n_xmin, n_ymax, n_xmax = (int(v) for v in raw)
     except (TypeError, ValueError):
         return None
-    if not all(0 <= v <= 1000 for v in (nl, nu, nr, nlo)):
+    if not all(0 <= v <= 1000 for v in (n_ymin, n_xmin, n_ymax, n_xmax)):
         return None
-    left = round(nl / 1000 * w)
-    upper = round(nu / 1000 * h)
-    right = round(nr / 1000 * w)
-    lower = round(nlo / 1000 * h)
+    left = round(n_xmin / 1000 * w)
+    upper = round(n_ymin / 1000 * h)
+    right = round(n_xmax / 1000 * w)
+    lower = round(n_ymax / 1000 * h)
     return _pad_clamp(left, upper, right, lower, w, h)
 
 

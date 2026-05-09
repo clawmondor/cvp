@@ -1,10 +1,13 @@
 import functools
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
     anthropic_api_key: str = ""  # deprecated — use OpenRouter instead
     vision_model: str = "claude-opus-4-6"  # deprecated — use VisionModel DB rows

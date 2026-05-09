@@ -207,6 +207,7 @@ def run_scan(job_id: str, matter_id: str, file_ids: list[str], model_slug: str) 
                     if bbox is not None:
                         left, upper, right, lower = bbox
                         item_crop = ItemCrop(
+                            id=str(uuid.uuid4()),
                             item_id=item.id,
                             evidence_file_id=file_id,
                             bbox_left=left,

@@ -32,12 +32,14 @@ class TestPixelPassthrough:
 
 class TestGeminiNormalized:
     def test_scales_0_1000_to_pixels(self):
-        # Gemini box [100, 200, 300, 400] in 0..1000 space, image 2000x1000
-        # => left=200, upper=200, right=600, lower=400 (pre-padding)
-        # 15% padding of 400x200: pad_x=round(400*0.15)=60, pad_y=round(200*0.15)=30
-        # left=200-60=140, upper=200-30=170, right=600+60=660, lower=400+30=430
+        # Gemini native format: [y_min, x_min, y_max, x_max] in 0..1000 space
+        # Input [100, 200, 300, 400] on image 2000x1000:
+        #   y_min=100, x_min=200, y_max=300, x_max=400
+        #   => left=400, upper=100, right=800, lower=300 (pre-padding)
+        # 15% padding of 400w x 200h: pad_x=60, pad_y=30
+        #   => left=340, upper=70, right=860, lower=330
         out = gemini_normalized_1000([100, 200, 300, 400], 2000, 1000)
-        assert out == (140, 170, 660, 430)
+        assert out == (340, 70, 860, 330)
 
     def test_clamps_to_image_bounds(self):
         out = gemini_normalized_1000([0, 0, 1000, 1000], 500, 500)

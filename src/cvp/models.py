@@ -179,7 +179,7 @@ class EvidenceFile(Base):
     # Relationships
     matter: Mapped["Matter"] = relationship("Matter", back_populates="evidence_files")
     vision_runs: Mapped[list["VisionRun"]] = relationship(
-        "VisionRun", back_populates="evidence_file"
+        "VisionRun", back_populates="evidence_file", cascade="all, delete-orphan"
     )
     crops: Mapped[list["ItemCrop"]] = relationship(
         "ItemCrop", back_populates="evidence_file", cascade="all, delete-orphan"
