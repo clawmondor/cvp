@@ -230,6 +230,7 @@ class ItemCrop(Base):
     adjusted_bbox_right: Mapped[int | None] = mapped_column(Integer, nullable=True)
     adjusted_bbox_lower: Mapped[int | None] = mapped_column(Integer, nullable=True)
     crop_path: Mapped[str] = mapped_column(String, default="")
+    crop_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     @property

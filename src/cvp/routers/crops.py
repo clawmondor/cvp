@@ -1,5 +1,6 @@
 """Crop adjustment and re-crop endpoints."""
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
@@ -207,8 +208,10 @@ def recrop_evidence(
         crop_base = Path(settings.crop_dir).resolve()
         recropped_ids = []
 
+        now = datetime.now(timezone.utc)
         for crop in crops:
             crop.crop_path = recrop_item_crop(crop, ef, upload_base, crop_base)
+            crop.crop_updated_at = now
             recropped_ids.append(crop.id)
 
         matter_id = ef.matter_id

@@ -173,7 +173,7 @@
                 id="edit-crop-tab-{{ crop.id }}"
                 class="border-2 rounded overflow-hidden focus:outline-none
                        {% if loop.first %}border-violet-500{% else %}border-transparent hover:border-violet-300{% endif %}">
-          <img src="/crops/{{ crop.crop_path }}" alt="Crop {{ loop.index }}"
+          <img src="/crops/{{ crop.crop_path }}{% if crop.crop_updated_at %}?v={{ crop.crop_updated_at.timestamp() | int }}{% endif %}" alt="Crop {{ loop.index }}"
                class="w-14 h-14 object-contain bg-white" />
         </button>
         {% endfor %}
@@ -185,7 +185,7 @@
            class="{% if not loop.first %}hidden{% endif %} flex gap-4">
 
         <div class="flex-shrink-0">
-          <img src="/crops/{{ crop.crop_path }}" alt="{{ item.description }}"
+          <img src="/crops/{{ crop.crop_path }}{% if crop.crop_updated_at %}?v={{ crop.crop_updated_at.timestamp() | int }}{% endif %}" alt="{{ item.description }}"
                class="w-28 h-28 object-contain rounded border border-gray-200 bg-white shadow-sm" />
           <p class="mt-1 text-xs text-gray-400 text-center">
             {{ crop.bbox_right - crop.bbox_left }}×{{ crop.bbox_lower - crop.bbox_upper }}px
