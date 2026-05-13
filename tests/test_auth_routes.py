@@ -65,7 +65,10 @@ def client(seeded_db):
     app.dependency_overrides.clear()
 
 
-def test_splash_page(client):
+def test_splash_page(client, monkeypatch):
+    from cvp.config import settings
+
+    monkeypatch.setattr(settings, "auto_login_user_id", "")
     resp = client.get("/", follow_redirects=False)
     assert resp.status_code == 200
     assert "Sign In" in resp.text
