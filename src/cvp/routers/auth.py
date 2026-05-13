@@ -320,7 +320,7 @@ def register_page(
             context={"invalid": True, "invite_code": "", "email": ""},
         )
 
-    if user.invite_expires_at and user.invite_expires_at < datetime.now(tz=timezone.utc):
+    if user.invite_expires_at and user.invite_expires_at.replace(tzinfo=timezone.utc) < datetime.now(tz=timezone.utc):
         return templates.TemplateResponse(
             request=request,
             name="register.html",
@@ -355,7 +355,7 @@ def register(
             context={"invalid": True, "invite_code": "", "email": ""},
         )
 
-    if user.invite_expires_at and user.invite_expires_at < datetime.now(tz=timezone.utc):
+    if user.invite_expires_at and user.invite_expires_at.replace(tzinfo=timezone.utc) < datetime.now(tz=timezone.utc):
         return templates.TemplateResponse(
             request=request,
             name="register.html",
