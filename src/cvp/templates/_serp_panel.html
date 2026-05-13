@@ -45,21 +45,29 @@
                 hx-target="#lens-result-{{ crop.id }}"
                 hx-swap="innerHTML"
                 hx-indicator="#lens-spinner-{{ crop.id }}"
+                hx-disabled-elt="find button[type='submit']"
+                data-lens-form
                 class="flex items-center gap-2 mb-3">
             {% if public_base_url %}
               <input type="hidden" name="image_url"
                      value="{{ public_base_url.rstrip('/') }}/crops/{{ crop.crop_path }}">
               <button type="submit"
-                      class="text-xs bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded transition">
-                Search Google Lens
+                      data-lens-btn
+                      {% if latest_by_crop.get(crop.id) %}disabled{% endif %}
+                      class="text-xs px-3 py-1.5 rounded transition text-white
+                             {% if latest_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-violet-600 hover:bg-violet-700{% endif %}">
+                {% if latest_by_crop.get(crop.id) %}Searched{% else %}Search Google Lens{% endif %}
               </button>
             {% else %}
               <input type="url" name="image_url"
                      placeholder="Paste public URL to crop image (or set PUBLIC_BASE_URL)"
                      class="flex-1 text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-400" />
               <button type="submit"
-                      class="text-xs bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded transition">
-                Search
+                      data-lens-btn
+                      {% if latest_by_crop.get(crop.id) %}disabled{% endif %}
+                      class="text-xs px-3 py-1.5 rounded transition text-white
+                             {% if latest_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-violet-600 hover:bg-violet-700{% endif %}">
+                {% if latest_by_crop.get(crop.id) %}Searched{% else %}Search{% endif %}
               </button>
             {% endif %}
             <svg id="lens-spinner-{{ crop.id }}"

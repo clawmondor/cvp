@@ -282,3 +282,21 @@ document.addEventListener('htmx:afterRequest', function (e) {
         if (empty) empty.remove();
     }
 });
+
+// Lens search: "Searching…" while in-flight
+document.addEventListener('htmx:beforeRequest', function (e) {
+    if (!e.detail.elt.hasAttribute('data-lens-form')) return;
+    var btn = e.detail.elt.querySelector('button[data-lens-btn]');
+    if (btn) btn.textContent = 'Searching…';
+});
+
+// Lens search: permanently lock button after any result (success or error)
+document.addEventListener('htmx:afterRequest', function (e) {
+    if (!e.detail.elt.hasAttribute('data-lens-form')) return;
+    var btn = e.detail.elt.querySelector('button[data-lens-btn]');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = 'Searched';
+    btn.classList.remove('bg-violet-600', 'hover:bg-violet-700', 'transition');
+    btn.classList.add('bg-gray-400', 'cursor-not-allowed');
+});
