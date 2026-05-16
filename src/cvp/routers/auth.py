@@ -355,7 +355,10 @@ def register(
             context={"invalid": True, "invite_code": "", "email": ""},
         )
 
-    if user.invite_expires_at and user.invite_expires_at.replace(tzinfo=timezone.utc) < datetime.now(tz=timezone.utc):
+    invite_expired = user.invite_expires_at and (
+        user.invite_expires_at.replace(tzinfo=timezone.utc) < datetime.now(tz=timezone.utc)
+    )
+    if invite_expired:
         return templates.TemplateResponse(
             request=request,
             name="register.html",
