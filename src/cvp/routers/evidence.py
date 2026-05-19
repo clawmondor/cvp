@@ -42,18 +42,21 @@ async def upload_evidence(
     matter_dir = upload_base / matter_id
     matter_dir.mkdir(parents=True, exist_ok=True)
 
-    db = SessionLocal()
-    try:
-        for upload in files:
-            raw_name = Path(upload.filename or "file").name  # strip any path components
-            uid8 = str(uuid.uuid4())[:8]
-            stored_name = f"{uid8}_{raw_name}"
-            dest = matter_dir / stored_name
-            content = await upload.read()
-            dest.write_bytes(content)
+    # Write all files to disk first, building records in memory.
+    # Opening the DB session only after I/O is complete prevents holding a
+    # pool connection during the (potentially slow) multipart read loop.
+    new_records: list[EvidenceFile] = []
+    for upload in files:
+        raw_name = Path(upload.filename or "file").name  # strip any path components
+        uid8 = str(uuid.uuid4())[:8]
+        stored_name = f"{uid8}_{raw_name}"
+        dest = matter_dir / stored_name
+        content = await upload.read()
+        dest.write_bytes(content)
 
-            mime = upload.content_type or (mimetypes.guess_type(raw_name)[0] or "")
-            ef = EvidenceFile(
+        mime = upload.content_type or (mimetypes.guess_type(raw_name)[0] or "")
+        new_records.append(
+            EvidenceFile(
                 matter_id=matter_id,
                 filename=raw_name,
                 stored_path=f"{matter_id}/{stored_name}",
@@ -61,8 +64,12 @@ async def upload_evidence(
                 size_bytes=len(content),
                 kind=_kind_from_mime(mime),
             )
-            db.add(ef)
+        )
 
+    db = SessionLocal()
+    try:
+        for ef in new_records:
+            db.add(ef)
         db.commit()
 
         evidence_files = (
