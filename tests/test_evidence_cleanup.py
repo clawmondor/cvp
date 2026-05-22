@@ -48,7 +48,7 @@ def test_delete_removes_evidence_file_from_disk(db, matter, tmp_path):
     ef = EvidenceFile(
         matter_id=matter.id,
         filename="photo.jpg",
-        stored_path=str(img),
+        stored_path=img.name,
         mime_type="image/jpeg",
         kind="image",
         size_bytes=img.stat().st_size,
@@ -70,7 +70,7 @@ def test_delete_cascades_to_orphan_item_and_crop(db, matter, tmp_path):
     ef = EvidenceFile(
         matter_id=matter.id,
         filename="photo2.jpg",
-        stored_path=str(img),
+        stored_path=img.name,
         mime_type="image/jpeg",
         kind="image",
         size_bytes=img.stat().st_size,
@@ -130,7 +130,7 @@ def test_delete_keeps_item_with_crop_from_other_file(db, matter, tmp_path):
     ef1 = EvidenceFile(
         matter_id=matter.id,
         filename="photo_a.jpg",
-        stored_path=str(img1),
+        stored_path=img1.name,
         mime_type="image/jpeg",
         kind="image",
         size_bytes=1,
@@ -138,7 +138,7 @@ def test_delete_keeps_item_with_crop_from_other_file(db, matter, tmp_path):
     ef2 = EvidenceFile(
         matter_id=matter.id,
         filename="photo_b.jpg",
-        stored_path=str(img2),
+        stored_path=img2.name,
         mime_type="image/jpeg",
         kind="image",
         size_bytes=1,

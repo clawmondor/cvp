@@ -41,12 +41,12 @@ def delete_evidence_file(
     for crop in crops:
         if crop.crop_path:
             crop_file = (crop_base / crop.crop_path).resolve()
-            if str(crop_file).startswith(str(crop_base)) and crop_file.exists():
+            if crop_file.is_relative_to(crop_base) and crop_file.exists():
                 crop_file.unlink()
 
     # Delete evidence file from disk.
     dest = (upload_base / ef.stored_path).resolve()
-    if str(dest).startswith(str(upload_base)) and dest.exists():
+    if dest.is_relative_to(upload_base) and dest.exists():
         dest.unlink()
 
     # ORM delete cascades to ItemCrop rows and VisionRun rows.
