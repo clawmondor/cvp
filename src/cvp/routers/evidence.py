@@ -105,6 +105,7 @@ def delete_evidence(
     background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_matter_role("manager")),
 ) -> HTMLResponse:
+    matter_id: str | None = None
     db = SessionLocal()
     try:
         ef = db.get(EvidenceFile, file_id)
@@ -164,8 +165,12 @@ def remove_all_images(
 
         for file_id in file_ids:
             ef = db.get(EvidenceFile, file_id)
-            if ef is not None:
-                delete_evidence_file(db, ef, upload_base, crop_base)
+            if ef is None:
+                continue
+            dest = (upload_base / ef.stored_path).resolve()
+            if not dest.is_relative_to(upload_base):
+                continue
+            delete_evidence_file(db, ef, upload_base, crop_base)
 
         evidence_files = (
             db.query(EvidenceFile)
