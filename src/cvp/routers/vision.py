@@ -8,16 +8,19 @@ from fastapi.templating import Jinja2Templates
 
 from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, require_matter_role
-from cvp.models import EvidenceFile
+from cvp.models import EvidenceFile, VisionJob, VisionJobImage
 from cvp.models_auth import User
 from cvp.models_vision import VisionModel
 from cvp.services import vision as vision_svc
+from cvp.services import vision_worker
 from cvp.services.audit import get_client_ip, write_audit_log
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 router = APIRouter()
+
+_SCAN_ALL_CAP = 250
 
 
 @router.post("/api/matters/{matter_id}/vision-scan", response_class=HTMLResponse)
@@ -49,20 +52,29 @@ async def start_scan(
             )
             .all()
         )
-        image_ids = [f.id for f in files]
+        if not files:
+            return HTMLResponse('<p class="text-sm text-red-600">No image files selected.</p>')
 
         u = db.query(User).filter_by(id=user.id).first()
         if u is not None:
             u.last_vision_model_slug = model_slug
-            db.commit()
+
+        job = VisionJob(
+            matter_id=matter_id,
+            model_slug=model_slug,
+            status="running",
+            created_by_user_id=user.id,
+        )
+        db.add(job)
+        db.flush()
+        for ef in files:
+            db.add(VisionJobImage(job_id=job.id, evidence_file_id=ef.id))
+        db.commit()
+        job_id = job.id
     finally:
         db.close()
 
-    if not image_ids:
-        return HTMLResponse('<p class="text-sm text-red-600">No image files selected.</p>')
-
-    job_id = vision_svc.create_job(image_ids)
-    background_tasks.add_task(vision_svc.run_scan, job_id, matter_id, image_ids, model_slug)
+    vision_worker.wake()
     background_tasks.add_task(
         write_audit_log,
         user_id=user.id,
@@ -71,14 +83,83 @@ async def start_scan(
         resource_id=matter_id,
         matter_id=matter_id,
         ip_address=get_client_ip(request),
-        detail=f"model={model_slug}",
+        detail={"model": model_slug},
+    )
+    job_data = vision_svc.get_job_data(job_id)
+    return HTMLResponse(
+        templates.get_template("_scan_progress.html").render(
+            job_id=job_id, matter_id=matter_id, **job_data
+        )
     )
 
-    job = vision_svc.get_job(job_id)
-    html = templates.get_template("_scan_progress.html").render(
-        job_id=job_id, matter_id=matter_id, **job
+
+@router.post("/api/matters/{matter_id}/vision-scan-all", response_class=HTMLResponse)
+async def start_scan_all(
+    request: Request,
+    matter_id: str,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(require_matter_role("contributor")),
+    model_slug: str = Form(...),
+) -> HTMLResponse:
+    db = SessionLocal()
+    try:
+        vm = db.query(VisionModel).filter_by(slug=model_slug, is_enabled=True).first()
+        if vm is None:
+            raise HTTPException(400, f"unknown or disabled vision model: {model_slug}")
+
+        files = (
+            db.query(EvidenceFile)
+            .filter_by(matter_id=matter_id, kind="image", scanned=False)
+            .order_by(EvidenceFile.created_at)
+            .all()
+        )
+        if not files:
+            return HTMLResponse(
+                '<p class="text-sm text-gray-500">No unscanned images found.</p>'
+            )
+        if len(files) > _SCAN_ALL_CAP:
+            return HTMLResponse(
+                f'<p class="text-sm text-red-600">Too many unscanned images ({len(files)}). '
+                f"Maximum per job is {_SCAN_ALL_CAP}. Scan in batches.</p>"
+            )
+
+        u = db.query(User).filter_by(id=user.id).first()
+        if u is not None:
+            u.last_vision_model_slug = model_slug
+
+        job = VisionJob(
+            matter_id=matter_id,
+            model_slug=model_slug,
+            status="running",
+            created_by_user_id=user.id,
+        )
+        db.add(job)
+        db.flush()
+        for ef in files:
+            db.add(VisionJobImage(job_id=job.id, evidence_file_id=ef.id))
+        db.commit()
+        job_id = job.id
+        n_files = len(files)
+    finally:
+        db.close()
+
+    vision_worker.wake()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="vision.run_all",
+        resource_type="matter",
+        resource_id=matter_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+        detail={"model": model_slug, "count": n_files},
     )
-    return HTMLResponse(html)
+    job_data = vision_svc.get_job_data(job_id)
+    return HTMLResponse(
+        templates.get_template("_scan_progress.html").render(
+            job_id=job_id, matter_id=matter_id, **job_data
+        )
+    )
 
 
 @router.get("/api/matters/{matter_id}/vision-scan/{job_id}", response_class=HTMLResponse)
@@ -87,13 +168,14 @@ def poll_scan(
     job_id: str,
     user: CurrentUser = Depends(require_matter_role("contributor")),
 ) -> HTMLResponse:
-    job = vision_svc.get_job(job_id)
-    if job is None:
+    job_data = vision_svc.get_job_data(job_id)
+    if job_data["status"] == "error" and job_data["total"] == 0:
         return HTMLResponse('<p class="text-sm text-red-600">Scan job not found.</p>')
-    html = templates.get_template("_scan_progress.html").render(
-        job_id=job_id, matter_id=matter_id, **job
+    return HTMLResponse(
+        templates.get_template("_scan_progress.html").render(
+            job_id=job_id, matter_id=matter_id, **job_data
+        )
     )
-    return HTMLResponse(html)
 
 
 @router.get("/api/matters/{matter_id}/vision-scan-estimate", response_class=HTMLResponse)
