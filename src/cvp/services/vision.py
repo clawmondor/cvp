@@ -45,11 +45,11 @@ def _downscale(image_bytes: bytes) -> tuple[bytes, str]:
         max_side = max(w, h)
         if max_side > 1568:
             scale = 1568 / max_side
-            resized = img.resize((round(w * scale), round(h * scale)), Image.LANCZOS)
+            to_save = img.resize((round(w * scale), round(h * scale)), Image.LANCZOS)
         else:
-            resized = img.copy()
+            to_save = img
         buf = io.BytesIO()
-        resized.convert("RGB").save(buf, "JPEG", quality=85)
+        to_save.convert("RGB").save(buf, "JPEG", quality=85)
     return buf.getvalue(), "image/jpeg"
 
 
@@ -122,7 +122,7 @@ def get_job_data(job_id: str) -> dict:
         images = db.query(VisionJobImage).filter_by(job_id=job_id).all()
         total = len(images)
         progress = sum(1 for i in images if i.status in ("done", "error"))
-        items_created = sum(i.items_created for i in images)
+        items_created = sum(i.items_created or 0 for i in images)
         errors = [i.error_message for i in images if i.status == "error" and i.error_message]
         return {
             "status": job.status,
@@ -195,6 +195,9 @@ def process_one_image(job_image_id: str) -> None:
             db.commit()
             _maybe_complete_job(db, job_id)
             return
+
+        job_image.started_at = datetime.now(timezone.utc)
+        db.commit()
 
         vm = db.query(VisionModel).filter_by(slug=job.model_slug, is_enabled=True).first()
         if vm is None:

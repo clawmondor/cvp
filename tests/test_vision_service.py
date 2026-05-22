@@ -169,6 +169,11 @@ def test_process_one_image_creates_items_and_crops(
     assert job_image.status == "done"
     assert job_image.items_created == 1
 
+    isolated_db.expire_all()
+    ji = isolated_db.get(VisionJobImage, job_image_id)
+    job = isolated_db.get(VisionJob, ji.job_id)
+    assert job.status == "done"
+
 
 def test_process_one_image_skips_crop_when_adapter_none(
     matter_with_job, isolated_db, monkeypatch, tmp_path
