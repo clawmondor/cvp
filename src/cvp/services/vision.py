@@ -1,20 +1,29 @@
 """Vision scan service — sequential image processing via OpenRouter."""
 
+import io
 import json
 import logging
 import re
-import threading
-import time
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
 from PIL import Image
 from sqlalchemy import func as sqlfunc
+from sqlalchemy.orm import Session
 
 from cvp.config import settings
 from cvp.db import SessionLocal
-from cvp.models import Category, EvidenceFile, Item, ItemCrop, VisionRun
+from cvp.models import (
+    Category,
+    EvidenceFile,
+    Item,
+    ItemCrop,
+    VisionJob,
+    VisionJobImage,
+    VisionRun,
+)
 from cvp.models_vision import VisionModel
 from cvp.services import openrouter
 from cvp.services.crop import recrop_item_crop
@@ -23,34 +32,25 @@ from cvp.services.vision_prompts import SCAN_PROMPT_VERSION, build_scan_prompt
 
 logger = logging.getLogger(__name__)
 
+
 # ---------------------------------------------------------------------------
-# In-memory job registry
+# Image downscaling
 # ---------------------------------------------------------------------------
 
-_jobs: dict[str, dict] = {}
-_lock = threading.Lock()
 
-
-def create_job(file_ids: list[str]) -> str:
-    job_id = str(uuid.uuid4())[:8]
-    with _lock:
-        _jobs[job_id] = {
-            "status": "running",
-            "progress": 0,
-            "total": len(file_ids),
-            "items_created": 0,
-            "errors": [],
-        }
-    return job_id
-
-
-def get_job(job_id: str) -> dict | None:
-    return _jobs.get(job_id)
-
-
-def _update_job(job_id: str, **kwargs) -> None:
-    with _lock:
-        _jobs[job_id].update(kwargs)
+def _downscale(image_bytes: bytes) -> tuple[bytes, str]:
+    """Resize long-edge to ≤1568px, re-encode as JPEG quality 85."""
+    with Image.open(io.BytesIO(image_bytes)) as img:
+        w, h = img.size
+        max_side = max(w, h)
+        if max_side > 1568:
+            scale = 1568 / max_side
+            resized = img.resize((round(w * scale), round(h * scale)), Image.LANCZOS)
+        else:
+            resized = img.copy()
+        buf = io.BytesIO()
+        resized.convert("RGB").save(buf, "JPEG", quality=85)
+    return buf.getvalue(), "image/jpeg"
 
 
 # ---------------------------------------------------------------------------
@@ -102,174 +102,267 @@ def _parse_response(text: str) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Core scan logic
+# Job status query
 # ---------------------------------------------------------------------------
 
 
-def run_scan(job_id: str, matter_id: str, file_ids: list[str], model_slug: str) -> None:
-    """Process each evidence file sequentially via OpenRouter."""
+def get_job_data(job_id: str) -> dict:
+    """Return progress dict compatible with _scan_progress.html template vars."""
+    db = SessionLocal()
+    try:
+        job = db.get(VisionJob, job_id)
+        if job is None:
+            return {
+                "status": "error",
+                "progress": 0,
+                "total": 0,
+                "items_created": 0,
+                "errors": ["Job not found"],
+            }
+        images = db.query(VisionJobImage).filter_by(job_id=job_id).all()
+        total = len(images)
+        progress = sum(1 for i in images if i.status in ("done", "error"))
+        items_created = sum(i.items_created for i in images)
+        errors = [i.error_message for i in images if i.status == "error" and i.error_message]
+        return {
+            "status": job.status,
+            "progress": progress,
+            "total": total,
+            "items_created": items_created,
+            "errors": errors,
+        }
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Core scan logic — called by vision_worker per image
+# ---------------------------------------------------------------------------
+
+
+def _maybe_complete_job(db: Session, job_id: str) -> None:
+    """Mark the VisionJob done/error when all images are in a terminal state."""
+    pending = (
+        db.query(VisionJobImage)
+        .filter(
+            VisionJobImage.job_id == job_id,
+            VisionJobImage.status.in_(["pending", "running"]),
+        )
+        .count()
+    )
+    if pending > 0:
+        return
+    job = db.get(VisionJob, job_id)
+    if job is None:
+        return
+    has_errors = (
+        db.query(VisionJobImage).filter_by(job_id=job_id, status="error").count()
+    )
+    job.status = "error" if has_errors else "done"
+    job.completed_at = datetime.now(timezone.utc)
+    db.commit()
+
+
+def process_one_image(job_image_id: str) -> None:
+    """Process one VisionJobImage. Opens its own DB session. Marks status done or error."""
     upload_base = Path(settings.upload_dir).resolve()
     crop_base = Path(settings.crop_dir).resolve()
 
     db = SessionLocal()
     try:
-        vm = db.query(VisionModel).filter_by(slug=model_slug, is_enabled=True).first()
-        if vm is None:
-            with _lock:
-                _jobs[job_id]["errors"].append(f"unknown or disabled model: {model_slug}")
-                _jobs[job_id]["status"] = "error"
+        job_image = db.get(VisionJobImage, job_image_id)
+        if job_image is None:
             return
-        adapter_name = vm.adapter
-        adapter_fn = resolve_adapter(adapter_name)
-        cost_snapshot = vm.prompt_image_cost_cents
 
+        job_id = job_image.job_id
+        job = db.get(VisionJob, job_id)
+        if job is None:
+            return
+
+        ef = db.get(EvidenceFile, job_image.evidence_file_id)
+
+        if ef is None or ef.kind != "image":
+            job_image.status = "done"
+            job_image.completed_at = datetime.now(timezone.utc)
+            db.commit()
+            _maybe_complete_job(db, job_id)
+            return
+
+        # Restart recovery: already successfully scanned in a prior run.
+        if ef.scanned:
+            job_image.status = "done"
+            job_image.completed_at = datetime.now(timezone.utc)
+            db.commit()
+            _maybe_complete_job(db, job_id)
+            return
+
+        vm = db.query(VisionModel).filter_by(slug=job.model_slug, is_enabled=True).first()
+        if vm is None:
+            job_image.status = "error"
+            job_image.error_message = f"unknown or disabled model: {job.model_slug}"
+            job_image.completed_at = datetime.now(timezone.utc)
+            db.commit()
+            _maybe_complete_job(db, job_id)
+            return
+
+        adapter_fn = resolve_adapter(vm.adapter)
         categories = db.query(Category).order_by(Category.id).all()
 
-        for idx, file_id in enumerate(file_ids):
-            try:
-                ef = db.get(EvidenceFile, file_id)
-                if ef is None or ef.kind != "image":
-                    _update_job(job_id, progress=idx + 1)
-                    continue
+        image_path = Path(ef.stored_path)
+        if not image_path.is_absolute():
+            image_path = (upload_base / ef.stored_path).resolve()
+        if not image_path.exists():
+            job_image.status = "error"
+            job_image.error_message = "image file not found on disk"
+            job_image.completed_at = datetime.now(timezone.utc)
+            db.commit()
+            _maybe_complete_job(db, job_id)
+            return
 
-                # Support both absolute paths (test) and relative paths (production)
-                image_path = Path(ef.stored_path)
-                if not image_path.is_absolute():
-                    image_path = (upload_base / ef.stored_path).resolve()
-                if not image_path.exists():
-                    _update_job(job_id, progress=idx + 1)
-                    continue
+        with Image.open(image_path) as img:
+            orig_w, orig_h = img.size
 
-                with Image.open(image_path) as img:
-                    img_width, img_height = img.size
+        mime = ef.mime_type or "image/jpeg"
+        image_bytes = image_path.read_bytes()
 
-                mime = ef.mime_type or "image/jpeg"
-                image_bytes = image_path.read_bytes()
+        # Downscale only if >1 MB.
+        scan_w, scan_h = orig_w, orig_h
+        if len(image_bytes) > 1_000_000:
+            image_bytes, mime = _downscale(image_bytes)
+            with Image.open(io.BytesIO(image_bytes)) as small:
+                scan_w, scan_h = small.size
 
-                raw_text = openrouter.call_vision(
-                    model_slug=model_slug,
-                    image_bytes=image_bytes,
-                    mime_type=mime,
-                    prompt=build_scan_prompt(img_width, img_height),
+        raw_text = openrouter.call_vision(
+            model_slug=job.model_slug,
+            image_bytes=image_bytes,
+            mime_type=mime,
+            prompt=build_scan_prompt(scan_w, scan_h),
+        )
+        parsed = _parse_response(raw_text)
+
+        max_line = (
+            db.query(sqlfunc.max(Item.line_number))
+            .filter(Item.matter_id == job.matter_id)
+            .scalar()
+            or 0
+        )
+        items_this_file = 0
+
+        for raw_item in parsed:
+            if not isinstance(raw_item, dict):
+                continue
+            description = str(raw_item.get("description") or "").strip()
+            if not description:
+                continue
+
+            cat_id = _match_category_id(raw_item.get("category_hint"), categories)
+            qty = max(1, int(raw_item.get("quantity") or 1))
+            condition = str(raw_item.get("condition") or "average")
+            if condition not in ("excellent", "above_average", "average", "below_average"):
+                condition = "average"
+            search_hint = str(raw_item.get("search_hint") or "").strip() or None
+
+            max_line += 1
+            item = Item(
+                matter_id=job.matter_id,
+                category_id=cat_id,
+                line_number=max_line,
+                description=description,
+                brand=str(raw_item.get("brand") or "").strip() or None,
+                model=str(raw_item.get("model") or "").strip() or None,
+                quantity=qty,
+                age_years=0.0,
+                condition=condition,
+                rcv_unit_cents=0,
+                rcv_total_cents=0,
+                acv_total_cents=0,
+                confirmed=False,
+                search_hint=search_hint,
+                notes=(
+                    f"room_hint:{raw_item.get('room_hint') or ''}"
+                    f"|confidence:{raw_item.get('confidence') or 'medium'}"
+                ),
+            )
+            db.add(item)
+            db.flush()
+
+            # Scale bbox from downscaled coords back to original image coords.
+            bbox = adapter_fn(raw_item.get("bounding_box"), scan_w, scan_h)
+            if bbox is not None:
+                left, upper, right, lower = bbox
+                if scan_w != orig_w:
+                    sx = orig_w / scan_w
+                    sy = orig_h / scan_h
+                    left = round(left * sx)
+                    upper = round(upper * sy)
+                    right = round(right * sx)
+                    lower = round(lower * sy)
+                item_crop = ItemCrop(
+                    id=str(uuid.uuid4()),
+                    item_id=item.id,
+                    evidence_file_id=ef.id,
+                    bbox_left=left,
+                    bbox_upper=upper,
+                    bbox_right=right,
+                    bbox_lower=lower,
                 )
-                parsed = _parse_response(raw_text)
-                items_this_file = 0
+                item_crop.crop_path = recrop_item_crop(item_crop, ef, upload_base, crop_base)
+                db.add(item_crop)
 
-                max_line = (
-                    db.query(sqlfunc.max(Item.line_number))
-                    .filter(Item.matter_id == matter_id)
-                    .scalar()
-                    or 0
-                )
+            items_this_file += 1
 
-                for raw_item in parsed:
-                    if not isinstance(raw_item, dict):
-                        continue
-                    description = str(raw_item.get("description") or "").strip()
-                    if not description:
-                        continue
+        vr = VisionRun(
+            matter_id=job.matter_id,
+            evidence_file_id=ef.id,
+            model=job.model_slug,
+            prompt_version=SCAN_PROMPT_VERSION,
+            raw_response=raw_text,
+            items_created=items_this_file,
+            adapter=vm.adapter,
+            cost_cents_estimated=vm.prompt_image_cost_cents,
+        )
+        db.add(vr)
+        ef.scanned = True
+        job_image.status = "done"
+        job_image.items_created = items_this_file
+        job_image.completed_at = datetime.now(timezone.utc)
+        db.commit()
+        _maybe_complete_job(db, job_id)
 
-                    cat_id = _match_category_id(raw_item.get("category_hint"), categories)
-                    qty = int(raw_item.get("quantity") or 1)
-                    if qty < 1:
-                        qty = 1
-                    condition = str(raw_item.get("condition") or "average")
-                    if condition not in ("excellent", "above_average", "average", "below_average"):
-                        condition = "average"
-
-                    search_hint = str(raw_item.get("search_hint") or "").strip() or None
-
-                    max_line += 1
-                    item = Item(
-                        matter_id=matter_id,
-                        category_id=cat_id,
-                        line_number=max_line,
-                        description=description,
-                        brand=str(raw_item.get("brand") or "").strip() or None,
-                        model=str(raw_item.get("model") or "").strip() or None,
-                        quantity=qty,
-                        age_years=0.0,
-                        condition=condition,
-                        rcv_unit_cents=0,
-                        rcv_total_cents=0,
-                        acv_total_cents=0,
-                        confirmed=False,
-                        search_hint=search_hint,
-                        notes=(
-                            f"room_hint:{raw_item.get('room_hint') or ''}"
-                            f"|confidence:{raw_item.get('confidence') or 'medium'}"
-                        ),
-                    )
-                    db.add(item)
-                    db.flush()
-
-                    bbox = adapter_fn(raw_item.get("bounding_box"), img_width, img_height)
-                    if bbox is not None:
-                        left, upper, right, lower = bbox
-                        item_crop = ItemCrop(
-                            id=str(uuid.uuid4()),
-                            item_id=item.id,
-                            evidence_file_id=file_id,
-                            bbox_left=left,
-                            bbox_upper=upper,
-                            bbox_right=right,
-                            bbox_lower=lower,
-                        )
-                        item_crop.crop_path = recrop_item_crop(
-                            item_crop, ef, upload_base, crop_base
-                        )
-                        db.add(item_crop)
-
-                    items_this_file += 1
-
-                vr = VisionRun(
-                    matter_id=matter_id,
-                    evidence_file_id=file_id,
-                    model=model_slug,
-                    prompt_version=SCAN_PROMPT_VERSION,
-                    raw_response=raw_text,
-                    items_created=items_this_file,
-                    adapter=adapter_name,
-                    cost_cents_estimated=cost_snapshot,
-                )
-                db.add(vr)
-                ef.scanned = True
-                db.commit()
-
-                with _lock:
-                    _jobs[job_id]["progress"] = idx + 1
-                    _jobs[job_id]["items_created"] += items_this_file
-
-            except openrouter.OpenRouterError as exc:
-                db.rollback()
-                with _lock:
-                    _jobs[job_id]["errors"].append(
-                        f"File {file_id}: API error — {exc.status} {exc.message}"
-                    )
-                    _jobs[job_id]["progress"] = idx + 1
-            except httpx.TimeoutException:
-                db.rollback()
-                with _lock:
-                    _jobs[job_id]["errors"].append(f"File {file_id}: timeout")
-                    _jobs[job_id]["progress"] = idx + 1
-            except Exception as exc:  # noqa: BLE001
-                db.rollback()
-                logger.exception("vision scan failure")
-                with _lock:
-                    _jobs[job_id]["errors"].append(f"File {file_id}: {exc}")
-                    _jobs[job_id]["progress"] = idx + 1
-
-            if idx < len(file_ids) - 1:
-                time.sleep(0.5)
-
+    except openrouter.OpenRouterError as exc:
+        db.rollback()
+        ji = db.get(VisionJobImage, job_image_id)
+        if ji:
+            ji.status = "error"
+            ji.error_message = f"API error — {exc.status} {exc.message}"
+            ji.completed_at = datetime.now(timezone.utc)
+            db.commit()
+            _maybe_complete_job(db, ji.job_id)
+    except httpx.TimeoutException:
+        db.rollback()
+        ji = db.get(VisionJobImage, job_image_id)
+        if ji:
+            ji.status = "error"
+            ji.error_message = "timeout"
+            ji.completed_at = datetime.now(timezone.utc)
+            db.commit()
+            _maybe_complete_job(db, ji.job_id)
+    except Exception as exc:  # noqa: BLE001
+        db.rollback()
+        logger.exception("vision scan failure for job_image %s", job_image_id)
+        ji = db.get(VisionJobImage, job_image_id)
+        if ji:
+            ji.status = "error"
+            ji.error_message = str(exc)[:500]
+            ji.completed_at = datetime.now(timezone.utc)
+            db.commit()
+            _maybe_complete_job(db, ji.job_id)
     finally:
         db.close()
 
-    _update_job(job_id, status="done" if not _jobs[job_id]["errors"] else "error")
-
 
 # ---------------------------------------------------------------------------
-# Cost estimate
+# Cost estimate (unchanged)
 # ---------------------------------------------------------------------------
 
 

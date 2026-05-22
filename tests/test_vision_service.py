@@ -1,4 +1,4 @@
-"""Integration tests for vision.run_scan — OpenRouter mocked."""
+"""Integration tests for vision.process_one_image — OpenRouter mocked."""
 
 import json
 from unittest.mock import patch
@@ -9,14 +9,23 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import cvp.models_vision  # noqa: F401
-from cvp.models import Base, Category, EvidenceFile, Item, ItemCrop, VisionRun
+from cvp.models import (
+    Base,
+    Category,
+    EvidenceFile,
+    Item,
+    ItemCrop,
+    Matter,
+    VisionJob,
+    VisionJobImage,
+    VisionRun,
+)
 from cvp.models_vision import VisionModel
 from cvp.services import vision as vision_svc
 
 
 @pytest.fixture
 def isolated_db(tmp_path):
-    """In-memory DB with all tables + a seeded VisionModel and Category."""
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -69,20 +78,14 @@ def isolated_db(tmp_path):
 
 
 @pytest.fixture
-def matter_with_image(isolated_db, tmp_path):
-    """Inserts a Matter + EvidenceFile + tiny JPEG on disk. Returns (matter_id, file_id)."""
+def matter_with_job(isolated_db, tmp_path):
+    """Returns (matter_id, job_image_id) for a matter with one image ready to scan."""
     from PIL import Image
 
-    from cvp.models import Matter
-
-    # Create tiny test image
     img_path = tmp_path / "test.jpg"
     Image.new("RGB", (200, 200), color="white").save(img_path)
 
-    matter = Matter(
-        policyholder_name="Test Owner",
-        loss_type="total_loss",
-    )
+    matter = Matter(policyholder_name="Test Owner", loss_type="total_loss")
     isolated_db.add(matter)
     isolated_db.flush()
 
@@ -95,16 +98,20 @@ def matter_with_image(isolated_db, tmp_path):
         size_bytes=img_path.stat().st_size,
     )
     isolated_db.add(ef)
+    isolated_db.flush()
+
+    job = VisionJob(matter_id=matter.id, model_slug="anthropic/claude-opus-4", status="running")
+    isolated_db.add(job)
+    isolated_db.flush()
+
+    job_image = VisionJobImage(job_id=job.id, evidence_file_id=ef.id, status="running")
+    isolated_db.add(job_image)
     isolated_db.commit()
-    return matter.id, ef.id
+    return matter.id, job_image.id
 
 
-def test_run_scan_creates_items_and_crops(matter_with_image, isolated_db, monkeypatch, tmp_path):
-    matter_id, file_id = matter_with_image
-
-    # Patch SessionLocal to return our isolated_db session
+def _monkeypatch_vision(monkeypatch, isolated_db, tmp_path):
     monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: isolated_db)
-    # Point crop_dir to tmp_path so recrop_item_crop can write files
     monkeypatch.setattr(
         "cvp.config.settings",
         type(
@@ -119,6 +126,13 @@ def test_run_scan_creates_items_and_crops(matter_with_image, isolated_db, monkey
             },
         )(),
     )
+
+
+def test_process_one_image_creates_items_and_crops(
+    matter_with_job, isolated_db, monkeypatch, tmp_path
+):
+    matter_id, job_image_id = matter_with_job
+    _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
 
     fake_response = json.dumps(
         [
@@ -137,9 +151,8 @@ def test_run_scan_creates_items_and_crops(matter_with_image, isolated_db, monkey
         ]
     )
 
-    job_id = vision_svc.create_job([file_id])
     with patch("cvp.services.vision.openrouter.call_vision", return_value=fake_response):
-        vision_svc.run_scan(job_id, matter_id, [file_id], "anthropic/claude-opus-4")
+        vision_svc.process_one_image(job_image_id)
 
     items = isolated_db.query(Item).filter_by(matter_id=matter_id).all()
     assert len(items) == 1
@@ -151,49 +164,81 @@ def test_run_scan_creates_items_and_crops(matter_with_image, isolated_db, monkey
     runs = isolated_db.query(VisionRun).filter_by(matter_id=matter_id).all()
     assert len(runs) == 1
     assert runs[0].model == "anthropic/claude-opus-4"
-    assert runs[0].adapter == "pixel_passthrough"
+
+    job_image = isolated_db.get(VisionJobImage, job_image_id)
+    assert job_image.status == "done"
+    assert job_image.items_created == 1
 
 
-def test_run_scan_skips_crop_when_adapter_none(
-    matter_with_image, isolated_db, monkeypatch, tmp_path
+def test_process_one_image_skips_crop_when_adapter_none(
+    matter_with_job, isolated_db, monkeypatch, tmp_path
 ):
-    matter_id, file_id = matter_with_image
-    monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: isolated_db)
-    monkeypatch.setattr(
-        "cvp.config.settings",
-        type(
-            "S",
-            (),
-            {
-                "upload_dir": str(tmp_path),
-                "crop_dir": str(tmp_path),
-                "openrouter_api_key": "test-key",
-                "openrouter_referer": "",
-                "openrouter_app_title": "",
-            },
-        )(),
-    )
+    matter_id, job_image_id = matter_with_job
+    ji = isolated_db.get(VisionJobImage, job_image_id)
+    job = isolated_db.get(VisionJob, ji.job_id)
+    job.model_slug = "openai/gpt-4o"
+    isolated_db.commit()
+
+    _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
 
     fake_response = json.dumps(
         [
             {
-                "description": "Anything",
+                "description": "Coffee table",
                 "category_hint": "Miscellaneous household goods",
                 "quantity": 1,
                 "condition": "average",
-                "bounding_box": [0, 0, 100, 100],
             }
         ]
     )
 
-    job_id = vision_svc.create_job([file_id])
     with patch("cvp.services.vision.openrouter.call_vision", return_value=fake_response):
-        vision_svc.run_scan(job_id, matter_id, [file_id], "openai/gpt-4o")
+        vision_svc.process_one_image(job_image_id)
 
     items = isolated_db.query(Item).filter_by(matter_id=matter_id).all()
     assert len(items) == 1
-    crops = isolated_db.query(ItemCrop).filter_by(item_id=items[0].id).all()
-    assert len(crops) == 0  # adapter=none -> no crop
+    crops = isolated_db.query(ItemCrop).all()
+    assert len(crops) == 0
+
+
+def test_process_one_image_marks_error_on_api_failure(
+    matter_with_job, isolated_db, monkeypatch, tmp_path
+):
+    _, job_image_id = matter_with_job
+    _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
+
+    from cvp.services.openrouter import OpenRouterError
+
+    with patch(
+        "cvp.services.vision.openrouter.call_vision",
+        side_effect=OpenRouterError(429, "rate limit"),
+    ):
+        vision_svc.process_one_image(job_image_id)
+
+    isolated_db.expire_all()
+    ji = isolated_db.get(VisionJobImage, job_image_id)
+    assert ji.status == "error"
+    assert "429" in ji.error_message
+
+
+def test_process_skips_already_scanned_file(
+    matter_with_job, isolated_db, monkeypatch, tmp_path
+):
+    _, job_image_id = matter_with_job
+    _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
+
+    ji = isolated_db.get(VisionJobImage, job_image_id)
+    ef = isolated_db.get(EvidenceFile, ji.evidence_file_id)
+    ef.scanned = True
+    isolated_db.commit()
+
+    with patch("cvp.services.vision.openrouter.call_vision") as mock_call:
+        vision_svc.process_one_image(job_image_id)
+        mock_call.assert_not_called()
+
+    isolated_db.expire_all()
+    ji = isolated_db.get(VisionJobImage, job_image_id)
+    assert ji.status == "done"
 
 
 def test_estimate_cost_known_model(isolated_db, monkeypatch):
