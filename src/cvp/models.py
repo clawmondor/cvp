@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -209,6 +210,53 @@ class VisionRun(Base):
     evidence_file: Mapped["EvidenceFile"] = relationship(
         "EvidenceFile", back_populates="vision_runs"
     )
+
+
+class VisionJob(Base):
+    """A batch vision scan job — groups one or more VisionJobImages."""
+
+    __tablename__ = "vision_jobs"
+    __table_args__ = (Index("ix_vision_jobs_matter_created", "matter_id", "created_at"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
+    matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
+    model_slug: Mapped[str] = mapped_column(String, default="")
+    status: Mapped[str] = mapped_column(String, default="running")  # running | done | error
+    created_by_user_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("users.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    images: Mapped[list["VisionJobImage"]] = relationship(
+        "VisionJobImage", back_populates="job", cascade="all, delete-orphan"
+    )
+
+
+class VisionJobImage(Base):
+    """One image within a VisionJob, tracking its individual scan status."""
+
+    __tablename__ = "vision_job_images"
+    __table_args__ = (
+        Index("ix_vision_job_images_status_created", "status", "created_at"),
+        Index("ix_vision_job_images_evidence_file_id", "evidence_file_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
+    job_id: Mapped[str] = mapped_column(
+        String, ForeignKey("vision_jobs.id", ondelete="CASCADE"), nullable=False
+    )
+    evidence_file_id: Mapped[str] = mapped_column(
+        String, ForeignKey("evidence_files.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String, default="pending")  # pending | running | done | error
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    items_created: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    job: Mapped["VisionJob"] = relationship("VisionJob", back_populates="images")
 
 
 class ItemCrop(Base):
