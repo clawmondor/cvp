@@ -4,7 +4,7 @@ import mimetypes
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -13,6 +13,7 @@ from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.models import EvidenceFile
 from cvp.services.audit import get_client_ip, write_audit_log
+from cvp.services.evidence_cleanup import delete_evidence_file
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -110,15 +111,12 @@ def delete_evidence(
         if ef is None:
             raise HTTPException(status_code=404, detail="File not found")
         upload_base = Path(settings.upload_dir).resolve()
+        crop_base = Path(settings.crop_dir).resolve()
         dest = (upload_base / ef.stored_path).resolve()
-        # Path-traversal guard
-        if not str(dest).startswith(str(upload_base)):
+        if not dest.is_relative_to(upload_base):
             raise HTTPException(status_code=400, detail="Invalid path")
-        if dest.exists():
-            dest.unlink()
         matter_id = ef.matter_id
-        db.delete(ef)
-        db.commit()
+        delete_evidence_file(db, ef, upload_base, crop_base)
     finally:
         db.close()
 
@@ -134,6 +132,67 @@ def delete_evidence(
     return HTMLResponse("", status_code=200)
 
 
+@router.post(
+    "/api/matters/{matter_id}/evidence/remove-all-images", response_class=HTMLResponse
+)
+def remove_all_images(
+    request: Request,
+    matter_id: str,
+    background_tasks: BackgroundTasks,
+    confirm_count: int = Form(...),
+    user: CurrentUser = Depends(require_matter_role("manager")),
+) -> HTMLResponse:
+    db = SessionLocal()
+    try:
+        image_files = (
+            db.query(EvidenceFile)
+            .filter_by(matter_id=matter_id, kind="image")
+            .order_by(EvidenceFile.created_at)
+            .all()
+        )
+        if len(image_files) != confirm_count:
+            return HTMLResponse(
+                '<p class="text-sm text-red-600">'
+                "Count mismatch — please refresh and try again.</p>",
+                status_code=409,
+            )
+
+        upload_base = Path(settings.upload_dir).resolve()
+        crop_base = Path(settings.crop_dir).resolve()
+        file_ids = [ef.id for ef in image_files]
+        deleted_count = len(file_ids)
+
+        for file_id in file_ids:
+            ef = db.get(EvidenceFile, file_id)
+            if ef is not None:
+                delete_evidence_file(db, ef, upload_base, crop_base)
+
+        evidence_files = (
+            db.query(EvidenceFile)
+            .filter_by(matter_id=matter_id)
+            .order_by(EvidenceFile.created_at.desc())
+            .all()
+        )
+    finally:
+        db.close()
+
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="evidence.remove_all_images",
+        resource_type="matter",
+        resource_id=matter_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+        detail={"count": deleted_count},
+    )
+    return HTMLResponse(
+        templates.get_template("_evidence_grid.html").render(
+            evidence_files=evidence_files, matter_id=matter_id
+        )
+    )
+
+
 @router.get("/files/{matter_id}/{filename:path}")
 def serve_file(
     matter_id: str,
@@ -144,7 +203,7 @@ def serve_file(
     upload_base = Path(settings.upload_dir).resolve()
     dest = (upload_base / stored_path).resolve()
     # Path-traversal guard
-    if not str(dest).startswith(str(upload_base)):
+    if not dest.is_relative_to(upload_base):
         raise HTTPException(status_code=400, detail="Invalid path")
     if not dest.exists():
         raise HTTPException(status_code=404, detail="File not found")
