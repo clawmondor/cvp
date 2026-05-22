@@ -249,7 +249,8 @@ class VisionJobImage(Base):
     evidence_file_id: Mapped[str] = mapped_column(
         String, ForeignKey("evidence_files.id", ondelete="CASCADE"), nullable=False
     )
-    status: Mapped[str] = mapped_column(String, default="pending")  # pending | running | done | error
+    # pending | running | done | error
+    status: Mapped[str] = mapped_column(String, default="pending")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     items_created: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
