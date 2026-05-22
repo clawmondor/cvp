@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, require_active_user, require_matter_role
-from cvp.models import Category, Item, Matter
+from cvp.models import Category, Item, Matter, VisionJob, VisionJobImage
 from cvp.models_auth import User as UserORM
 from cvp.models_vision import VisionModel
 from cvp.services.audit import get_client_ip, should_debounce_view, write_audit_log
@@ -149,6 +149,44 @@ def matter_detail(
         if default_vision_slug is None:
             default_vision_slug = next((vm.slug for vm in vision_models if vm.is_default), None)
         debounce = should_debounce_view(db, user.id, "matter.view", matter_id)
+
+        # Scan error badges — latest error per unscanned image
+        scan_errors: dict[str, str] = {}
+        error_rows = (
+            db.query(VisionJobImage.evidence_file_id, VisionJobImage.error_message)
+            .join(VisionJob, VisionJobImage.job_id == VisionJob.id)
+            .filter(
+                VisionJob.matter_id == matter_id,
+                VisionJobImage.status == "error",
+            )
+            .order_by(VisionJobImage.created_at.asc())
+            .all()
+        )
+        for row in error_rows:
+            if row.error_message:
+                scan_errors[row.evidence_file_id] = row.error_message
+
+        # Banner for latest completed job with errors
+        latest_scan_job: dict | None = None
+        latest_job = (
+            db.query(VisionJob)
+            .filter(
+                VisionJob.matter_id == matter_id,
+                VisionJob.status.in_(["done", "error"]),
+            )
+            .order_by(VisionJob.created_at.desc())
+            .first()
+        )
+        if latest_job:
+            job_images = db.query(VisionJobImage).filter_by(job_id=latest_job.id).all()
+            error_count = sum(1 for i in job_images if i.status == "error")
+            if error_count > 0:
+                latest_scan_job = {
+                    "job_id": latest_job.id,
+                    "total": len(job_images),
+                    "success_count": sum(1 for i in job_images if i.status == "done"),
+                    "error_count": error_count,
+                }
     finally:
         db.close()
 
@@ -181,6 +219,8 @@ def matter_detail(
             "user": user,
             "vision_models": vision_models,
             "default_vision_slug": default_vision_slug,
+            "scan_errors": scan_errors,
+            "latest_scan_job": latest_scan_job,
         },
     )
 

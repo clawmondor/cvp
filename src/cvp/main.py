@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request
@@ -32,10 +33,19 @@ from cvp.routers.admin import internal as admin_internal
 from cvp.routers.admin import org as admin_org
 from cvp.routers.admin import system as admin_system
 from cvp.routers.admin import vision_models as admin_vision_models
+from cvp.services import vision_worker
 
 BASE_DIR = Path(__file__).parent
 
-app = FastAPI(title="Contents Valuation Platform")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    vision_worker.recover_stale_jobs()
+    vision_worker.start_worker()
+    yield
+
+
+app = FastAPI(title="Contents Valuation Platform", lifespan=lifespan)
 
 # Security headers middleware
 app.add_middleware(SecurityHeadersMiddleware, environment=settings.environment)
