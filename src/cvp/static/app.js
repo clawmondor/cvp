@@ -300,3 +300,31 @@ document.addEventListener('htmx:afterRequest', function (e) {
     btn.classList.remove('bg-violet-600', 'hover:bg-violet-700', 'transition');
     btn.classList.add('bg-gray-400', 'cursor-not-allowed');
 });
+
+// ── Bulk evidence actions ────────────────────────────────────────────────
+
+function confirmRemoveAll(count) {
+  var input = prompt(
+    'This will permanently remove all ' + count + ' images and their scanned items.\n' +
+    'Type ' + count + ' to confirm:'
+  );
+  if (input !== null && parseInt(input, 10) === count) {
+    document.getElementById('remove-all-confirm-count').value = count;
+    htmx.trigger(document.getElementById('remove-all-form'), 'submit');
+  }
+}
+
+function dismissScanBanner(jobId) {
+  try { sessionStorage.setItem('dismissed_banner_' + jobId, '1'); } catch (_) {}
+  var el = document.getElementById('scan-banner-' + jobId);
+  if (el) el.remove();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-job-id]').forEach(function (el) {
+    var jobId = el.dataset.jobId;
+    try {
+      if (sessionStorage.getItem('dismissed_banner_' + jobId)) el.remove();
+    } catch (_) {}
+  });
+});
