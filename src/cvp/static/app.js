@@ -303,6 +303,18 @@ document.addEventListener('htmx:afterRequest', function (e) {
 
 // ── Bulk evidence actions ────────────────────────────────────────────────
 
+// Delegated click: data-remove-all-count → confirmRemoveAll(count)
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-remove-all-count]');
+    if (btn) confirmRemoveAll(parseInt(btn.dataset.removeAllCount, 10));
+});
+
+// Delegated click: data-dismiss-scan-banner="<jobId>" → dismissScanBanner(jobId)
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-dismiss-scan-banner]');
+    if (btn) dismissScanBanner(btn.dataset.dismissScanBanner);
+});
+
 function confirmRemoveAll(count) {
   var input = prompt(
     'This will permanently remove all ' + count + ' images and their scanned items.\n' +

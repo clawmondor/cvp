@@ -35,7 +35,7 @@
       </p>
       <p class="text-xs text-amber-700 mt-0.5">Failed images show details below — click Scan Now to retry.</p>
     </div>
-    <button onclick="dismissScanBanner('{{ latest_scan_job.job_id }}')"
+    <button data-dismiss-scan-banner="{{ latest_scan_job.job_id }}"
             class="shrink-0 text-amber-500 hover:text-amber-700 text-lg leading-none">✕</button>
   </div>
   {% endif %}
@@ -55,7 +55,7 @@
     </form>
     {% endif %}
     <button type="button"
-            onclick="confirmRemoveAll({{ image_count }})"
+            data-remove-all-count="{{ image_count }}"
             class="rounded border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50">
       Remove all images ({{ image_count }})
     </button>
