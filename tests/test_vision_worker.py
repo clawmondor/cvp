@@ -11,24 +11,25 @@ import cvp.models_vision  # noqa: F401
 from cvp.models import Base, EvidenceFile, Matter, VisionJob, VisionJobImage
 
 
-@pytest.fixture(autouse=True)
-def _stop_worker_after_test():
-    """Ensure no worker thread leaks between tests regardless of execution order."""
-    yield
-    from cvp.services import vision_worker
-
-    vision_worker.stop_worker()
-
-
 @pytest.fixture
-def db(tmp_path):
-    engine = create_engine(
+def engine(tmp_path):
+    eng = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
+    Base.metadata.create_all(eng)
+    return eng
+
+
+@pytest.fixture
+def Session(engine):
+    """Session factory — each call returns a fresh session on the test engine."""
+    return sessionmaker(bind=engine)
+
+
+@pytest.fixture
+def db(engine, Session):
     session = Session()
     session.add(Matter(id="m1", policyholder_name="T", loss_type="total_loss"))
     session.add(
@@ -47,6 +48,20 @@ def db(tmp_path):
     session.close()
 
 
+@pytest.fixture(autouse=True)
+def _isolate_worker(db):
+    """Kill any running worker before and after each test.
+
+    Depending on `db` ensures this fixture tears down BEFORE `db` closes,
+    so the worker cannot race against session cleanup in teardown.
+    """
+    from cvp.services import vision_worker
+
+    vision_worker.stop_worker()  # kill any stale worker from previous test
+    yield
+    vision_worker.stop_worker()  # kill worker started by this test
+
+
 def _add_job_image(db, status="pending"):
     job = VisionJob(matter_id="m1", model_slug="some/model", status="running")
     db.add(job)
@@ -57,10 +72,10 @@ def _add_job_image(db, status="pending"):
     return ji.id
 
 
-def test_recover_stale_jobs_resets_running_to_pending(db, monkeypatch):
+def test_recover_stale_jobs_resets_running_to_pending(db, Session, monkeypatch):
     from cvp.services import vision_worker
 
-    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", lambda: db)
+    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", Session)
 
     ji_id = _add_job_image(db, status="running")
 
@@ -72,10 +87,10 @@ def test_recover_stale_jobs_resets_running_to_pending(db, monkeypatch):
     assert ji.started_at is None
 
 
-def test_recover_leaves_done_rows_unchanged(db, monkeypatch):
+def test_recover_leaves_done_rows_unchanged(db, Session, monkeypatch):
     from cvp.services import vision_worker
 
-    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", lambda: db)
+    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", Session)
 
     ji_id = _add_job_image(db, status="done")
     vision_worker.recover_stale_jobs()
@@ -85,10 +100,10 @@ def test_recover_leaves_done_rows_unchanged(db, monkeypatch):
     assert ji.status == "done"
 
 
-def test_claim_next_pending_marks_running(db, monkeypatch):
+def test_claim_next_pending_marks_running(db, Session, monkeypatch):
     from cvp.services import vision_worker
 
-    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", lambda: db)
+    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", Session)
 
     ji_id = _add_job_image(db, status="pending")
     claimed = vision_worker._claim_next_pending()
@@ -100,19 +115,19 @@ def test_claim_next_pending_marks_running(db, monkeypatch):
     assert ji.started_at is not None
 
 
-def test_claim_next_pending_returns_none_when_empty(db, monkeypatch):
+def test_claim_next_pending_returns_none_when_empty(db, Session, monkeypatch):
     from cvp.services import vision_worker
 
-    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", lambda: db)
+    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", Session)
 
     result = vision_worker._claim_next_pending()
     assert result is None
 
 
-def test_worker_processes_pending_row(db, monkeypatch):
+def test_worker_processes_pending_row(db, Session, monkeypatch):
     from cvp.services import vision_worker
 
-    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", lambda: db)
+    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", Session)
 
     processed = []
 
