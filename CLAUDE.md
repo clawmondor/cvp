@@ -101,7 +101,7 @@ When writing any user-facing text, report template content, UI copy, README, or 
 - **Services layer for anything with side effects.** PDF rendering, CSV writing, Vision API calls, and screenshot capture go in `src/cvp/services/`, not in routers.
 - **Pure functions in `depreciation.py`.** No database access. Tested in isolation.
 - **Tests live in `tests/` mirroring the `src/cvp/` layout.** Depreciation has near-100% coverage; routers have one happy-path integration test each; Vision is mocked.
-- **Use `ruff format` before committing.** Line length 100.
+- **Run `ruff format .` then `ruff format --check .` before every commit.** CI enforces format; the check must show zero files would be reformatted. Line length 100.
 - **No clever tricks.** This is a prototype built by a small team. Boring code is maintainable code.
 
 ## How to approach new work
@@ -121,6 +121,7 @@ When writing any user-facing text, report template content, UI copy, README, or 
 - Don't write PDF content as literal strings in Python code — it always goes through a Jinja template.
 - Don't change the Xactimate CSV column names. Carriers and attorneys depend on exact header matches.
 - Don't optimize prematurely. This runs on one laptop, for one user, with a few thousand items per matter at most. Clarity beats cleverness.
+- **Never use inline JavaScript event handlers** (`onclick=`, `onchange=`, `onsubmit=`, etc.) in Jinja templates. The CSP `script-src` policy has no `unsafe-inline` and hashes don't apply to event handlers, so they are hard-blocked in production. Always wire interactivity via `data-*` attributes and delegated `document.addEventListener('click', ...)` listeners in `src/cvp/static/app.js` — see the existing pattern at lines 225–275.
 
 ## Useful references
 
