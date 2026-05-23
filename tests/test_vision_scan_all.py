@@ -39,20 +39,33 @@ def db_session():
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     db = Session()
-    db.add(VisionModel(
-        slug="anthropic/claude-opus-4", display_name="Claude Opus 4",
-        adapter="pixel_passthrough", supports_bbox=True,
-        is_default=True, is_enabled=True, recommended=True,
-    ))
+    db.add(
+        VisionModel(
+            slug="anthropic/claude-opus-4",
+            display_name="Claude Opus 4",
+            adapter="pixel_passthrough",
+            supports_bbox=True,
+            is_default=True,
+            is_enabled=True,
+            recommended=True,
+        )
+    )
     db.add(User(id=CONTRIBUTOR_ID, email="c@t.com", display_name="C", system_role="internal_user"))
     db.add(Matter(id=MATTER_ID, policyholder_name="Owner", loss_type="total_loss"))
     tmp = tempfile.mktemp(suffix=".jpg")
     PILImage.new("RGB", (10, 10), "white").save(tmp)
-    db.add(EvidenceFile(
-        id=FILE_ID, matter_id=MATTER_ID, filename="test.jpg",
-        stored_path=tmp, mime_type="image/jpeg", kind="image",
-        size_bytes=os.path.getsize(tmp), scanned=False,
-    ))
+    db.add(
+        EvidenceFile(
+            id=FILE_ID,
+            matter_id=MATTER_ID,
+            filename="test.jpg",
+            stored_path=tmp,
+            mime_type="image/jpeg",
+            kind="image",
+            size_bytes=os.path.getsize(tmp),
+            scanned=False,
+        )
+    )
     db.commit()
     yield db
     db.close()
@@ -62,8 +75,11 @@ def db_session():
 def client_contributor(db_session):
     async def mock_contrib():
         return CurrentUser(
-            id=CONTRIBUTOR_ID, email="c@t.com",
-            system_role="internal_user", group_id=None, group_kind="internal",
+            id=CONTRIBUTOR_ID,
+            email="c@t.com",
+            system_role="internal_user",
+            group_id=None,
+            group_kind="internal",
         )
 
     def override_get_db():
@@ -118,11 +134,17 @@ def test_scan_all_rejects_over_cap(client_contributor, db_session, monkeypatch):
     monkeypatch.setattr("cvp.routers.vision._SCAN_ALL_CAP", 2)
 
     for i in range(3):
-        db_session.add(EvidenceFile(
-            matter_id=MATTER_ID, filename=f"extra_{i}.jpg",
-            stored_path=f"/tmp/fake_{i}.jpg", mime_type="image/jpeg",
-            kind="image", size_bytes=100, scanned=False,
-        ))
+        db_session.add(
+            EvidenceFile(
+                matter_id=MATTER_ID,
+                filename=f"extra_{i}.jpg",
+                stored_path=f"/tmp/fake_{i}.jpg",
+                mime_type="image/jpeg",
+                kind="image",
+                size_bytes=100,
+                scanned=False,
+            )
+        )
     db_session.commit()
 
     resp = client_contributor.post(

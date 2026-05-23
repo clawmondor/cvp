@@ -22,10 +22,17 @@ def db(tmp_path):
     Session = sessionmaker(bind=engine)
     session = Session()
     session.add(Matter(id="m1", policyholder_name="T", loss_type="total_loss"))
-    session.add(EvidenceFile(
-        id="ef1", matter_id="m1", filename="a.jpg",
-        stored_path="/tmp/a.jpg", mime_type="image/jpeg", kind="image", size_bytes=1,
-    ))
+    session.add(
+        EvidenceFile(
+            id="ef1",
+            matter_id="m1",
+            filename="a.jpg",
+            stored_path="/tmp/a.jpg",
+            mime_type="image/jpeg",
+            kind="image",
+            size_bytes=1,
+        )
+    )
     session.commit()
     yield session
     session.close()
@@ -43,6 +50,7 @@ def _add_job_image(db, status="pending"):
 
 def test_recover_stale_jobs_resets_running_to_pending(db, monkeypatch):
     from cvp.services import vision_worker
+
     monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", lambda: db)
 
     ji_id = _add_job_image(db, status="running")
@@ -57,6 +65,7 @@ def test_recover_stale_jobs_resets_running_to_pending(db, monkeypatch):
 
 def test_recover_leaves_done_rows_unchanged(db, monkeypatch):
     from cvp.services import vision_worker
+
     monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", lambda: db)
 
     ji_id = _add_job_image(db, status="done")
@@ -69,6 +78,7 @@ def test_recover_leaves_done_rows_unchanged(db, monkeypatch):
 
 def test_claim_next_pending_marks_running(db, monkeypatch):
     from cvp.services import vision_worker
+
     monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", lambda: db)
 
     ji_id = _add_job_image(db, status="pending")
@@ -83,6 +93,7 @@ def test_claim_next_pending_marks_running(db, monkeypatch):
 
 def test_claim_next_pending_returns_none_when_empty(db, monkeypatch):
     from cvp.services import vision_worker
+
     monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", lambda: db)
 
     result = vision_worker._claim_next_pending()
@@ -91,6 +102,7 @@ def test_claim_next_pending_returns_none_when_empty(db, monkeypatch):
 
 def test_worker_processes_pending_row(db, monkeypatch):
     from cvp.services import vision_worker
+
     monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", lambda: db)
 
     processed = []

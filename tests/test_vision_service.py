@@ -226,9 +226,7 @@ def test_process_one_image_marks_error_on_api_failure(
     assert "429" in ji.error_message
 
 
-def test_process_skips_already_scanned_file(
-    matter_with_job, isolated_db, monkeypatch, tmp_path
-):
+def test_process_skips_already_scanned_file(matter_with_job, isolated_db, monkeypatch, tmp_path):
     _, job_image_id = matter_with_job
     _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
 

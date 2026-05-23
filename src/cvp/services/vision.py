@@ -155,9 +155,7 @@ def _maybe_complete_job(db: Session, job_id: str) -> None:
     job = db.get(VisionJob, job_id)
     if job is None:
         return
-    has_errors = (
-        db.query(VisionJobImage).filter_by(job_id=job_id, status="error").count()
-    )
+    has_errors = db.query(VisionJobImage).filter_by(job_id=job_id, status="error").count()
     job.status = "error" if has_errors else "done"
     job.completed_at = datetime.now(timezone.utc)
     db.commit()
@@ -244,9 +242,7 @@ def process_one_image(job_image_id: str) -> None:
         parsed = _parse_response(raw_text)
 
         max_line = (
-            db.query(sqlfunc.max(Item.line_number))
-            .filter(Item.matter_id == job.matter_id)
-            .scalar()
+            db.query(sqlfunc.max(Item.line_number)).filter(Item.matter_id == job.matter_id).scalar()
             or 0
         )
         items_this_file = 0

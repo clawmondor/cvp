@@ -114,9 +114,7 @@ async def start_scan_all(
             .all()
         )
         if not files:
-            return HTMLResponse(
-                '<p class="text-sm text-gray-500">No unscanned images found.</p>'
-            )
+            return HTMLResponse('<p class="text-sm text-gray-500">No unscanned images found.</p>')
         if len(files) > _SCAN_ALL_CAP:
             return HTMLResponse(
                 f'<p class="text-sm text-red-600">Too many unscanned images ({len(files)}). '

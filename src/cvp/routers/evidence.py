@@ -133,9 +133,7 @@ def delete_evidence(
     return HTMLResponse("", status_code=200)
 
 
-@router.post(
-    "/api/matters/{matter_id}/evidence/remove-all-images", response_class=HTMLResponse
-)
+@router.post("/api/matters/{matter_id}/evidence/remove-all-images", response_class=HTMLResponse)
 def remove_all_images(
     request: Request,
     matter_id: str,

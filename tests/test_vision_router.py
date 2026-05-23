@@ -46,23 +46,40 @@ def db_session():
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     db = Session()
-    db.add(VisionModel(
-        slug="anthropic/claude-opus-4", display_name="Claude Opus 4",
-        adapter="pixel_passthrough", supports_bbox=True,
-        is_default=True, is_enabled=True, recommended=True, prompt_image_cost_cents=3,
-    ))
-    db.add(User(
-        id=CONTRIBUTOR_ID, email=CONTRIBUTOR_EMAIL,
-        display_name="C", system_role="internal_user",
-    ))
+    db.add(
+        VisionModel(
+            slug="anthropic/claude-opus-4",
+            display_name="Claude Opus 4",
+            adapter="pixel_passthrough",
+            supports_bbox=True,
+            is_default=True,
+            is_enabled=True,
+            recommended=True,
+            prompt_image_cost_cents=3,
+        )
+    )
+    db.add(
+        User(
+            id=CONTRIBUTOR_ID,
+            email=CONTRIBUTOR_EMAIL,
+            display_name="C",
+            system_role="internal_user",
+        )
+    )
     db.add(Matter(id=MATTER_ID, policyholder_name="Owner", loss_type="total_loss"))
     tmp = tempfile.mktemp(suffix=".jpg")
     PILImage.new("RGB", (200, 200), "white").save(tmp)
-    db.add(EvidenceFile(
-        id=FILE_ID, matter_id=MATTER_ID, filename="test.jpg",
-        stored_path=tmp, mime_type="image/jpeg", kind="image",
-        size_bytes=os.path.getsize(tmp),
-    ))
+    db.add(
+        EvidenceFile(
+            id=FILE_ID,
+            matter_id=MATTER_ID,
+            filename="test.jpg",
+            stored_path=tmp,
+            mime_type="image/jpeg",
+            kind="image",
+            size_bytes=os.path.getsize(tmp),
+        )
+    )
     db.commit()
     yield db
     db.close()
@@ -72,8 +89,11 @@ def db_session():
 def client_contributor(db_session):
     async def mock_contributor():
         return CurrentUser(
-            id=CONTRIBUTOR_ID, email=CONTRIBUTOR_EMAIL,
-            system_role="internal_user", group_id=None, group_kind="internal",
+            id=CONTRIBUTOR_ID,
+            email=CONTRIBUTOR_EMAIL,
+            system_role="internal_user",
+            group_id=None,
+            group_kind="internal",
         )
 
     def override_get_db():
