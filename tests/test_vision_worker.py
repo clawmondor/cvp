@@ -11,6 +11,15 @@ import cvp.models_vision  # noqa: F401
 from cvp.models import Base, EvidenceFile, Matter, VisionJob, VisionJobImage
 
 
+@pytest.fixture(autouse=True)
+def _stop_worker_after_test():
+    """Ensure no worker thread leaks between tests regardless of execution order."""
+    yield
+    from cvp.services import vision_worker
+
+    vision_worker.stop_worker()
+
+
 @pytest.fixture
 def db(tmp_path):
     engine = create_engine(

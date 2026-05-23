@@ -11,6 +11,7 @@ from cvp.models import VisionJobImage
 logger = logging.getLogger(__name__)
 
 _wake = threading.Event()
+_stop = threading.Event()
 _thread: threading.Thread | None = None
 _lock = threading.Lock()
 
@@ -69,8 +70,22 @@ def _claim_next_pending() -> str | None:
         db.close()
 
 
+def stop_worker() -> None:
+    """Stop the background worker thread and reset module state. Used in tests."""
+    global _thread
+    _stop.set()
+    _wake.set()  # unblock any _wake.wait() so the thread sees _stop
+    t = None
+    with _lock:
+        t, _thread = _thread, None
+    if t is not None:
+        t.join(timeout=2.0)
+    _stop.clear()
+    _wake.clear()
+
+
 def _loop() -> None:
-    while True:
+    while not _stop.is_set():
         try:
             job_image_id = _claim_next_pending()
             if job_image_id is None:
