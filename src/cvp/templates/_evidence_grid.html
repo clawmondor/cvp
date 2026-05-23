@@ -38,6 +38,12 @@
             Scan Now
           </button>
         </form>
+        {% if scan_errors is defined and f.id in scan_errors %}
+        <p class="mt-0.5 truncate text-xs text-red-600"
+           title="{{ scan_errors[f.id] }}">
+          Scan failed: {{ scan_errors[f.id][:60] }}
+        </p>
+        {% endif %}
         <div id="scan-progress-{{ f.id }}"></div>
         {% endif %}
       {% endif %}
