@@ -218,3 +218,13 @@ def test_system_regenerate_invite_replaces_old_code(seeded_client):
     db.expire_all()
     user = db.get(User, "existing-user-id")
     assert user.invite_code != old_hash
+
+
+def test_system_regenerate_invite_inactive_user_returns_400(seeded_client):
+    client, db = seeded_client
+    user = db.get(User, "existing-user-id")
+    user.is_active = False
+    db.commit()
+
+    resp = client.post("/admin/system/users/existing-user-id/regenerate-invite")
+    assert resp.status_code == 400

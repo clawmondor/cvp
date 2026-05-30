@@ -157,3 +157,15 @@ def test_internal_regenerate_invite_outside_group_returns_404(seeded_internal_cl
     client, _ = seeded_internal_client
     resp = client.post("/admin/internal/users/outsider-id/regenerate-invite")
     assert resp.status_code == 404
+
+
+def test_internal_regenerate_invite_inactive_user_returns_400(seeded_internal_client):
+    from cvp.models_auth import User
+
+    client, db = seeded_internal_client
+    user = db.get(User, "target-user-id")
+    user.is_active = False
+    db.commit()
+
+    resp = client.post("/admin/internal/users/target-user-id/regenerate-invite")
+    assert resp.status_code == 400

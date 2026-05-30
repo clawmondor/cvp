@@ -233,6 +233,8 @@ def system_regenerate_invite(
     target = db.get(User, user_id)
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
+    if not target.is_active:
+        raise HTTPException(status_code=400, detail="Cannot regenerate invite for an inactive user")
 
     raw_code = generate_invite_code()
     now_utc = datetime.datetime.now(tz=datetime.timezone.utc)
