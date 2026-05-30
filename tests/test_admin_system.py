@@ -171,3 +171,60 @@ def test_audit_log_export_returns_csv(admin_client):
         "id,user_id,action,resource_type,resource_id,matter_id,detail,ip_address,created_at"
     )
     assert lines[0] == expected_header
+
+
+def test_system_regenerate_invite_updates_code(seeded_client):
+    from datetime import datetime, timezone
+
+    client, db = seeded_client
+    # Mark user as already registered so we can confirm password_changed_at is cleared
+    user = db.get(User, "existing-user-id")
+    user.password_changed_at = datetime.now(tz=timezone.utc)
+    db.commit()
+
+    resp = client.post("/admin/system/users/existing-user-id/regenerate-invite")
+    assert resp.status_code == 200
+    assert "register/" in resp.text
+
+    from datetime import timedelta
+
+    db.expire_all()
+    user = db.get(User, "existing-user-id")
+    assert user.invite_code is not None
+    now = datetime.now(tz=timezone.utc)
+    expires = user.invite_expires_at.replace(tzinfo=timezone.utc)
+    assert now + timedelta(days=6, hours=23) < expires < now + timedelta(days=7, hours=1)
+    assert user.password_changed_at is None
+
+
+def test_system_regenerate_invite_unknown_user_returns_404(seeded_client):
+    client, _ = seeded_client
+    resp = client.post("/admin/system/users/does-not-exist/regenerate-invite")
+    assert resp.status_code == 404
+
+
+def test_system_regenerate_invite_replaces_old_code(seeded_client):
+    from cvp.auth import generate_invite_code, hash_token
+
+    client, db = seeded_client
+    user = db.get(User, "existing-user-id")
+    old_hash = hash_token(generate_invite_code())
+    user.invite_code = old_hash
+    db.commit()
+
+    resp = client.post("/admin/system/users/existing-user-id/regenerate-invite")
+    assert resp.status_code == 200
+
+    db.expire_all()
+    user = db.get(User, "existing-user-id")
+    assert user.invite_code != old_hash
+
+
+def test_system_regenerate_invite_inactive_user_returns_400(seeded_client):
+    client, db = seeded_client
+    user = db.get(User, "existing-user-id")
+    user.is_active = False
+    db.commit()
+
+    resp = client.post("/admin/system/users/existing-user-id/regenerate-invite")
+    assert resp.status_code == 400

@@ -222,6 +222,55 @@ def system_reset_mfa(
     return RedirectResponse(url=f"/admin/system/users/{user_id}", status_code=303)
 
 
+@router.post("/users/{user_id}/regenerate-invite", response_class=HTMLResponse)
+def system_regenerate_invite(
+    user_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(require_system_admin),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not target.is_active:
+        raise HTTPException(status_code=400, detail="Cannot regenerate invite for an inactive user")
+
+    raw_code = generate_invite_code()
+    now_utc = datetime.datetime.now(tz=datetime.timezone.utc)
+    target.invite_code = hash_token(raw_code)
+    target.invite_expires_at = now_utc + datetime.timedelta(days=7)
+    target.password_changed_at = None
+    db.commit()
+
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="admin.invite_regenerated",
+        resource_type="user",
+        resource_id=user_id,
+        ip_address=get_client_ip(request),
+    )
+
+    invite_url = str(request.base_url).rstrip("/") + f"/register/{raw_code}"
+    group = db.get(Group, target.group_id) if target.group_id else None
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/system/user_detail.html",
+        context=_ctx(
+            user,
+            target=target,
+            group=group,
+            invite_url=invite_url,
+            breadcrumbs=[
+                {"label": "System Admin", "url": "/admin/system/"},
+                {"label": "Users", "url": "/admin/system/users"},
+                {"label": target.email, "url": f"/admin/system/users/{user_id}"},
+            ],
+        ),
+    )
+
+
 @router.get("/groups", response_class=HTMLResponse)
 def system_groups(
     request: Request,

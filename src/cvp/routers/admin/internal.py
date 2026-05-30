@@ -4,7 +4,7 @@ import datetime
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException
 from fastapi.requests import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -17,6 +17,7 @@ from cvp.dependencies import CurrentUser, require_active_user
 from cvp.models import Matter
 from cvp.models_access import MatterAccess
 from cvp.models_auth import Group, User
+from cvp.services.audit import get_client_ip, write_audit_log
 
 BASE_DIR = Path(__file__).parent.parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -137,6 +138,53 @@ def internal_deactivate_user(
     target.is_active = False
     db.commit()
     return internal_user_detail(user_id, request, user, db)
+
+
+@router.post("/users/{user_id}/regenerate-invite", response_class=HTMLResponse)
+def internal_regenerate_invite(
+    user_id: str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(_require_internal_or_above),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    target = db.get(User, user_id)
+    if target is None or target.group_id != user.group_id:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not target.is_active:
+        raise HTTPException(status_code=400, detail="Cannot regenerate invite for an inactive user")
+
+    raw_code = generate_invite_code()
+    now_utc = datetime.datetime.now(tz=datetime.timezone.utc)
+    target.invite_code = hash_token(raw_code)
+    target.invite_expires_at = now_utc + datetime.timedelta(days=7)
+    target.password_changed_at = None
+    db.commit()
+
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="admin.invite_regenerated",
+        resource_type="user",
+        resource_id=user_id,
+        ip_address=get_client_ip(request),
+    )
+
+    invite_url = str(request.base_url).rstrip("/") + f"/register/{raw_code}"
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/internal/user_detail.html",
+        context=_ctx(
+            user,
+            target=target,
+            invite_url=invite_url,
+            breadcrumbs=[
+                {"label": "Internal Admin", "url": "/admin/internal/"},
+                {"label": "Users", "url": "/admin/internal/users"},
+                {"label": target.email, "url": f"/admin/internal/users/{user_id}"},
+            ],
+        ),
+    )
 
 
 @router.post("/users/invite", response_class=HTMLResponse)
