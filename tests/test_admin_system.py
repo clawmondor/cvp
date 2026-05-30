@@ -186,10 +186,14 @@ def test_system_regenerate_invite_updates_code(seeded_client):
     assert resp.status_code == 200
     assert "register/" in resp.text
 
+    from datetime import timedelta
+
     db.expire_all()
     user = db.get(User, "existing-user-id")
     assert user.invite_code is not None
-    assert user.invite_expires_at is not None
+    now = datetime.now(tz=timezone.utc)
+    expires = user.invite_expires_at.replace(tzinfo=timezone.utc)
+    assert now + timedelta(days=6, hours=23) < expires < now + timedelta(days=7, hours=1)
     assert user.password_changed_at is None
 
 
