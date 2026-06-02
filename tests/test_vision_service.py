@@ -175,6 +175,31 @@ def test_process_one_image_creates_items_and_crops(
     assert job.status == "done"
 
 
+def test_process_one_image_releases_connection_during_api_call(
+    matter_with_job, isolated_db, monkeypatch, tmp_path
+):
+    """Regression: the worker held a DB transaction across the OpenRouter HTTP
+    call, pegging a pool slot for the full ~30s API duration. Under bulk-scan
+    load this exhausted the 5+5 Postgres pool. The fix commits before the API
+    call so the connection returns to the pool during the request."""
+    _, job_image_id = matter_with_job
+    _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
+
+    in_tx_at_call: list[bool] = []
+
+    def _capture_tx_state(**_kwargs) -> str:
+        in_tx_at_call.append(isolated_db.in_transaction())
+        return "[]"
+
+    with patch("cvp.services.vision.openrouter.call_vision", side_effect=_capture_tx_state):
+        vision_svc.process_one_image(job_image_id)
+
+    assert in_tx_at_call == [False], (
+        "process_one_image must commit before openrouter.call_vision so the "
+        "DB connection is released to the pool during the API call"
+    )
+
+
 def test_process_one_image_skips_crop_when_adapter_none(
     matter_with_job, isolated_db, monkeypatch, tmp_path
 ):

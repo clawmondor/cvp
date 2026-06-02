@@ -233,8 +233,16 @@ def process_one_image(job_image_id: str) -> None:
             with Image.open(io.BytesIO(image_bytes)) as small:
                 scan_w, scan_h = small.size
 
+        # Release the pooled DB connection back to the pool before the
+        # multi-second OpenRouter HTTP call; otherwise each in-flight scan pegs
+        # a connection for the full API duration, exhausting the pool on bulk
+        # scans. Capture scalar fields we need now; ORM objects auto-refresh
+        # on attribute access after the commit.
+        scan_model_slug = job.model_slug
+        db.commit()
+
         raw_text = openrouter.call_vision(
-            model_slug=job.model_slug,
+            model_slug=scan_model_slug,
             image_bytes=image_bytes,
             mime_type=mime,
             prompt=build_scan_prompt(scan_w, scan_h),
