@@ -52,8 +52,10 @@ else:
     engine = create_engine(
         _db_url,
         pool_pre_ping=True,
-        pool_size=5,
-        max_overflow=5,
+        pool_size=10,
+        max_overflow=20,
+        pool_timeout=10,
+        pool_recycle=1800,
     )
 
 
