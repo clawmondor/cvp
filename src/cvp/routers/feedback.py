@@ -1,10 +1,10 @@
 """User-facing feedback router (floating widget + author thread access)."""
 
-from datetime import datetime, timezone  # noqa: F401
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse  # noqa: F401
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -177,3 +177,57 @@ def post_comment(
     db.commit()
     db.refresh(fb)
     return _render_thread(db, user, fb, is_admin_view=user.system_role == "system_admin")
+
+
+@router.post("/feedback/{feedback_id}/read", response_class=JSONResponse)
+def mark_read(
+    feedback_id: str,
+    user: CurrentUser = Depends(require_active_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    fb = _load_feedback_or_404(feedback_id, db)
+    if not _check_feedback_access(user, fb):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    now = datetime.now(tz=timezone.utc)
+    if user.system_role == "system_admin":
+        fb.last_admin_read_at = now
+    else:
+        fb.last_author_read_at = now
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+@router.post("/feedback/{feedback_id}/delete", response_class=JSONResponse)
+def delete_feedback(
+    feedback_id: str,
+    user: CurrentUser = Depends(require_active_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    fb = _load_feedback_or_404(feedback_id, db)
+    if not _check_feedback_access(user, fb):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    if fb.deleted_at is None:
+        fb.deleted_at = datetime.now(tz=timezone.utc)
+        fb.deleted_by_user_id = user.id
+        db.commit()
+    return JSONResponse({"ok": True})
+
+
+@router.post("/feedback/comments/{comment_id}/delete", response_class=JSONResponse)
+def delete_comment(
+    comment_id: str,
+    user: CurrentUser = Depends(require_active_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    c = db.get(FeedbackComment, comment_id)
+    if c is None:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    is_admin = user.system_role == "system_admin"
+    if not is_admin and c.author_user_id != user.id:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    if c.deleted_at is None:
+        c.deleted_at = datetime.now(tz=timezone.utc)
+        c.deleted_by_user_id = user.id
+        db.commit()
+    return JSONResponse({"ok": True})

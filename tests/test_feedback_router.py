@@ -286,3 +286,97 @@ def test_post_comment_on_others_thread_403(client_and_db):
     db.commit()
     resp = client.post("/feedback/fF/comments", data={"body": "hi"})
     assert resp.status_code == 403
+
+
+def test_mark_read_as_author_updates_author_cursor(client_and_db):
+    client, db = client_and_db
+    db.add(
+        Feedback(
+            id="fR",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="b",
+        )
+    )
+    db.commit()
+    resp = client.post("/feedback/fR/read")
+    assert resp.status_code == 200
+    db.expire_all()
+    fb = db.get(Feedback, "fR")
+    assert fb.last_author_read_at is not None
+    assert fb.last_admin_read_at is None
+
+
+def test_soft_delete_feedback_as_author(client_and_db):
+    client, db = client_and_db
+    db.add(
+        Feedback(
+            id="fS",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="b",
+        )
+    )
+    db.commit()
+    resp = client.post("/feedback/fS/delete")
+    assert resp.status_code == 200
+    db.expire_all()
+    fb = db.get(Feedback, "fS")
+    assert fb.deleted_at is not None
+    assert fb.deleted_by_user_id == "u1"
+
+
+def test_soft_delete_feedback_as_other_403(client_and_db):
+    client, db = client_and_db
+    db.add(
+        Feedback(
+            id="fS2",
+            author_user_id="u2",
+            author_group_id="g1",
+            page_url="/x",
+            body="b",
+        )
+    )
+    db.commit()
+    resp = client.post("/feedback/fS2/delete")
+    assert resp.status_code == 403
+
+
+def test_soft_delete_comment_as_comment_author(client_and_db):
+    client, db = client_and_db
+    db.add(
+        Feedback(
+            id="fC2",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="b",
+        )
+    )
+    db.add(FeedbackComment(id="cD", feedback_id="fC2", author_user_id="u1", body="mine"))
+    db.commit()
+    resp = client.post("/feedback/comments/cD/delete")
+    assert resp.status_code == 200
+    db.expire_all()
+    c = db.get(FeedbackComment, "cD")
+    assert c.deleted_at is not None
+    assert c.deleted_by_user_id == "u1"
+
+
+def test_soft_delete_other_user_comment_403(client_and_db):
+    client, db = client_and_db
+    db.add(
+        Feedback(
+            id="fC3",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="b",
+        )
+    )
+    db.add(FeedbackComment(id="cE", feedback_id="fC3", author_user_id="u2", body="theirs"))
+    db.commit()
+    resp = client.post("/feedback/comments/cE/delete")
+    assert resp.status_code == 403
