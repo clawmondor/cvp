@@ -166,6 +166,7 @@ from sqlalchemy.orm import Session  # noqa: E402
 from cvp.db import get_db  # noqa: E402
 from cvp.models import Matter  # noqa: E402
 from cvp.models_access import MatterAccess  # noqa: E402
+from cvp.models_feedback import Feedback  # noqa: E402
 
 ROLE_HIERARCHY: dict[str, int] = {
     "viewer": 0,
@@ -282,3 +283,10 @@ async def require_group_admin(
     if user.system_role not in ("system_admin", "internal_admin", "external_admin"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     return user
+
+
+def _check_feedback_access(user: CurrentUser, feedback: Feedback) -> bool:
+    """Author of the feedback OR a system_admin may read/write/delete it."""
+    if user.system_role == "system_admin":
+        return True
+    return user.id == feedback.author_user_id

@@ -32,6 +32,18 @@ function initTabs() {
 document.addEventListener('DOMContentLoaded', initTabs);
 
 // CSRF: cover both HTMX requests (via hx-headers) and plain form POSTs (via hidden field).
+function addCsrfToPlainForms(root, csrf) {
+    (root || document).querySelectorAll('form').forEach(function (form) {
+        if ((form.getAttribute('method') || '').toUpperCase() !== 'POST') return;
+        if (form.querySelector('input[name="_csrf"]')) return;
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = '_csrf';
+        input.value = csrf;
+        form.appendChild(input);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     var meta = document.querySelector('meta[name="csrf-token"]');
     var csrf = meta ? meta.content : '';
@@ -41,15 +53,15 @@ document.addEventListener('DOMContentLoaded', function () {
     document.body.setAttribute('hx-headers', JSON.stringify({'X-CSRF-Token': csrf}));
 
     // Plain method="post" forms get a hidden _csrf field so the server can validate
-    document.querySelectorAll('form').forEach(function (form) {
-        if ((form.getAttribute('method') || '').toUpperCase() === 'POST') {
-            var input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = '_csrf';
-            input.value = csrf;
-            form.appendChild(input);
-        }
-    });
+    addCsrfToPlainForms(document, csrf);
+});
+
+// Re-retrofit any plain POST forms that arrive via HTMX swaps
+document.addEventListener('htmx:afterSwap', function (e) {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    var csrf = meta ? meta.content : '';
+    if (!csrf) return;
+    addCsrfToPlainForms(e.detail.elt, csrf);
 });
 
 // ── Serp panel toggle ────────────────────────────────────────────────────
@@ -339,4 +351,73 @@ document.addEventListener('DOMContentLoaded', function () {
       if (sessionStorage.getItem('dismissed_banner_' + jobId)) el.remove();
     } catch (_) {}
   });
+});
+
+// Feedback widget: open/close popover
+document.addEventListener('click', function (e) {
+    var toggle = e.target.closest('[data-feedback-toggle]');
+    if (toggle) {
+        var pop = toggle.parentElement.querySelector('[data-feedback-popover]');
+        if (pop) pop.classList.toggle('hidden');
+        return;
+    }
+    var closeBtn = e.target.closest('[data-feedback-close]');
+    if (closeBtn) {
+        var p = closeBtn.closest('[data-feedback-popover]');
+        if (p) p.classList.add('hidden');
+        return;
+    }
+    var openRow = e.target.closest('[data-feedback-open]');
+    if (openRow) {
+        var id = openRow.dataset.feedbackOpen;
+        htmx.ajax('GET', '/feedback/' + encodeURIComponent(id), {
+            target: openRow,
+            swap: 'outerHTML',
+        });
+        return;
+    }
+    var delFb = e.target.closest('[data-feedback-delete]');
+    if (delFb) {
+        if (!confirm('Delete this feedback?')) return;
+        var fid = delFb.dataset.feedbackDelete;
+        htmx.ajax('POST', '/feedback/' + encodeURIComponent(fid) + '/delete', {
+            target: 'body',
+            swap: 'none',
+        }).then(function () { location.reload(); });
+        return;
+    }
+    var delC = e.target.closest('[data-feedback-delete-comment]');
+    if (delC) {
+        if (!confirm('Delete this comment?')) return;
+        var cid = delC.dataset.feedbackDeleteComment;
+        htmx.ajax('POST', '/feedback/comments/' + encodeURIComponent(cid) + '/delete', {
+            target: 'body',
+            swap: 'none',
+        }).then(function () { location.reload(); });
+    }
+});
+
+// Feedback widget: populate the hidden page_url field whenever a feedback form is rendered
+document.addEventListener('htmx:afterSwap', function (e) {
+    var inputs = e.detail.elt && e.detail.elt.querySelectorAll
+        ? e.detail.elt.querySelectorAll('[data-feedback-page-url]')
+        : [];
+    inputs.forEach(function (input) {
+        input.value = window.location.pathname + window.location.search;
+    });
+});
+
+// Also populate immediately on initial render of any panel content already in the DOM
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-feedback-page-url]').forEach(function (input) {
+        input.value = window.location.pathname + window.location.search;
+    });
+});
+
+// Admin feedback list: row click navigates to detail
+document.addEventListener('click', function (e) {
+    var row = e.target.closest('[data-feedback-admin-row]');
+    if (row) {
+        window.location.href = '/admin/system/feedback/' + encodeURIComponent(row.dataset.feedbackAdminRow);
+    }
 });

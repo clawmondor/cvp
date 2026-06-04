@@ -1,0 +1,47 @@
+<div class="space-y-4">
+  <form hx-post="/feedback"
+        hx-target="closest [data-feedback-panel-root]"
+        hx-swap="innerHTML"
+        data-feedback-form
+        class="space-y-2">
+    <textarea name="body" rows="4" required maxlength="{{ feedback_body_max }}"
+              placeholder="Tell us what's working, what's not, what you'd like to see…"
+              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"></textarea>
+    <input type="hidden" name="page_url" value="" data-feedback-page-url />
+    <div class="flex justify-end">
+      <button type="submit"
+              class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">
+        Send feedback
+      </button>
+    </div>
+  </form>
+
+  <div id="feedback-panel-body" class="space-y-2">
+    <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500">My feedback</h4>
+    {% if not threads %}
+    <p class="text-sm text-gray-500">No feedback yet.</p>
+    {% else %}
+    <ul class="divide-y divide-gray-100 border border-gray-100 rounded-md">
+      {% for fb in threads %}
+      <li class="p-2 hover:bg-gray-50 cursor-pointer"
+          data-feedback-open="{{ fb.id }}">
+        <div class="flex items-center justify-between">
+          {% set pill = {
+            'pending':   'bg-gray-100 text-gray-800',
+            'reviewing': 'bg-blue-100 text-blue-800',
+            'backlog':   'bg-yellow-100 text-yellow-800',
+            'canceled':  'bg-red-100 text-red-800',
+            'done':      'bg-green-100 text-green-800',
+          } %}
+          <span class="inline-flex items-center rounded-full {{ pill[fb.status] }} px-2 py-0.5 text-xs font-medium">
+            {{ fb.status }}
+          </span>
+          <span class="text-xs text-gray-500">{{ fb.created_at.strftime('%b %d') }}</span>
+        </div>
+        <p class="mt-1 text-sm text-gray-800 line-clamp-2">{{ fb.body[:80] }}{% if fb.body|length > 80 %}…{% endif %}</p>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</div>
