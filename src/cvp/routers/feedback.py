@@ -11,11 +11,11 @@ from sqlalchemy.orm import Session
 from cvp.db import get_db
 from cvp.dependencies import (
     CurrentUser,
-    _check_feedback_access,  # noqa: F401
+    _check_feedback_access,
     require_active_user,
 )
-from cvp.models_auth import User  # noqa: F401
-from cvp.models_feedback import ALLOWED_STATUSES, Feedback, FeedbackComment  # noqa: F401
+from cvp.models_auth import User
+from cvp.models_feedback import ALLOWED_STATUSES, Feedback, FeedbackComment
 from cvp.text_validation import assert_plain_text
 
 router = APIRouter()
@@ -103,3 +103,45 @@ def _render_widget_panel(db: Session, user: CurrentUser) -> HTMLResponse:
         feedback_body_max=FEEDBACK_BODY_MAX,
     )
     return HTMLResponse(html)
+
+
+def _load_feedback_or_404(feedback_id: str, db: Session) -> Feedback:
+    fb = db.get(Feedback, feedback_id)
+    if fb is None:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    return fb
+
+
+def _render_thread(
+    db: Session, user: CurrentUser, fb: Feedback, *, is_admin_view: bool
+) -> HTMLResponse:
+    comments = (
+        db.query(FeedbackComment)
+        .filter(FeedbackComment.feedback_id == fb.id)
+        .order_by(FeedbackComment.created_at.asc())
+        .all()
+    )
+    user_ids = {fb.author_user_id} | {c.author_user_id for c in comments}
+    users_by_id = {u.id: u for u in db.query(User).filter(User.id.in_(user_ids)).all()}
+    html = templates.get_template("_feedback_thread.html").render(
+        feedback=fb,
+        comments=comments,
+        users=users_by_id,
+        current_user=user,
+        is_admin_view=is_admin_view,
+        comment_body_max=COMMENT_BODY_MAX,
+        allowed_statuses=ALLOWED_STATUSES,
+    )
+    return HTMLResponse(html)
+
+
+@router.get("/feedback/{feedback_id}", response_class=HTMLResponse)
+def get_thread(
+    feedback_id: str,
+    user: CurrentUser = Depends(require_active_user),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    fb = _load_feedback_or_404(feedback_id, db)
+    if not _check_feedback_access(user, fb):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    return _render_thread(db, user, fb, is_admin_view=False)

@@ -179,3 +179,42 @@ def test_widget_get_hides_authors_soft_deleted(client_and_db):
     resp = client.get("/feedback/widget")
     assert "visible-body" in resp.text
     assert "deleted-body" not in resp.text
+
+
+def test_get_thread_as_author_succeeds(client_and_db):
+    client, db = client_and_db
+    db.add(
+        Feedback(
+            id="fA",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="my-body",
+        )
+    )
+    db.commit()
+    resp = client.get("/feedback/fA")
+    assert resp.status_code == 200
+    assert "my-body" in resp.text
+
+
+def test_get_thread_as_other_user_403(client_and_db):
+    client, db = client_and_db
+    db.add(
+        Feedback(
+            id="fB",
+            author_user_id="u2",
+            author_group_id="g1",
+            page_url="/x",
+            body="other-body",
+        )
+    )
+    db.commit()
+    resp = client.get("/feedback/fB")
+    assert resp.status_code == 403
+
+
+def test_get_thread_404_when_missing(client_and_db):
+    client, _db = client_and_db
+    resp = client.get("/feedback/does-not-exist")
+    assert resp.status_code == 404
