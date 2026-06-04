@@ -88,3 +88,6 @@
   {% endif %}
   {% endif %}
 </div>
+{% if not is_admin_view %}
+{% include "_feedback_unread_badge_oob.html" %}
+{% endif %}

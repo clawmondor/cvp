@@ -143,6 +143,7 @@ def _render_thread(
     )
     user_ids = {fb.author_user_id} | {c.author_user_id for c in comments}
     users_by_id = {u.id: u for u in db.query(User).filter(User.id.in_(user_ids)).all()}
+    show_dot = False if is_admin_view else has_author_unread(db, user.id)
     html = templates.get_template("_feedback_thread.html").render(
         feedback=fb,
         comments=comments,
@@ -151,6 +152,7 @@ def _render_thread(
         is_admin_view=is_admin_view,
         comment_body_max=COMMENT_BODY_MAX,
         allowed_statuses=ALLOWED_STATUSES,
+        show_dot=show_dot,
     )
     return HTMLResponse(html)
 
@@ -228,6 +230,12 @@ def get_thread(
     fb = _load_feedback_or_404(feedback_id, db)
     if not _check_feedback_access(user, fb):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
+    now = datetime.now(tz=timezone.utc)
+    if user.system_role == "system_admin":
+        fb.last_admin_read_at = now
+    else:
+        fb.last_author_read_at = now
+    db.commit()
     return _render_thread(db, user, fb, is_admin_view=False)
 
 
@@ -260,6 +268,11 @@ def post_comment(
     db.add(c)
     db.commit()
     db.refresh(fb)
+    if user.system_role == "system_admin":
+        fb.last_admin_read_at = datetime.now(tz=timezone.utc)
+    else:
+        fb.last_author_read_at = datetime.now(tz=timezone.utc)
+    db.commit()
     return _render_thread(db, user, fb, is_admin_view=user.system_role == "system_admin")
 
 
