@@ -17,6 +17,7 @@ from cvp.routers.feedback import (
     _clean_page_url,
     _load_feedback_or_404,
     _render_thread,
+    _resolve_author_group_id,
     count_admin_unread,
 )
 from cvp.text_validation import assert_plain_text
@@ -136,8 +137,9 @@ def admin_submit_as(
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
     author = db.get(User, author_user_id)
-    if author is None or not author.is_active or author.group_id is None:
-        raise HTTPException(status_code=400, detail="Author must be an active user with a group.")
+    if author is None or not author.is_active:
+        raise HTTPException(status_code=400, detail="Author must be an active user.")
+    author_group_id = _resolve_author_group_id(db, author)
 
     cleaned = body.strip()
     if not cleaned:
@@ -148,7 +150,7 @@ def admin_submit_as(
 
     fb = Feedback(
         author_user_id=author.id,
-        author_group_id=author.group_id,
+        author_group_id=author_group_id,
         page_url=_clean_page_url(page_url),
         body=cleaned,
     )

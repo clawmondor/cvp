@@ -426,3 +426,97 @@ def test_unread_badge_shows_dot_after_admin_comment(client_and_db):
     db.commit()
     resp = client.get("/feedback/unread")
     assert "feedback-badge-dot" in resp.text
+
+
+def test_submit_as_system_admin_without_group_uses_internal_group():
+    """A bootstrapped system_admin with no group_id can still submit feedback;
+    author_group_id snapshots the internal group."""
+    from cvp.db import get_db
+    from cvp.main import app
+
+    db = _session()
+
+    # Internal group exists but admin has no group_id on their User row
+    internal = Group(id="g_internal", name="Internal", kind="internal")
+    admin = User(
+        id="admin",
+        email="admin@test.com",
+        display_name="Admin",
+        system_role="system_admin",
+        group_id=None,
+        is_active=True,
+    )
+    db.add_all([internal, admin])
+    db.commit()
+
+    async def fake_user():
+        return CurrentUser(
+            id="admin",
+            email="admin@test.com",
+            system_role="system_admin",
+            group_id=None,
+            group_kind=None,
+        )
+
+    def override_get_db():
+        yield db
+
+    app.dependency_overrides[require_active_user] = fake_user
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        with TestClient(app) as client:
+            resp = client.post(
+                "/feedback",
+                data={"body": "admin feedback", "page_url": "/dashboard"},
+            )
+        assert resp.status_code == 200
+        rows = db.query(Feedback).all()
+        assert len(rows) == 1
+        assert rows[0].author_user_id == "admin"
+        assert rows[0].author_group_id == "g_internal"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_submit_as_non_admin_without_group_400s():
+    """A non-admin with no group_id still gets 400 — the internal-group fallback
+    only applies to system_admins."""
+    from cvp.db import get_db
+    from cvp.main import app
+
+    db = _session()
+    internal = Group(id="g_internal", name="Internal", kind="internal")
+    u = User(
+        id="orphan",
+        email="orphan@test.com",
+        display_name="Orphan",
+        system_role="internal_user",
+        group_id=None,
+        is_active=True,
+    )
+    db.add_all([internal, u])
+    db.commit()
+
+    async def fake_user():
+        return CurrentUser(
+            id="orphan",
+            email="orphan@test.com",
+            system_role="internal_user",
+            group_id=None,
+            group_kind=None,
+        )
+
+    def override_get_db():
+        yield db
+
+    app.dependency_overrides[require_active_user] = fake_user
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        with TestClient(app) as client:
+            resp = client.post(
+                "/feedback",
+                data={"body": "x", "page_url": "/dashboard"},
+            )
+        assert resp.status_code == 400
+    finally:
+        app.dependency_overrides.clear()

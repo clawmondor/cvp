@@ -14,7 +14,7 @@ from cvp.dependencies import (
     _check_feedback_access,
     require_active_user,
 )
-from cvp.models_auth import User
+from cvp.models_auth import Group, User
 from cvp.models_feedback import ALLOWED_STATUSES, Feedback, FeedbackComment
 from cvp.text_validation import assert_plain_text
 
@@ -46,6 +46,24 @@ def _clean_page_url(raw: str) -> str:
     return raw
 
 
+def _resolve_author_group_id(db: Session, author: User) -> str:
+    """Return the author's group_id, falling back to the internal group for system_admins.
+
+    Bootstrapped system_admins may have no group on their User row; treat them
+    as members of the internal group for snapshot purposes. Non-admin users with
+    no group remain a 400 — the fallback is admin-specific.
+    """
+    if author.group_id:
+        return author.group_id
+    if author.system_role == "system_admin":
+        internal = (
+            db.query(Group).filter(Group.kind == "internal", Group.is_active.is_(True)).first()
+        )
+        if internal is not None:
+            return internal.id
+    raise HTTPException(status_code=400, detail="Submitting user has no group.")
+
+
 @router.post("/feedback", response_class=HTMLResponse)
 def submit_feedback(
     body: str = Form(...),
@@ -63,12 +81,14 @@ def submit_feedback(
         )
     assert_plain_text(cleaned_body, field_name="Feedback")
 
-    if user.group_id is None:
-        raise HTTPException(status_code=400, detail="Submitting user has no group.")
+    author = db.get(User, user.id)
+    if author is None:
+        raise HTTPException(status_code=400, detail="User not found.")
+    author_group_id = _resolve_author_group_id(db, author)
 
     fb = Feedback(
         author_user_id=user.id,
-        author_group_id=user.group_id,
+        author_group_id=author_group_id,
         page_url=_clean_page_url(page_url),
         body=cleaned_body,
     )
