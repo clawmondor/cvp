@@ -340,3 +340,66 @@ document.addEventListener('DOMContentLoaded', function () {
     } catch (_) {}
   });
 });
+
+// Feedback widget: open/close popover
+document.addEventListener('click', function (e) {
+    var toggle = e.target.closest('[data-feedback-toggle]');
+    if (toggle) {
+        var pop = toggle.parentElement.querySelector('[data-feedback-popover]');
+        if (pop) pop.classList.toggle('hidden');
+        return;
+    }
+    var closeBtn = e.target.closest('[data-feedback-close]');
+    if (closeBtn) {
+        var p = closeBtn.closest('[data-feedback-popover]');
+        if (p) p.classList.add('hidden');
+        return;
+    }
+    var openRow = e.target.closest('[data-feedback-open]');
+    if (openRow) {
+        var id = openRow.dataset.feedbackOpen;
+        htmx.ajax('GET', '/feedback/' + encodeURIComponent(id), {
+            target: openRow,
+            swap: 'outerHTML',
+        });
+        return;
+    }
+    var delFb = e.target.closest('[data-feedback-delete]');
+    if (delFb) {
+        if (!confirm('Delete this feedback?')) return;
+        var fid = delFb.dataset.feedbackDelete;
+        htmx.ajax('POST', '/feedback/' + encodeURIComponent(fid) + '/delete', {
+            target: 'body',
+            swap: 'none',
+        });
+        location.reload();
+        return;
+    }
+    var delC = e.target.closest('[data-feedback-delete-comment]');
+    if (delC) {
+        if (!confirm('Delete this comment?')) return;
+        var cid = delC.dataset.feedbackDeleteComment;
+        htmx.ajax('POST', '/feedback/comments/' + encodeURIComponent(cid) + '/delete', {
+            target: 'body',
+            swap: 'none',
+        });
+        location.reload();
+    }
+});
+
+// Feedback widget: populate the hidden page_url field whenever a feedback form is rendered
+document.addEventListener('htmx:afterSwap', function (e) {
+    var inputs = e.detail.elt && e.detail.elt.querySelectorAll
+        ? e.detail.elt.querySelectorAll('[data-feedback-page-url]')
+        : [];
+    inputs.forEach(function (input) {
+        input.value = window.location.pathname + window.location.search;
+    });
+});
+
+// Also populate immediately on initial render of any panel content already in the DOM
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-feedback-page-url]').forEach(function (input) {
+        input.value = window.location.pathname + window.location.search;
+    });
+});

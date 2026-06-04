@@ -40,5 +40,8 @@
   <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
     {% block content %}{% endblock %}
   </main>
+  {% if user and request.url.path not in ("/", "/login", "/register", "/splash") %}
+  {% include "_feedback_widget.html" %}
+  {% endif %}
 </body>
 </html>
