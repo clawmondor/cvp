@@ -163,3 +163,119 @@ def test_internal_admin_gets_403(nonadmin_client):
     client, _db = nonadmin_client
     resp = client.get("/admin/system/feedback")
     assert resp.status_code == 403
+
+
+def test_admin_detail_renders(admin_client):
+    client, db = admin_client
+    db.add(
+        Feedback(
+            id="fX",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="detail-body",
+        )
+    )
+    db.commit()
+    resp = client.get("/admin/system/feedback/fX")
+    assert resp.status_code == 200
+    assert "detail-body" in resp.text
+    # Admin sidebar should expose status buttons
+    for s in ("pending", "reviewing", "backlog", "canceled", "done"):
+        assert s in resp.text
+
+
+def test_change_status_updates_row(admin_client):
+    client, db = admin_client
+    db.add(
+        Feedback(
+            id="fS",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="b",
+        )
+    )
+    db.commit()
+    resp = client.post(
+        "/admin/system/feedback/fS/status",
+        data={"status": "reviewing"},
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+    db.expire_all()
+    fb = db.get(Feedback, "fS")
+    assert fb.status == "reviewing"
+    assert fb.status_changed_at is not None
+    assert fb.status_changed_by_user_id == "admin"
+
+
+def test_change_status_rejects_invalid(admin_client):
+    client, db = admin_client
+    db.add(
+        Feedback(
+            id="fS2",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="b",
+        )
+    )
+    db.commit()
+    resp = client.post(
+        "/admin/system/feedback/fS2/status",
+        data={"status": "totally-fake"},
+    )
+    assert resp.status_code == 400
+
+
+def test_change_status_internal_admin_forbidden(nonadmin_client):
+    client, db = nonadmin_client
+    db.add(
+        Feedback(
+            id="fS3",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="b",
+        )
+    )
+    db.commit()
+    resp = client.post("/admin/system/feedback/fS3/status", data={"status": "done"})
+    assert resp.status_code == 403
+
+
+def test_admin_submit_as_other_user(admin_client):
+    client, db = admin_client
+    resp = client.post(
+        "/admin/system/feedback/new-as",
+        data={
+            "body": "speaking for u1",
+            "page_url": "/admin/system/feedback",
+            "author_user_id": "u1",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+    rows = db.query(Feedback).all()
+    assert len(rows) == 1
+    assert rows[0].author_user_id == "u1"
+    assert rows[0].author_group_id == "g1"  # snapshot from u1's group
+
+
+def test_admin_submit_rejects_unknown_user(admin_client):
+    client, _db = admin_client
+    resp = client.post(
+        "/admin/system/feedback/new-as",
+        data={"body": "x", "page_url": "/x", "author_user_id": "nope"},
+    )
+    assert resp.status_code == 400
+
+
+def test_admin_submit_rejects_html_body(admin_client):
+    client, _db = admin_client
+    resp = client.post(
+        "/admin/system/feedback/new-as",
+        data={"body": "<svg onload=x>", "page_url": "/x", "author_user_id": "u1"},
+    )
+    assert resp.status_code == 400

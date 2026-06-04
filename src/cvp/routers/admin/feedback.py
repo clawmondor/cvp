@@ -1,9 +1,10 @@
-"""Admin feedback router: list, filter/sort (status change, soft-delete, submit-as added later)."""
+"""Admin feedback router: list, filter/sort, detail, change status, submit on behalf."""
 
+from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -11,7 +12,14 @@ from cvp.db import get_db
 from cvp.dependencies import CurrentUser, require_system_admin
 from cvp.models_auth import Group, User
 from cvp.models_feedback import ALLOWED_STATUSES, Feedback
-from cvp.routers.feedback import count_admin_unread
+from cvp.routers.feedback import (
+    FEEDBACK_BODY_MAX,
+    _clean_page_url,
+    _load_feedback_or_404,
+    _render_thread,
+    count_admin_unread,
+)
+from cvp.text_validation import assert_plain_text
 
 router = APIRouter(prefix="/admin/system/feedback")
 
@@ -95,3 +103,97 @@ def list_feedback(
         unread_count=count_admin_unread(db),
     )
     return HTMLResponse(html)
+
+
+@router.get("/new", response_class=HTMLResponse)
+def admin_new_form(
+    request: Request,
+    user: CurrentUser = Depends(require_system_admin),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    users = db.query(User).filter(User.is_active.is_(True)).order_by(User.email.asc()).all()
+    html = templates.get_template("admin/system/feedback_new.html").render(
+        request=request,
+        user=user,
+        panel_title="System",
+        breadcrumbs=[
+            {"label": "Feedback", "url": "/admin/system/feedback"},
+            {"label": "New", "url": "/admin/system/feedback/new"},
+        ],
+        users=users,
+        feedback_body_max=FEEDBACK_BODY_MAX,
+        unread_count=count_admin_unread(db),
+    )
+    return HTMLResponse(html)
+
+
+@router.post("/new-as")
+def admin_submit_as(
+    body: str = Form(...),
+    page_url: str = Form(...),
+    author_user_id: str = Form(...),
+    user: CurrentUser = Depends(require_system_admin),
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    author = db.get(User, author_user_id)
+    if author is None or not author.is_active or author.group_id is None:
+        raise HTTPException(status_code=400, detail="Author must be an active user with a group.")
+
+    cleaned = body.strip()
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="Feedback body is required.")
+    if len(cleaned) > FEEDBACK_BODY_MAX:
+        raise HTTPException(status_code=400, detail="Feedback body too long.")
+    assert_plain_text(cleaned, field_name="Feedback")
+
+    fb = Feedback(
+        author_user_id=author.id,
+        author_group_id=author.group_id,
+        page_url=_clean_page_url(page_url),
+        body=cleaned,
+    )
+    db.add(fb)
+    db.commit()
+    db.refresh(fb)
+    return RedirectResponse(url=f"/admin/system/feedback/{fb.id}", status_code=303)
+
+
+@router.get("/{feedback_id}", response_class=HTMLResponse)
+def admin_thread(
+    feedback_id: str,
+    request: Request,
+    user: CurrentUser = Depends(require_system_admin),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    fb = _load_feedback_or_404(feedback_id, db)
+    inner_html = _render_thread(db, user, fb, is_admin_view=True).body.decode("utf-8")
+    html = templates.get_template("admin/system/feedback_detail.html").render(
+        request=request,
+        user=user,
+        panel_title="System",
+        breadcrumbs=[
+            {"label": "Feedback", "url": "/admin/system/feedback"},
+            {"label": fb.id[:8], "url": f"/admin/system/feedback/{fb.id}"},
+        ],
+        feedback=fb,
+        thread_html=inner_html,
+        unread_count=count_admin_unread(db),
+    )
+    return HTMLResponse(html)
+
+
+@router.post("/{feedback_id}/status")
+def change_status(
+    feedback_id: str,
+    status: str = Form(...),
+    user: CurrentUser = Depends(require_system_admin),
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    if status not in ALLOWED_STATUSES:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    fb = _load_feedback_or_404(feedback_id, db)
+    fb.status = status
+    fb.status_changed_at = datetime.now(tz=timezone.utc)
+    fb.status_changed_by_user_id = user.id
+    db.commit()
+    return RedirectResponse(url=f"/admin/system/feedback/{fb.id}", status_code=303)
