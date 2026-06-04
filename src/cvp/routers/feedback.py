@@ -79,6 +79,14 @@ def submit_feedback(
     return _render_widget_panel(db, user)
 
 
+@router.get("/feedback/widget", response_class=HTMLResponse)
+def get_widget_panel(
+    user: CurrentUser = Depends(require_active_user),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    return _render_widget_panel(db, user)
+
+
 def _render_widget_panel(db: Session, user: CurrentUser) -> HTMLResponse:
     """Render the popover panel HTML: new-feedback form + author's threads."""
     threads = (

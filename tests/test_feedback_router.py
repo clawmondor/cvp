@@ -122,3 +122,60 @@ def test_submit_feedback_sanitizes_bad_url_to_root(client_and_db):
     )
     assert resp.status_code == 200
     assert db.query(Feedback).one().page_url == "/"
+
+
+def test_widget_get_returns_panel_with_own_threads(client_and_db):
+    client, db = client_and_db
+    db.add(
+        Feedback(
+            id="f1",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="mine",
+        )
+    )
+    db.add(
+        Feedback(
+            id="f2",
+            author_user_id="u2",
+            author_group_id="g1",
+            page_url="/x",
+            body="not mine",
+        )
+    )
+    db.commit()
+    resp = client.get("/feedback/widget")
+    assert resp.status_code == 200
+    assert "mine" in resp.text
+    assert "not mine" not in resp.text
+
+
+def test_widget_get_hides_authors_soft_deleted(client_and_db):
+    from datetime import datetime, timezone
+
+    client, db = client_and_db
+    db.add(
+        Feedback(
+            id="f1",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="visible-body",
+        )
+    )
+    db.add(
+        Feedback(
+            id="f2",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="deleted-body",
+            deleted_at=datetime.now(timezone.utc),
+            deleted_by_user_id="u1",
+        )
+    )
+    db.commit()
+    resp = client.get("/feedback/widget")
+    assert "visible-body" in resp.text
+    assert "deleted-body" not in resp.text
