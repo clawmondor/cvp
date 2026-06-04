@@ -132,14 +132,14 @@ All user input passes through these checks before reaching the database:
 
 ### No-HTML, no-JavaScript policy for body fields
 
-Feedback bodies and comment bodies are plain text. They are not a place to author markup. Both feedback and comment bodies are validated by a shared `_assert_plain_text(value: str)` helper that rejects (HTTP 400) any input meeting any of these conditions:
+Feedback bodies and comment bodies are plain text. They are not a place to author markup. Both feedback and comment bodies are validated by a reusable `assert_plain_text(value: str, *, field_name: str = "input")` helper in a new module `src/cvp/text_validation.py`. The helper is project-wide — not feedback-specific — so future text inputs (matter names, item descriptions, room names, profile display names, item comments, etc.) can adopt it. It raises `HTTPException(400, detail=…)` on any input meeting any of these conditions:
 
 - Contains `<` or `>` (blocks every HTML tag including `<script>`, `<img onerror=…>`, `<svg>`, etc.)
 - Contains an HTML entity pattern matching `&#?\w+;` (blocks entity-encoded payloads like `&#60;script&#62;`)
 - Contains any control character in the C0 range except `\t`, `\n`, `\r` (blocks NUL, ESC, etc. that can break terminals or sneak past naive escapers)
 - Contains the case-insensitive substring `javascript:` or `data:` (defense in depth against pasted href-style payloads even though we never render bodies as links)
 
-User-visible error message: "Feedback may not contain HTML or special markup. Please use plain text." The same helper is reused by both the user submit endpoint and the admin "submit on behalf of" endpoint.
+User-visible error message: `"{field_name} may not contain HTML or special markup. Please use plain text."` The same helper is reused by both the user submit endpoint and the admin "submit on behalf of" endpoint. Adopting it across the rest of the app's free-form text inputs is tracked in `docs/BACKLOG.md` (see below) — a separate change so it can be rolled out per-field with a small audit, rather than slipped into this feature.
 
 This is **input rejection**, not silent stripping — a request with markup never reaches the database. Defense-in-depth at render time: all bodies are still rendered through Jinja autoescape with no `| safe`, no markdown processing, and no link auto-detection. CSP `script-src` already disallows `unsafe-inline`, so even if a body somehow contained markup it could not execute, but the input-layer check ensures we never store such a body in the first place.
 
@@ -199,6 +199,7 @@ Shared template (`templates/_feedback_thread.html`) used by both the user widget
 ```
 alembic/versions/<rev>_add_feedback_tables.py
 src/cvp/models_feedback.py
+src/cvp/text_validation.py
 src/cvp/routers/feedback.py
 src/cvp/routers/admin/feedback.py
 src/cvp/templates/_feedback_widget.html       # floating button + popover shell
@@ -228,11 +229,18 @@ Following the project convention (depreciation has near-100% coverage; routers h
 - **`tests/test_models_feedback.py`** — model defaults; the `status` CHECK constraint rejects unknown values; soft-delete columns default to null.
 - **`tests/test_feedback_router.py`** — happy paths for submit, list own, view own thread, comment, soft-delete; access denials (other user can't view, anonymous can't submit, external_user only sees their own threads).
 - **`tests/test_admin_feedback_router.py`** — happy paths for list with filter/sort, change status, submit-on-behalf; `internal_admin` and `external_admin` both get 403 on every admin route.
-- **`tests/test_feedback_sanitization.py`** — `_clean_page_url()` rejects protocol-relative URLs and over-length input; body length caps enforced; empty bodies rejected; `status` whitelist enforced server-side; `_assert_plain_text()` rejects `<`, `>`, HTML entity patterns (`&#60;script&#62;`, `&amp;`), `javascript:` and `data:` substrings (case-insensitive), and C0 control characters other than `\t \n \r`, while accepting plain unicode text including emoji and non-ASCII letters.
+- **`tests/test_text_validation.py`** — covers `assert_plain_text()` directly: rejects `<`, `>`, HTML entity patterns (`&#60;script&#62;`, `&amp;`), `javascript:` and `data:` substrings (case-insensitive), and C0 control characters other than `\t \n \r`; accepts plain unicode text including emoji and non-ASCII letters; uses the supplied `field_name` in the error message.
+- **`tests/test_feedback_sanitization.py`** — `_clean_page_url()` rejects protocol-relative URLs and over-length input; feedback body length caps enforced; empty bodies rejected; `status` whitelist enforced server-side; feedback submit and comment endpoints reject HTML-bearing bodies via the shared helper (one happy-path + one rejection case each, since the helper itself is exhaustively tested above).
+
+## BACKLOG entries added
+
+Append to `docs/BACKLOG.md` as part of this feature:
+
+- **Feedback attachments** — allow optional multiple screenshot uploads on a feedback submission and on each comment. Reuse the evidence-file upload pattern. Deferred from the v0 feedback feature.
+- **Apply `assert_plain_text()` to other free-form text inputs** — the feedback feature ships a reusable plain-text validator in `src/cvp/text_validation.py`. Audit existing user-input fields (matter name + description, item name + description, room name, profile display name, item comments, vision model display name, any other free-form `Text`/`String` columns receiving user input) and add the validator at each write endpoint. Roll out per-field so each adoption can be reviewed against the field's existing data (e.g., a matter description that already contains `<` would 400 on next edit).
 
 ## Open considerations (acknowledged, deferred)
 
 - **Notifications beyond in-app badges** — deferred until email infra exists for the rest of the app.
-- **Attachments** — tracked in `docs/BACKLOG.md`.
 - **Per-admin read state** — current design uses a single shared `last_admin_read_at`. Adequate for the current team size; if multiple admins triage simultaneously we may want per-admin read receipts.
 - **Search inside feedback bodies** — admin filter is by status/group/author only; full-text search is deferred.
