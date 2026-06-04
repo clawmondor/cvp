@@ -145,3 +145,35 @@ def get_thread(
     if not _check_feedback_access(user, fb):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     return _render_thread(db, user, fb, is_admin_view=False)
+
+
+@router.post("/feedback/{feedback_id}/comments", response_class=HTMLResponse)
+def post_comment(
+    feedback_id: str,
+    body: str = Form(...),
+    user: CurrentUser = Depends(require_active_user),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    fb = _load_feedback_or_404(feedback_id, db)
+    if not _check_feedback_access(user, fb):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    cleaned = body.strip()
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="Comment body is required.")
+    if len(cleaned) > COMMENT_BODY_MAX:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Comment must be {COMMENT_BODY_MAX} characters or fewer.",
+        )
+    assert_plain_text(cleaned, field_name="Comment")
+
+    c = FeedbackComment(
+        feedback_id=fb.id,
+        author_user_id=user.id,
+        body=cleaned,
+    )
+    db.add(c)
+    db.commit()
+    db.refresh(fb)
+    return _render_thread(db, user, fb, is_admin_view=user.system_role == "system_admin")

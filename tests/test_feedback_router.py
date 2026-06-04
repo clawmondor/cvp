@@ -218,3 +218,71 @@ def test_get_thread_404_when_missing(client_and_db):
     client, _db = client_and_db
     resp = client.get("/feedback/does-not-exist")
     assert resp.status_code == 404
+
+
+def test_post_comment_as_author_succeeds(client_and_db):
+    client, db = client_and_db
+    db.add(
+        Feedback(
+            id="fC",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="parent",
+        )
+    )
+    db.commit()
+    resp = client.post("/feedback/fC/comments", data={"body": "a reply"})
+    assert resp.status_code == 200
+    comments = db.query(FeedbackComment).all()
+    assert len(comments) == 1
+    assert comments[0].body == "a reply"
+    assert comments[0].author_user_id == "u1"
+
+
+def test_post_comment_rejects_html(client_and_db):
+    client, db = client_and_db
+    db.add(
+        Feedback(
+            id="fD",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="parent",
+        )
+    )
+    db.commit()
+    resp = client.post("/feedback/fD/comments", data={"body": "<img onerror=x>"})
+    assert resp.status_code == 400
+
+
+def test_post_comment_rejects_oversize(client_and_db):
+    client, db = client_and_db
+    db.add(
+        Feedback(
+            id="fE",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="parent",
+        )
+    )
+    db.commit()
+    resp = client.post("/feedback/fE/comments", data={"body": "a" * 2001})
+    assert resp.status_code == 400
+
+
+def test_post_comment_on_others_thread_403(client_and_db):
+    client, db = client_and_db
+    db.add(
+        Feedback(
+            id="fF",
+            author_user_id="u2",
+            author_group_id="g1",
+            page_url="/x",
+            body="not mine",
+        )
+    )
+    db.commit()
+    resp = client.post("/feedback/fF/comments", data={"body": "hi"})
+    assert resp.status_code == 403
