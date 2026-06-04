@@ -18,6 +18,7 @@ from cvp.dependencies import CurrentUser, require_system_admin
 from cvp.models import Matter
 from cvp.models_audit import AuditLog
 from cvp.models_auth import Group, User
+from cvp.routers.feedback import count_admin_unread
 from cvp.services.audit import get_client_ip, write_audit_log
 
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -49,6 +50,7 @@ def system_dashboard(
             user_count=user_count,
             group_count=group_count,
             matter_count=matter_count,
+            unread_count=count_admin_unread(db),
             breadcrumbs=[{"label": "System Admin", "url": "/admin/system/"}],
         ),
     )
@@ -69,6 +71,7 @@ def system_users(
             user,
             users=users,
             groups=groups,
+            unread_count=count_admin_unread(db),
             breadcrumbs=[
                 {"label": "System Admin", "url": "/admin/system/"},
                 {"label": "Users", "url": "/admin/system/users"},
@@ -95,6 +98,7 @@ def system_user_detail(
             user,
             target=target,
             group=group,
+            unread_count=count_admin_unread(db),
             breadcrumbs=[
                 {"label": "System Admin", "url": "/admin/system/"},
                 {"label": "Users", "url": "/admin/system/users"},
@@ -158,6 +162,7 @@ def system_invite_user(
             users=users,
             groups=groups,
             invite_url=invite_url,
+            unread_count=count_admin_unread(db),
             breadcrumbs=[
                 {"label": "System Admin", "url": "/admin/system/"},
                 {"label": "Users", "url": "/admin/system/users"},
@@ -262,6 +267,7 @@ def system_regenerate_invite(
             target=target,
             group=group,
             invite_url=invite_url,
+            unread_count=count_admin_unread(db),
             breadcrumbs=[
                 {"label": "System Admin", "url": "/admin/system/"},
                 {"label": "Users", "url": "/admin/system/users"},
@@ -284,6 +290,7 @@ def system_groups(
         context=_ctx(
             user,
             groups=groups,
+            unread_count=count_admin_unread(db),
             breadcrumbs=[
                 {"label": "System Admin", "url": "/admin/system/"},
                 {"label": "Groups", "url": "/admin/system/groups"},
@@ -326,6 +333,7 @@ def system_group_detail(
             user,
             group=group,
             members=members,
+            unread_count=count_admin_unread(db),
             breadcrumbs=[
                 {"label": "System Admin", "url": "/admin/system/"},
                 {"label": "Groups", "url": "/admin/system/groups"},
@@ -363,6 +371,7 @@ def system_matters(
         context=_ctx(
             user,
             matters=matters,
+            unread_count=count_admin_unread(db),
             breadcrumbs=[
                 {"label": "System Admin", "url": "/admin/system/"},
                 {"label": "Matters", "url": "/admin/system/matters"},
@@ -433,6 +442,7 @@ def audit_log_viewer(
             page=page,
             pages=pages,
             total=total,
+            unread_count=count_admin_unread(db),
             filters={
                 "action": action,
                 "user_filter": user_filter,
