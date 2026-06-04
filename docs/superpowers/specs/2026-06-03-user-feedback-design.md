@@ -123,13 +123,25 @@ All POSTs use the existing `cvp_csrf` cookie / header mechanism already enforced
 
 All user input passes through these checks before reaching the database:
 
-- **`body` (feedback)**: `.strip()`, must be non-empty after strip, hard cap 5000 characters. Rejected with 400 otherwise.
-- **`body` (comments)**: same shape, hard cap 2000 characters.
+- **`body` (feedback)**: `.strip()`, must be non-empty after strip, hard cap 5000 characters. Rejected with 400 otherwise. **No HTML or JavaScript content allowed** (see below).
+- **`body` (comments)**: same shape and same no-HTML/JS rule, hard cap 2000 characters.
 - **`page_url`**: must start with `/`, must not start with `//` (protocol-relative URLs are rejected — `//evil.com` would otherwise become an off-origin link in the admin view), max 2048 characters. Validated by a `_clean_page_url(raw: str) -> str` helper in the feedback router; on failure it stores `"/"` and logs a warning rather than 400-ing the submission.
 - **`status`**: validated against a hard-coded module-level `ALLOWED_STATUSES` set. The wire value is never echoed into HTML or SQL as a raw string.
 - **`author_user_id`** on `POST /admin/system/feedback/new-as`: must resolve to an active user; 400 otherwise.
-- **Rendering**: all user-controlled text is rendered through Jinja autoescape. No `| safe`. No markdown. No raw HTML.
 - **SQL**: all ORM access is parameterized via SQLAlchemy 2.x. No raw SQL.
+
+### No-HTML, no-JavaScript policy for body fields
+
+Feedback bodies and comment bodies are plain text. They are not a place to author markup. Both feedback and comment bodies are validated by a shared `_assert_plain_text(value: str)` helper that rejects (HTTP 400) any input meeting any of these conditions:
+
+- Contains `<` or `>` (blocks every HTML tag including `<script>`, `<img onerror=…>`, `<svg>`, etc.)
+- Contains an HTML entity pattern matching `&#?\w+;` (blocks entity-encoded payloads like `&#60;script&#62;`)
+- Contains any control character in the C0 range except `\t`, `\n`, `\r` (blocks NUL, ESC, etc. that can break terminals or sneak past naive escapers)
+- Contains the case-insensitive substring `javascript:` or `data:` (defense in depth against pasted href-style payloads even though we never render bodies as links)
+
+User-visible error message: "Feedback may not contain HTML or special markup. Please use plain text." The same helper is reused by both the user submit endpoint and the admin "submit on behalf of" endpoint.
+
+This is **input rejection**, not silent stripping — a request with markup never reaches the database. Defense-in-depth at render time: all bodies are still rendered through Jinja autoescape with no `| safe`, no markdown processing, and no link auto-detection. CSP `script-src` already disallows `unsafe-inline`, so even if a body somehow contained markup it could not execute, but the input-layer check ensures we never store such a body in the first place.
 
 ## Widget UI
 
@@ -216,7 +228,7 @@ Following the project convention (depreciation has near-100% coverage; routers h
 - **`tests/test_models_feedback.py`** — model defaults; the `status` CHECK constraint rejects unknown values; soft-delete columns default to null.
 - **`tests/test_feedback_router.py`** — happy paths for submit, list own, view own thread, comment, soft-delete; access denials (other user can't view, anonymous can't submit, external_user only sees their own threads).
 - **`tests/test_admin_feedback_router.py`** — happy paths for list with filter/sort, change status, submit-on-behalf; `internal_admin` and `external_admin` both get 403 on every admin route.
-- **`tests/test_feedback_sanitization.py`** — `_clean_page_url()` rejects schemes, protocol-relative URLs, and over-length input; body length caps enforced; empty bodies rejected; `status` whitelist enforced server-side.
+- **`tests/test_feedback_sanitization.py`** — `_clean_page_url()` rejects protocol-relative URLs and over-length input; body length caps enforced; empty bodies rejected; `status` whitelist enforced server-side; `_assert_plain_text()` rejects `<`, `>`, HTML entity patterns (`&#60;script&#62;`, `&amp;`), `javascript:` and `data:` substrings (case-insensitive), and C0 control characters other than `\t \n \r`, while accepting plain unicode text including emoji and non-ASCII letters.
 
 ## Open considerations (acknowledged, deferred)
 
