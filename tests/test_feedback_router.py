@@ -380,3 +380,49 @@ def test_soft_delete_other_user_comment_403(client_and_db):
     db.commit()
     resp = client.post("/feedback/comments/cE/delete")
     assert resp.status_code == 403
+
+
+def test_unread_badge_no_dot_when_no_feedback(client_and_db):
+    client, _db = client_and_db
+    resp = client.get("/feedback/unread")
+    assert resp.status_code == 200
+    assert "feedback-badge-dot" not in resp.text
+
+
+def test_unread_badge_shows_dot_after_admin_comment(client_and_db):
+    from datetime import datetime, timezone
+
+    client, db = client_and_db
+    # Author's own feedback with admin comment that's newer than last_author_read_at
+    db.add(
+        Feedback(
+            id="fU",
+            author_user_id="u1",
+            author_group_id="g1",
+            page_url="/x",
+            body="b",
+            last_author_read_at=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        )
+    )
+    # Add an admin-authored comment after that cursor
+    db.add(
+        User(
+            id="admin",
+            email="a@x",
+            display_name="Admin",
+            system_role="system_admin",
+            group_id="g1",
+            is_active=True,
+        )
+    )
+    db.add(
+        FeedbackComment(
+            id="cU",
+            feedback_id="fU",
+            author_user_id="admin",
+            body="thanks for the feedback",
+        )
+    )
+    db.commit()
+    resp = client.get("/feedback/unread")
+    assert "feedback-badge-dot" in resp.text

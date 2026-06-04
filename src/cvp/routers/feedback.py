@@ -135,6 +135,70 @@ def _render_thread(
     return HTMLResponse(html)
 
 
+def has_author_unread(db: Session, user_id: str) -> bool:
+    """Return True if the user has any feedback with admin activity newer than their read cursor."""
+    rows = (
+        db.query(Feedback)
+        .filter(
+            Feedback.author_user_id == user_id,
+            Feedback.deleted_at.is_(None),
+        )
+        .all()
+    )
+    for fb in rows:
+        cursor = fb.last_author_read_at
+        if fb.status_changed_at is not None and (cursor is None or fb.status_changed_at > cursor):
+            return True
+        latest_other = (
+            db.query(FeedbackComment)
+            .filter(
+                FeedbackComment.feedback_id == fb.id,
+                FeedbackComment.author_user_id != fb.author_user_id,
+                FeedbackComment.deleted_at.is_(None),
+            )
+            .order_by(FeedbackComment.created_at.desc())
+            .first()
+        )
+        if latest_other is not None and (cursor is None or latest_other.created_at > cursor):
+            return True
+    return False
+
+
+def count_admin_unread(db: Session) -> int:
+    """Return the count of feedback rows with non-admin activity newer than the admin read cursor."""
+    rows = db.query(Feedback).filter(Feedback.deleted_at.is_(None)).all()
+    n = 0
+    for fb in rows:
+        cursor = fb.last_admin_read_at
+        if cursor is None or fb.created_at > cursor:
+            n += 1
+            continue
+        latest_non_admin = (
+            db.query(FeedbackComment)
+            .join(User, User.id == FeedbackComment.author_user_id)
+            .filter(
+                FeedbackComment.feedback_id == fb.id,
+                FeedbackComment.deleted_at.is_(None),
+                User.system_role != "system_admin",
+            )
+            .order_by(FeedbackComment.created_at.desc())
+            .first()
+        )
+        if latest_non_admin is not None and latest_non_admin.created_at > cursor:
+            n += 1
+    return n
+
+
+@router.get("/feedback/unread", response_class=HTMLResponse)
+def get_unread_badge(
+    user: CurrentUser = Depends(require_active_user),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    show_dot = has_author_unread(db, user.id)
+    html = templates.get_template("_feedback_unread_badge.html").render(show_dot=show_dot)
+    return HTMLResponse(html)
+
+
 @router.get("/feedback/{feedback_id}", response_class=HTMLResponse)
 def get_thread(
     feedback_id: str,
