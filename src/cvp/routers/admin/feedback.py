@@ -1,25 +1,17 @@
-"""Admin feedback router: list, filter/sort, change status, soft-delete, submit-as."""
+"""Admin feedback router: list, filter/sort (status change, soft-delete, submit-as added later)."""
 
-from datetime import datetime, timezone  # noqa: F401
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request  # noqa: F401
-from fastapi.responses import HTMLResponse, RedirectResponse  # noqa: F401
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from cvp.db import get_db
 from cvp.dependencies import CurrentUser, require_system_admin
 from cvp.models_auth import Group, User
-from cvp.models_feedback import ALLOWED_STATUSES, Feedback  # noqa: F401
-from cvp.routers.feedback import (
-    FEEDBACK_BODY_MAX,  # noqa: F401
-    _clean_page_url,  # noqa: F401
-    _load_feedback_or_404,  # noqa: F401
-    _render_thread,  # noqa: F401
-    count_admin_unread,
-)
-from cvp.text_validation import assert_plain_text  # noqa: F401
+from cvp.models_feedback import ALLOWED_STATUSES, Feedback
+from cvp.routers.feedback import count_admin_unread
 
 router = APIRouter(prefix="/admin/system/feedback")
 
