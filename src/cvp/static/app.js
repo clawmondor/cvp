@@ -371,8 +371,7 @@ document.addEventListener('click', function (e) {
         htmx.ajax('POST', '/feedback/' + encodeURIComponent(fid) + '/delete', {
             target: 'body',
             swap: 'none',
-        });
-        location.reload();
+        }).then(function () { location.reload(); });
         return;
     }
     var delC = e.target.closest('[data-feedback-delete-comment]');
@@ -382,8 +381,7 @@ document.addEventListener('click', function (e) {
         htmx.ajax('POST', '/feedback/comments/' + encodeURIComponent(cid) + '/delete', {
             target: 'body',
             swap: 'none',
-        });
-        location.reload();
+        }).then(function () { location.reload(); });
     }
 });
 
