@@ -17,7 +17,7 @@ class Feedback(Base):
     __tablename__ = "feedback"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('pending','reviewing','backlog','canceled','done')",
+            f"status IN ({','.join(repr(s) for s in ALLOWED_STATUSES)})",
             name="ck_feedback_status",
         ),
         Index("ix_feedback_author_created", "author_user_id", "created_at"),
@@ -48,8 +48,8 @@ class Feedback(Base):
 class FeedbackComment(Base):
     """A comment posted on a feedback thread."""
 
-    __tablename__ = "feedback_comment"
-    __table_args__ = (Index("ix_feedback_comment_feedback_created", "feedback_id", "created_at"),)
+    __tablename__ = "feedback_comments"
+    __table_args__ = (Index("ix_feedback_comments_feedback_created", "feedback_id", "created_at"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
     feedback_id: Mapped[str] = mapped_column(String, ForeignKey("feedback.id"), nullable=False)
