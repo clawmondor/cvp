@@ -279,3 +279,61 @@ def test_admin_submit_rejects_html_body(admin_client):
         data={"body": "<svg onload=x>", "page_url": "/x", "author_user_id": "u1"},
     )
     assert resp.status_code == 400
+
+
+def test_admin_submit_as_self_without_group_uses_internal_group():
+    """system_admin with no group_id can submit on behalf of themselves
+    and the feedback snapshots the internal group."""
+    from cvp.db import get_db
+    from cvp.main import app
+
+    db = _session()
+    internal = Group(id="g_internal", name="Internal", kind="internal")
+    admin = User(
+        id="admin",
+        email="admin@test.com",
+        display_name="Admin",
+        system_role="system_admin",
+        group_id=None,
+        is_active=True,
+    )
+    db.add_all([internal, admin])
+    db.commit()
+
+    admin_cu = CurrentUser(
+        id="admin",
+        email="admin@test.com",
+        system_role="system_admin",
+        group_id=None,
+        group_kind=None,
+    )
+
+    async def fake_active():
+        return admin_cu
+
+    async def fake_admin():
+        return admin_cu
+
+    def override_db():
+        yield db
+
+    app.dependency_overrides[require_active_user] = fake_active
+    app.dependency_overrides[require_system_admin] = fake_admin
+    app.dependency_overrides[get_db] = override_db
+    try:
+        with TestClient(app) as client:
+            resp = client.post(
+                "/admin/system/feedback/new-as",
+                data={
+                    "body": "by admin for admin",
+                    "page_url": "/x",
+                    "author_user_id": "admin",
+                },
+                follow_redirects=False,
+            )
+        assert resp.status_code in (302, 303)
+        row = db.query(Feedback).one()
+        assert row.author_user_id == "admin"
+        assert row.author_group_id == "g_internal"
+    finally:
+        app.dependency_overrides.clear()
