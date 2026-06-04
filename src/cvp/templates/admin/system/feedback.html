@@ -1,0 +1,91 @@
+{% extends "admin/base.html" %}
+{% block title %}Feedback{% endblock %}
+{% block sidebar %}
+<a href="/admin/system/" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
+<a href="/admin/system/users" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
+<a href="/admin/system/groups" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Groups</a>
+<a href="/admin/system/matters" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Matters</a>
+<a href="/admin/system/feedback" class="block px-3 py-2 rounded text-sm bg-slate-700 text-white">
+  Feedback{% if unread_count %} <span class="ml-1 inline-flex items-center rounded-full bg-red-500 px-1.5 py-0.5 text-xs">{{ unread_count }}</span>{% endif %}
+</a>
+<a href="/admin/system/audit" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Audit Log</a>
+<a href="/admin/vision-models" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Vision Models</a>
+{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-2xl font-bold text-gray-900">Feedback</h1>
+  <a href="/admin/system/feedback/new"
+     class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">New feedback</a>
+</div>
+
+<form method="get" action="/admin/system/feedback" class="mb-4 flex flex-wrap items-end gap-3 bg-white p-3 rounded shadow-sm">
+  <div>
+    <label class="block text-xs font-medium text-gray-600">Status</label>
+    <div class="flex flex-wrap gap-2 mt-1">
+      {% for s in allowed_statuses %}
+      <label class="inline-flex items-center gap-1 text-sm">
+        <input type="checkbox" name="status" value="{{ s }}"
+               {% if s in selected_statuses %}checked{% endif %} />
+        {{ s }}
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  <div>
+    <label class="block text-xs font-medium text-gray-600">Group</label>
+    <select name="group_id" class="mt-1 rounded-md border border-gray-300 px-2 py-1 text-sm">
+      <option value="">All groups</option>
+      {% for g in all_groups %}
+      <option value="{{ g.id }}" {% if g.id == selected_group_id %}selected{% endif %}>{{ g.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="block text-xs font-medium text-gray-600">Author</label>
+    <input type="text" name="author_q" value="{{ author_q }}" placeholder="email or name"
+           class="mt-1 rounded-md border border-gray-300 px-2 py-1 text-sm" />
+  </div>
+  <label class="inline-flex items-center gap-1 text-sm">
+    <input type="checkbox" name="include_deleted" value="1" {% if include_deleted %}checked{% endif %} />
+    Include deleted
+  </label>
+  <input type="hidden" name="sort" value="{{ sort }}" />
+  <input type="hidden" name="order" value="{{ order }}" />
+  <button type="submit" class="rounded-md bg-slate-800 px-3 py-1.5 text-sm font-semibold text-white">Apply</button>
+</form>
+
+<table class="min-w-full bg-white rounded shadow-sm">
+  <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+    <tr>
+      {% set sort_link = '/admin/system/feedback?sort=%s&order=%s' %}
+      <th class="px-3 py-2 text-left"><a href="{{ sort_link % ('status', 'asc' if sort == 'status' and order == 'desc' else 'desc') }}">Status</a></th>
+      <th class="px-3 py-2 text-left"><a href="{{ sort_link % ('author', 'asc' if sort == 'author' and order == 'desc' else 'desc') }}">Author</a></th>
+      <th class="px-3 py-2 text-left">Page</th>
+      <th class="px-3 py-2 text-left">Excerpt</th>
+      <th class="px-3 py-2 text-left"><a href="{{ sort_link % ('created_at', 'asc' if sort == 'created_at' and order == 'desc' else 'desc') }}">Created</a></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% set pill = {
+      'pending':   'bg-gray-100 text-gray-800',
+      'reviewing': 'bg-blue-100 text-blue-800',
+      'backlog':   'bg-yellow-100 text-yellow-800',
+      'canceled':  'bg-red-100 text-red-800',
+      'done':      'bg-green-100 text-green-800',
+    } %}
+    {% for fb in rows %}
+    <tr class="border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
+        data-feedback-admin-row="{{ fb.id }}">
+      <td class="px-3 py-2"><span class="inline-flex items-center rounded-full {{ pill[fb.status] }} px-2 py-0.5 text-xs font-medium">{{ fb.status }}</span></td>
+      <td class="px-3 py-2 text-sm">
+        {{ users[fb.author_user_id].email if fb.author_user_id in users else 'Unknown' }}
+        <div class="text-xs text-gray-500">{{ groups[fb.author_group_id].name if fb.author_group_id in groups else '' }}</div>
+      </td>
+      <td class="px-3 py-2 text-sm"><a href="{{ fb.page_url }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">{{ fb.page_url }}</a></td>
+      <td class="px-3 py-2 text-sm">{{ fb.body[:120] }}{% if fb.body|length > 120 %}…{% endif %}</td>
+      <td class="px-3 py-2 text-xs text-gray-500">{{ fb.created_at.strftime('%b %d, %Y') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

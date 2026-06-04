@@ -401,3 +401,11 @@ document.addEventListener('DOMContentLoaded', function () {
         input.value = window.location.pathname + window.location.search;
     });
 });
+
+// Admin feedback list: row click navigates to detail
+document.addEventListener('click', function (e) {
+    var row = e.target.closest('[data-feedback-admin-row]');
+    if (row) {
+        window.location.href = '/admin/system/feedback/' + encodeURIComponent(row.dataset.feedbackAdminRow);
+    }
+});

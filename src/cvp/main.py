@@ -30,6 +30,7 @@ from cvp.routers import (
     sharing,
     vision,
 )
+from cvp.routers.admin import feedback as admin_feedback
 from cvp.routers.admin import internal as admin_internal
 from cvp.routers.admin import org as admin_org
 from cvp.routers.admin import system as admin_system
@@ -80,6 +81,7 @@ app.include_router(admin_system.router)
 app.include_router(admin_internal.router)
 app.include_router(admin_org.router)
 app.include_router(admin_vision_models.router)
+app.include_router(admin_feedback.router, dependencies=[Depends(require_active_user)])
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
