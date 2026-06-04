@@ -1,7 +1,7 @@
 <div class="space-y-4">
   <form hx-post="/feedback"
-        hx-target="#feedback-panel-body"
-        hx-swap="outerHTML"
+        hx-target="closest [data-feedback-panel-root]"
+        hx-swap="innerHTML"
         data-feedback-form
         class="space-y-2">
     <textarea name="body" rows="4" required maxlength="{{ feedback_body_max }}"

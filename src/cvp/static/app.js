@@ -32,6 +32,18 @@ function initTabs() {
 document.addEventListener('DOMContentLoaded', initTabs);
 
 // CSRF: cover both HTMX requests (via hx-headers) and plain form POSTs (via hidden field).
+function addCsrfToPlainForms(root, csrf) {
+    (root || document).querySelectorAll('form').forEach(function (form) {
+        if ((form.getAttribute('method') || '').toUpperCase() !== 'POST') return;
+        if (form.querySelector('input[name="_csrf"]')) return;
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = '_csrf';
+        input.value = csrf;
+        form.appendChild(input);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     var meta = document.querySelector('meta[name="csrf-token"]');
     var csrf = meta ? meta.content : '';
@@ -41,15 +53,15 @@ document.addEventListener('DOMContentLoaded', function () {
     document.body.setAttribute('hx-headers', JSON.stringify({'X-CSRF-Token': csrf}));
 
     // Plain method="post" forms get a hidden _csrf field so the server can validate
-    document.querySelectorAll('form').forEach(function (form) {
-        if ((form.getAttribute('method') || '').toUpperCase() === 'POST') {
-            var input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = '_csrf';
-            input.value = csrf;
-            form.appendChild(input);
-        }
-    });
+    addCsrfToPlainForms(document, csrf);
+});
+
+// Re-retrofit any plain POST forms that arrive via HTMX swaps
+document.addEventListener('htmx:afterSwap', function (e) {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    var csrf = meta ? meta.content : '';
+    if (!csrf) return;
+    addCsrfToPlainForms(e.detail.elt, csrf);
 });
 
 // ── Serp panel toggle ────────────────────────────────────────────────────
