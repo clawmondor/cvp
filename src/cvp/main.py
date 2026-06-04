@@ -20,6 +20,7 @@ from cvp.routers import (
     crops,
     evidence,
     exports,
+    feedback,
     health,
     items,
     matters,
@@ -73,6 +74,7 @@ app.include_router(crops.router)
 app.include_router(exports.router)
 app.include_router(sharing.router)
 app.include_router(comments.router)
+app.include_router(feedback.router, dependencies=[Depends(require_active_user)])
 app.include_router(profile.router)
 app.include_router(admin_system.router)
 app.include_router(admin_internal.router)
