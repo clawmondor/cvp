@@ -83,3 +83,14 @@ def test_default_field_name_is_input():
     with pytest.raises(HTTPException) as exc:
         assert_plain_text("<")
     assert "input" in exc.value.detail
+
+
+def test_accepts_empty_string():
+    # Empty bodies are rejected at the router layer (length check after .strip()),
+    # not here. The validator's contract is "accept anything that's not markup".
+    assert_plain_text("", field_name="body")
+
+
+def test_rejects_hex_html_entity():
+    with pytest.raises(HTTPException):
+        assert_plain_text("&#x3c;script&#x3e;", field_name="body")
