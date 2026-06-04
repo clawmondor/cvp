@@ -165,7 +165,7 @@ def has_author_unread(db: Session, user_id: str) -> bool:
 
 
 def count_admin_unread(db: Session) -> int:
-    """Return the count of feedback rows with non-admin activity newer than the admin read cursor."""
+    """Count feedback rows with non-admin activity newer than the admin read cursor."""
     rows = db.query(Feedback).filter(Feedback.deleted_at.is_(None)).all()
     n = 0
     for fb in rows:

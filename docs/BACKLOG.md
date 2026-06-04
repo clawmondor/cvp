@@ -47,3 +47,19 @@ Source for all items: `docs/superpowers/specs/2026-04-29-hosting-design.md` §12
 
 **Why:** WeasyPrint can spike memory on large matters and cause OOM kills.
 **Cost / effort:** Either paginate PDF rendering at ~100 items per pass, or add a resource cap in the Railway service settings. Trigger on memory alert.
+
+---
+
+## User Feedback
+
+### Feedback attachments
+
+**Why:** v0 of the user feedback feature is text-only. Real reports often need a screenshot to be actionable.
+**Cost / effort:** Medium. Reuse the existing evidence-file upload pattern (filesystem under `./data/`, MIME validation, size cap). Allow multiple optional screenshots on the initial feedback submission AND on each thread comment.
+**Source:** `docs/superpowers/specs/2026-06-03-user-feedback-design.md`, deferred from v0.
+
+### Apply `assert_plain_text()` to other free-form text inputs
+
+**Why:** The feedback feature ships a reusable plain-text validator in `src/cvp/text_validation.py`. The rest of the app's free-form text inputs do not yet use it. Adopting it project-wide closes a class of stored-XSS issues at the input layer (defense in depth alongside Jinja autoescape and the CSP `script-src` policy).
+**Cost / effort:** Low per field, but requires a small per-field audit. Candidate fields: matter name + description, item name + description, room name, profile display name, item comments (`models_comments.Comment.body`), vision model display name, any other free-form `Text`/`String` columns receiving user input. Roll out per-field so each adoption can be reviewed against the field's existing data (e.g., a matter description that already contains `<` would 400 on next edit).
+**Source:** `docs/superpowers/specs/2026-06-03-user-feedback-design.md`.

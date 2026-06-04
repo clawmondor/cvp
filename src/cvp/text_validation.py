@@ -28,7 +28,7 @@ def _has_disallowed_control(value: str) -> bool:
 
 
 def assert_plain_text(value: str, *, field_name: str = "input") -> None:
-    """Raise HTTPException(400) if `value` contains HTML, entities, dangerous schemes, or controls."""
+    """Raise HTTPException(400) if value contains HTML, entities, schemes, or controls."""
     if "<" in value or ">" in value:
         _reject(field_name)
     if _HTML_ENTITY_RE.search(value):
