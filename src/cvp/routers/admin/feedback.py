@@ -168,6 +168,8 @@ def admin_thread(
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     fb = _load_feedback_or_404(feedback_id, db)
+    fb.last_admin_read_at = datetime.now(tz=timezone.utc)
+    db.commit()
     inner_html = _render_thread(db, user, fb, is_admin_view=True).body.decode("utf-8")
     html = templates.get_template("admin/system/feedback_detail.html").render(
         request=request,
@@ -194,8 +196,10 @@ def change_status(
     if status not in ALLOWED_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid status")
     fb = _load_feedback_or_404(feedback_id, db)
+    now = datetime.now(tz=timezone.utc)
     fb.status = status
-    fb.status_changed_at = datetime.now(tz=timezone.utc)
+    fb.status_changed_at = now
     fb.status_changed_by_user_id = user.id
+    fb.last_admin_read_at = now
     db.commit()
     return RedirectResponse(url=f"/admin/system/feedback/{fb.id}", status_code=303)

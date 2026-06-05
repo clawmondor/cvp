@@ -337,3 +337,50 @@ def test_admin_submit_as_self_without_group_uses_internal_group():
         assert row.author_group_id == "g_internal"
     finally:
         app.dependency_overrides.clear()
+
+
+def test_admin_thread_get_stamps_admin_cursor(admin_client):
+    client, db = admin_client
+    db.add(Feedback(id="fA1", author_user_id="u1", author_group_id="g1", page_url="/x", body="b"))
+    db.commit()
+    resp = client.get("/admin/system/feedback/fA1")
+    assert resp.status_code == 200
+    db.expire_all()
+    fb = db.get(Feedback, "fA1")
+    assert fb.last_admin_read_at is not None
+    assert fb.last_author_read_at is None
+
+
+def test_admin_thread_no_oob_badge_in_response(admin_client):
+    """Admin thread page renders sidebar via full nav; no OOB markup needed."""
+    client, db = admin_client
+    db.add(Feedback(id="fA2", author_user_id="u1", author_group_id="g1", page_url="/x", body="b"))
+    db.commit()
+    resp = client.get("/admin/system/feedback/fA2")
+    assert 'id="feedback-badge-dot"' not in resp.text
+
+
+def test_change_status_also_stamps_admin_cursor(admin_client):
+    client, db = admin_client
+    db.add(Feedback(id="fA3", author_user_id="u1", author_group_id="g1", page_url="/x", body="b"))
+    db.commit()
+    resp = client.post(
+        "/admin/system/feedback/fA3/status",
+        data={"status": "reviewing"},
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+    db.expire_all()
+    fb = db.get(Feedback, "fA3")
+    assert fb.last_admin_read_at is not None
+
+
+def test_count_admin_unread_drops_after_admin_views(admin_client):
+    from cvp.routers.feedback import count_admin_unread
+
+    client, db = admin_client
+    db.add(Feedback(id="fA4", author_user_id="u1", author_group_id="g1", page_url="/x", body="b"))
+    db.commit()
+    assert count_admin_unread(db) == 1
+    client.get("/admin/system/feedback/fA4")
+    assert count_admin_unread(db) == 0

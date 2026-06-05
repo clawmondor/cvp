@@ -520,3 +520,38 @@ def test_submit_as_non_admin_without_group_400s():
         assert resp.status_code == 400
     finally:
         app.dependency_overrides.clear()
+
+
+def test_get_thread_as_author_stamps_author_cursor(client_and_db):
+    client, db = client_and_db
+    db.add(Feedback(id="fG1", author_user_id="u1", author_group_id="g1", page_url="/x", body="b"))
+    db.commit()
+    resp = client.get("/feedback/fG1")
+    assert resp.status_code == 200
+    db.expire_all()
+    fb = db.get(Feedback, "fG1")
+    assert fb.last_author_read_at is not None
+    assert fb.last_admin_read_at is None
+
+
+def test_get_thread_as_author_includes_oob_badge(client_and_db):
+    client, db = client_and_db
+    db.add(Feedback(id="fG2", author_user_id="u1", author_group_id="g1", page_url="/x", body="b"))
+    db.commit()
+    resp = client.get("/feedback/fG2")
+    assert resp.status_code == 200
+    # The OOB span must be in the response so HTMX swaps the floating badge.
+    assert 'id="feedback-badge-dot"' in resp.text
+    assert 'hx-swap-oob="outerHTML"' in resp.text
+
+
+def test_post_comment_stamps_author_cursor(client_and_db):
+    client, db = client_and_db
+    db.add(Feedback(id="fG3", author_user_id="u1", author_group_id="g1", page_url="/x", body="b"))
+    db.commit()
+    resp = client.post("/feedback/fG3/comments", data={"body": "hi"})
+    assert resp.status_code == 200
+    db.expire_all()
+    fb = db.get(Feedback, "fG3")
+    assert fb.last_author_read_at is not None
+    assert fb.last_admin_read_at is None
