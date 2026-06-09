@@ -116,8 +116,8 @@ class ItemGroup(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
     matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    name_normalized: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String)
+    name_normalized: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()

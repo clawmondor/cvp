@@ -39,8 +39,12 @@ def test_item_group_can_be_created(matter_id: str) -> None:
 def test_item_group_unique_constraint(matter_id: str) -> None:
     db = SessionLocal()
     try:
-        db.add(ItemGroup(matter_id=matter_id, name="Box A", name_normalized="box a"))
+        first = ItemGroup(matter_id=matter_id, name="Box A", name_normalized="box a")
+        db.add(first)
         db.commit()
+        db.refresh(first)
+        assert first.id
+
         db.add(ItemGroup(matter_id=matter_id, name="box a", name_normalized="box a"))
         with pytest.raises(IntegrityError):
             db.commit()
