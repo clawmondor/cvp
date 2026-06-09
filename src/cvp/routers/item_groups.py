@@ -153,8 +153,6 @@ def pin_evidence_to_group(
 
         if new_item_group_name.strip():
             group = find_or_create(db, matter_id, new_item_group_name)
-            db.commit()
-            db.refresh(group)
             ef.pinned_item_group_id = group.id
         elif item_group_id:
             group = db.get(ItemGroup, item_group_id)
