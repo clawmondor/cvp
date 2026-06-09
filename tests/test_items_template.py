@@ -52,9 +52,12 @@ def test_tbody_renders_crop_edit_link(env):
     tmpl = env.get_template("_items_tbody.html")
     html = tmpl.render(items=[FakeItem()], categories=[], rooms=[], conditions=[])
     assert "Edit crop" in html
-    assert "/matters/matter-1?file=ef-xyz&crop=crop-abc#evidence" in html
-    assert 'target="_blank"' in html
+    assert 'data-toggle-crop-editor="ef-xyz"' in html
+    assert 'data-preselect-crop="crop-abc"' in html
     assert 'aria-label="Edit crop for Lamp"' in html
+    # New-tab anchor must not be present anymore.
+    assert 'target="_blank"' not in html
+    assert "?file=ef-xyz&crop=crop-abc#evidence" not in html
 
 
 def test_tbody_no_overlay_when_no_crop(env):
@@ -77,6 +80,9 @@ def test_item_row_renders_crop_edit_link(env):
     tmpl = env.get_template("_item_row.html")
     html = tmpl.render(item=FakeItem(), categories=[], rooms=[], conditions=[])
     assert "Edit crop" in html
-    assert "/matters/matter-1?file=ef-xyz&crop=crop-abc#evidence" in html
-    assert 'target="_blank"' in html
+    assert 'data-toggle-crop-editor="ef-xyz"' in html
+    assert 'data-preselect-crop="crop-abc"' in html
     assert 'aria-label="Edit crop for Lamp"' in html
+    # New-tab anchor must not be present anymore.
+    assert 'target="_blank"' not in html
+    assert "?file=ef-xyz&crop=crop-abc#evidence" not in html

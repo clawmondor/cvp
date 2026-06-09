@@ -13,15 +13,15 @@
       <img src="/crops/{{ item.crops[0].crop_path }}" alt="{{ item.description }}"
            class="object-contain rounded border border-gray-200 bg-white"
            style="width:96px;height:96px;">
-      <a href="/matters/{{ item.matter_id }}?file={{ item.crops[0].evidence_file_id }}&crop={{ item.crops[0].id }}#evidence"
-         target="_blank"
-         rel="noopener"
-         aria-label="Edit crop for {{ item.description }}"
-         class="absolute inset-x-0 bottom-0 flex items-center justify-center py-1
-                bg-black/50 opacity-0 group-hover/thumb:opacity-100
-                transition-opacity rounded-b text-white text-xs font-medium">
+      <button type="button"
+              data-toggle-crop-editor="{{ item.crops[0].evidence_file_id }}"
+              data-preselect-crop="{{ item.crops[0].id }}"
+              aria-label="Edit crop for {{ item.description }}"
+              class="absolute inset-x-0 bottom-0 flex items-center justify-center py-1
+                     bg-black/50 opacity-0 group-hover/thumb:opacity-100
+                     transition-opacity rounded-b text-white text-xs font-medium border-0 cursor-pointer">
         Edit crop
-      </a>
+      </button>
     </div>
     {% else %}
     <div class="rounded border border-gray-100 bg-gray-50" style="width:96px;height:96px;"></div>
