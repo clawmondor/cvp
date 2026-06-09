@@ -1,40 +1,43 @@
-<div id="crop-editor-{{ evidence_file.id }}"
-     data-init="crop-editor"
-     data-ef-id="{{ evidence_file.id }}"
-     data-img-w="{{ img_w }}"
-     data-img-h="{{ img_h }}"
-     data-img-src="/files/{{ stored_path }}"
-     class="mt-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+<div class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <div class="relative max-w-5xl w-full max-h-[90vh] overflow-auto bg-white rounded-lg shadow-xl p-4">
+    <div id="crop-editor-{{ evidence_file.id }}"
+         data-init="crop-editor"
+         data-ef-id="{{ evidence_file.id }}"
+         data-img-w="{{ img_w }}"
+         data-img-h="{{ img_h }}"
+         data-img-src="/files/{{ stored_path }}">
 
-  <div class="flex items-center justify-between mb-3">
-    <h3 class="text-sm font-semibold text-gray-800">Edit crops — {{ evidence_file.filename }}</h3>
-    <button data-crop-editor-close="{{ evidence_file.id }}"
-            class="text-xs text-gray-400 hover:text-gray-700">✕ Close</button>
-  </div>
-
-  <div class="flex gap-4">
-    <!-- Canvas -->
-    <div class="flex-shrink-0">
-      <canvas id="ce-canvas-{{ evidence_file.id }}"
-              class="block rounded border border-gray-200 cursor-crosshair"
-              style="max-width:100%"></canvas>
-    </div>
-
-    <!-- Sidebar -->
-    <div class="flex flex-col gap-2 min-w-[210px] w-56">
-      <div id="ce-sidebar-{{ evidence_file.id }}">
-        <p class="text-xs text-gray-400">Click a box to select it.</p>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-gray-800">Edit crops — {{ evidence_file.filename }}</h3>
+        <button data-crop-editor-close="{{ evidence_file.id }}"
+                class="text-xs text-gray-400 hover:text-gray-700">✕ Close</button>
       </div>
-      <div class="mt-auto pt-2 border-t border-gray-100">
-        <button id="ce-recrop-btn-{{ evidence_file.id }}"
-                disabled
-                class="w-full rounded bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed">
-          Re-crop adjusted items (0)
-        </button>
-        <p id="ce-status-{{ evidence_file.id }}" class="mt-1 text-xs text-gray-400"></p>
+
+      <div class="flex gap-4">
+        <!-- Canvas -->
+        <div class="flex-shrink-0">
+          <canvas id="ce-canvas-{{ evidence_file.id }}"
+                  class="block rounded border border-gray-200 cursor-crosshair"
+                  style="max-width:100%"></canvas>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="flex flex-col gap-2 min-w-[210px] w-56">
+          <div id="ce-sidebar-{{ evidence_file.id }}">
+            <p class="text-xs text-gray-400">Click a box to select it.</p>
+          </div>
+          <div class="mt-auto pt-2 border-t border-gray-100">
+            <button id="ce-recrop-btn-{{ evidence_file.id }}"
+                    disabled
+                    class="w-full rounded bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed">
+              Re-crop adjusted items (0)
+            </button>
+            <p id="ce-status-{{ evidence_file.id }}" class="mt-1 text-xs text-gray-400"></p>
+          </div>
+        </div>
       </div>
+
     </div>
+    <script type="application/json" id="crop-data-{{ evidence_file.id }}">{{ crops_json | tojson }}</script>
   </div>
 </div>
-
-<script type="application/json" id="crop-data-{{ evidence_file.id }}">{{ crops_json | tojson }}</script>

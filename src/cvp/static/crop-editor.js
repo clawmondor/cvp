@@ -1,11 +1,15 @@
 (function () {
 
-  // Close button: data-crop-editor-close="<ef-id>" removes the editor container
+  // Close button: data-crop-editor-close="<ef-id>" clears the modal root.
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-crop-editor-close]');
     if (!btn) return;
-    var container = document.getElementById('crop-editor-' + btn.dataset.cropEditorClose);
-    if (container) container.remove();
+    var root = document.getElementById('crop-editor-modal-root');
+    if (root) {
+      root.innerHTML = '';
+      delete root.dataset.preselectCrop;
+    }
+    document.body.classList.remove('overflow-hidden');
   });
 
   // Activate any crop editor containers swapped in by HTMX
@@ -13,6 +17,17 @@
     document.querySelectorAll('[data-init="crop-editor"]:not([data-ready])').forEach(function (container) {
       container.dataset.ready = '1';
       initCropEditor(container);
+      // Consume preselect attribute if set by the trigger (Items tab button or deep-link).
+      var root = document.getElementById('crop-editor-modal-root');
+      if (root && root.dataset.preselectCrop) {
+        var efId = container.dataset.efId;
+        var fnName = 'ceSelect_' + efId.replace(/-/g, '_');
+        var sel = window[fnName];
+        if (typeof sel === 'function') {
+          sel(root.dataset.preselectCrop);
+        }
+        delete root.dataset.preselectCrop;
+      }
     });
   });
 

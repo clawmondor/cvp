@@ -114,50 +114,41 @@ function showEditCrop(itemId, cropId) {
 }
 
 // ── Crop editor toggle ───────────────────────────────────────────────────
-function toggleCropEditor(fileId) {
-  const existing = document.getElementById('crop-editor-' + fileId);
-  if (existing) {
-    existing.remove();
-    return;
+function toggleCropEditor(fileId, opts) {
+  opts = opts || {};
+  const root = document.getElementById('crop-editor-modal-root');
+  if (!root) return;
+  // Re-entrancy guard: don't stack a second open while one is loaded or in flight.
+  if (root.children.length > 0 || root.dataset.loading === '1') return;
+  if (opts.preselectCropId) {
+    root.dataset.preselectCrop = opts.preselectCropId;
   }
-  const grid = document.getElementById('evidence-grid');
+  root.dataset.loading = '1';
+  document.body.classList.add('overflow-hidden');
   htmx.ajax('GET', '/api/evidence/' + fileId + '/crop-editor', {
-    target: grid,
-    swap: 'afterend',
+    target: root,
+    swap: 'innerHTML',
+  }).finally(function () {
+    delete root.dataset.loading;
+    // If the request failed, the root is still empty — release the body scroll lock so the page isn't stuck.
+    if (root.children.length === 0) {
+      document.body.classList.remove('overflow-hidden');
+    }
   });
 }
 
 // ── Crop-edit deep-link auto-init ────────────────────────────────────────────
 // When the page is opened via the "Edit crop" thumbnail link (?file=&crop=#evidence),
-// auto-open the crop editor for the evidence file and pre-select the item's crop.
+// auto-open the modal for the evidence file and pre-select the item's crop.
+// Preselect handling is consolidated in crop-editor.js (reads root.dataset.preselectCrop
+// after htmx:afterSettle).
 document.addEventListener('DOMContentLoaded', function () {
   var params = new URLSearchParams(window.location.search);
   var fileId = params.get('file');
   var cropId = params.get('crop');
   if (!fileId) return;
-
-  // The hash is already #evidence; initTabs (also on DOMContentLoaded) activates the panel.
-  toggleCropEditor(fileId);
-
-  if (cropId) {
-    var settled = false;
-    // The handler stays attached until ceSelect_* exists (crop editor IIFE has run).
-    // removeEventListener is intentionally inside the if-block so unrelated HTMX
-    // settle events (before the editor loads) don't remove the listener prematurely.
-    function handler() {
-      var fnName = 'ceSelect_' + fileId.replace(/-/g, '_');
-      if (window[fnName]) {
-        settled = true;
-        window[fnName](cropId);
-        document.removeEventListener('htmx:afterSettle', handler);
-      }
-    }
-    document.addEventListener('htmx:afterSettle', handler);
-    // Failsafe: remove listener if the crop editor never loads (e.g. network error).
-    setTimeout(function () {
-      if (!settled) document.removeEventListener('htmx:afterSettle', handler);
-    }, 10000);
-  }
+  // The hash is already #evidence (handled by initTabs).
+  toggleCropEditor(fileId, cropId ? { preselectCropId: cropId } : {});
 });
 
 // ── Evidence drag-drop upload ─────────────────────────────────────────────
@@ -240,10 +231,28 @@ document.addEventListener('click', function (e) {
     if (btn) startRename(btn.dataset.renameRoomId);
 });
 
-// Delegated click: data-toggle-crop-editor → toggleCropEditor(fileId)
+// Delegated click: data-toggle-crop-editor → toggleCropEditor(fileId, opts)
 document.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-toggle-crop-editor]');
-    if (btn) toggleCropEditor(btn.dataset.toggleCropEditor);
+  var btn = e.target.closest('[data-toggle-crop-editor]');
+  if (!btn) return;
+  e.preventDefault();
+  var opts = {};
+  if (btn.dataset.preselectCrop) {
+    opts.preselectCropId = btn.dataset.preselectCrop;
+  }
+  toggleCropEditor(btn.dataset.toggleCropEditor, opts);
+});
+
+// Esc closes the crop editor modal (ignores when typing in form fields).
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  var root = document.getElementById('crop-editor-modal-root');
+  if (!root || root.children.length === 0) return;
+  var tag = (e.target && e.target.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  root.innerHTML = '';
+  delete root.dataset.preselectCrop;
+  document.body.classList.remove('overflow-hidden');
 });
 
 // Delegated click: data-serp-panel-close → remove serp panel row
