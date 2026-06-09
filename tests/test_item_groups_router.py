@@ -273,3 +273,52 @@ def test_matter_detail_groups_panel_shows_group(seeded_db, make_client):
     assert r.status_code == 200
     assert "12" in r.text
     assert "0 items" in r.text
+
+
+def test_evidence_grid_includes_group_dropdown(seeded_db, make_client):
+    ef = EvidenceFile(matter_id="m1", filename="a.jpg", stored_path="a.jpg", kind="image")
+    seeded_db.add(ef)
+    seeded_db.commit()
+
+    client, matter_id = make_client(role="viewer")
+    r = client.get(f"/matters/{matter_id}")
+    assert r.status_code == 200
+    body = r.text
+    assert f'data-evidence-group-select="{ef.id}"' in body
+    assert "Auto-detect" in body
+    assert "+ New group" in body
+
+
+def test_evidence_grid_dropdown_shows_groups(seeded_db, make_client):
+    seeded_db.add(ItemGroup(matter_id="m1", name="Box A", name_normalized="box a"))
+    seeded_db.add(EvidenceFile(matter_id="m1", filename="a.jpg", stored_path="a.jpg", kind="image"))
+    seeded_db.commit()
+
+    client, matter_id = make_client(role="viewer")
+    r = client.get(f"/matters/{matter_id}")
+    assert r.status_code == 200
+    assert "Box A" in r.text
+
+
+def test_evidence_grid_dropdown_preselects_pinned_group(seeded_db, make_client):
+    g = ItemGroup(matter_id="m1", name="12", name_normalized="12")
+    seeded_db.add(g)
+    seeded_db.flush()
+    ef = EvidenceFile(
+        matter_id="m1",
+        filename="a.jpg",
+        stored_path="a.jpg",
+        kind="image",
+        pinned_item_group_id=g.id,
+    )
+    seeded_db.add(ef)
+    seeded_db.commit()
+
+    client, matter_id = make_client(role="viewer")
+    r = client.get(f"/matters/{matter_id}")
+    assert r.status_code == 200
+    # The pinned group's option should carry "selected" attribute.
+    # Auto-detect should NOT be selected.
+    body = r.text
+    # Crude but effective: find the substring "<option value="{gid}" selected"
+    assert f'value="{g.id}" selected' in body

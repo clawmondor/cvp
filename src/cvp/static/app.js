@@ -362,6 +362,41 @@ function dismissScanBanner(jobId) {
   if (el) el.remove();
 }
 
+// Delegated change: data-evidence-group-select handles "+ New group…" sentinel.
+// Selecting __new__ prompts for a name, posts via fetch, then reloads so the
+// new group appears in every dropdown on the page.
+document.addEventListener('change', function (e) {
+    var sel = e.target;
+    if (!sel.matches || !sel.matches('select[data-evidence-group-select]')) return;
+    if (sel.value !== '__new__') return;
+    var name = window.prompt('New group name:');
+    if (!name || !name.trim()) {
+        // User cancelled — revert to Auto-detect and trigger the htmx PATCH so
+        // the (no-op) clear is sent and the form behaves consistently.
+        sel.value = '';
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        return;
+    }
+    var fileId = sel.dataset.evidenceGroupSelect;
+    var hxPatch = sel.closest('form').getAttribute('hx-patch') || '';
+    // hxPatch is /api/matters/{matter_id}/evidence/{file_id}/item-group
+    var matterId = hxPatch.split('/')[3];
+    var fd = new FormData();
+    fd.append('new_item_group_name', name.trim());
+    fetch('/api/matters/' + matterId + '/evidence/' + fileId + '/item-group', {
+        method: 'PATCH',
+        body: fd,
+        credentials: 'same-origin',
+    }).then(function (r) {
+        if (r.ok) {
+            window.location.reload();
+        } else {
+            sel.value = '';
+            alert('Could not create group.');
+        }
+    });
+});
+
 document.addEventListener('DOMContentLoaded', function () {
   document.querySelectorAll('[data-job-id]').forEach(function (el) {
     var jobId = el.dataset.jobId;

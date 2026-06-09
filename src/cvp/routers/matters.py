@@ -144,6 +144,7 @@ def matter_detail(
             .all()
         )
         item_groups = [(g, c) for g, c in item_groups_rows]
+        item_groups_flat = [g for g, _ in item_groups_rows]
         categories = db.query(Category).order_by(Category.id).all()
         vision_models = (
             db.query(VisionModel)
@@ -220,6 +221,7 @@ def matter_detail(
             "evidence_files": evidence_files,
             "rooms": rooms,
             "item_groups": item_groups,
+            "item_groups_flat": item_groups_flat,
             "categories": categories,
             "total_rcv_cents": total_rcv_cents,
             "total_acv_cents": total_acv_cents,

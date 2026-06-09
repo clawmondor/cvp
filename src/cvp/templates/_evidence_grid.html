@@ -20,6 +20,9 @@
     <div class="px-2 py-1.5">
       <p class="truncate text-xs font-medium text-gray-700" title="{{ f.filename }}">{{ f.filename }}</p>
       <p class="text-xs text-gray-400">{{ (f.size_bytes / 1024) | round(1) }} KB</p>
+      {% if f.kind == "image" and item_groups_flat is defined %}
+        {% include "_evidence_group_select.html" %}
+      {% endif %}
       {% if f.kind == "image" %}
         {% if f.scanned %}
         <button data-toggle-crop-editor="{{ f.id }}"
