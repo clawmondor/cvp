@@ -1,0 +1,23 @@
+<li id="item-group-{{ group.id }}"
+    class="group flex items-center justify-between rounded-md border border-gray-200 bg-white px-4 py-2.5 shadow-sm">
+  <div class="flex items-center gap-3">
+    <span id="item-group-name-{{ group.id }}" class="text-sm font-medium text-gray-800">{{ group.name }}</span>
+    <span class="text-xs text-gray-400">{{ item_count }} item{{ "" if item_count == 1 else "s" }}</span>
+  </div>
+  <div class="flex items-center gap-2">
+    <button
+      data-rename-item-group-id="{{ group.id }}"
+      data-rename-item-group-matter="{{ matter_id }}"
+      class="hidden rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100 group-hover:inline-flex">
+      Rename
+    </button>
+    <button
+      hx-delete="/api/matters/{{ matter_id }}/item-groups/{{ group.id }}"
+      hx-target="#item-group-{{ group.id }}"
+      hx-swap="outerHTML"
+      hx-confirm="Delete group '{{ group.name }}'? Items in this group will become ungrouped."
+      class="hidden rounded px-2 py-0.5 text-xs text-red-600 hover:bg-red-50 group-hover:inline-flex">
+      Delete
+    </button>
+  </div>
+</li>
