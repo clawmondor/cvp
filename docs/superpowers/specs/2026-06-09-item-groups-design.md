@@ -58,12 +58,21 @@ These were settled during brainstorming and the rest of the spec assumes them:
   or `+ New group…` to create one inline.
 - **Rooms tab:** Renamed visually to "Rooms & Groups"; groups are managed in a
   second panel alongside rooms.
-- **Group delete:** `ON DELETE SET NULL` on both `items.group_id` and
-  `evidence_files.pinned_group_id`. Items survive, evidence loses its pin.
+- **Group delete:** `ON DELETE SET NULL` on both `items.item_group_id` and
+  `evidence_files.pinned_item_group_id`. Items survive, evidence loses its pin.
 
 ## Data model
 
-### New table: `groups`
+### Naming note
+
+The `Group` class name and `groups` table name are **already in use** by
+`src/cvp/models_auth.py` for the matter-ownership / RBAC group concept
+(`Matter.owner_group_id` references it). To avoid collision, the new entity
+is named `ItemGroup` at the model layer and `item_groups` at the table
+layer. The user-facing label in templates and dropdowns stays **"Group"** —
+the disambiguation is purely internal.
+
+### New table: `item_groups`
 
 | column            | type     | constraints                                  |
 |-------------------|----------|----------------------------------------------|
@@ -79,16 +88,16 @@ These were settled during brainstorming and the rest of the spec assumes them:
 
 ### Changes to existing tables
 
-- **`items`**: add nullable `group_id: str | None` (FK → `groups.id`,
+- **`items`**: add nullable `item_group_id: str | None` (FK → `item_groups.id`,
   `ON DELETE SET NULL`).
-- **`evidence_files`**: add nullable `pinned_group_id: str | None`
-  (FK → `groups.id`, `ON DELETE SET NULL`). `NULL` = "Auto-detect" mode;
+- **`evidence_files`**: add nullable `pinned_item_group_id: str | None`
+  (FK → `item_groups.id`, `ON DELETE SET NULL`). `NULL` = "Auto-detect" mode;
   non-NULL = "this group, overriding any detected placard".
 
 Why two separate FKs:
-- `evidence_files.pinned_group_id` is a *scan-time instruction* attached to the
+- `evidence_files.pinned_item_group_id` is a *scan-time instruction* attached to the
   source photo.
-- `items.group_id` is the *actual* group membership of an extracted item, which
+- `items.item_group_id` is the *actual* group membership of an extracted item, which
   a specialist can edit independently of how it was originally scanned.
 
 ## Vision pipeline changes
@@ -119,38 +128,38 @@ alongside the items list. Empty string when absent.
 
 ### Worker (`src/cvp/services/vision_worker.py`, `vision.py`)
 
-After parsing the model response, compute the effective `group_id` for the scan
-in this order:
+After parsing the model response, compute the effective `item_group_id` for the
+scan in this order:
 
-1. If `EvidenceFile.pinned_group_id` is set → use it (dropdown wins).
+1. If `EvidenceFile.pinned_item_group_id` is set → use it (dropdown wins).
    - If `placard_text` is also non-empty and does not normalize to the pinned
      group's `name_normalized`, log at INFO: pinned group id, detected text,
      evidence file id. No user-facing alert in v0.
 2. Else if `placard_text` is non-empty → call
-   `services.groups.find_or_create(session, matter_id, placard_text)` and use
-   the returned group.
-3. Else → effective `group_id` is `None`.
+   `services.item_groups.find_or_create(session, matter_id, placard_text)` and
+   use the returned group.
+3. Else → effective `item_group_id` is `None`.
 
-Apply the resulting `group_id` to every `Item` row created by this scan
+Apply the resulting `item_group_id` to every `Item` row created by this scan
 (including items created via `ItemCrop`). The placard never appears in `items`
 because the prompt routes it to its own field.
 
-### New service: `src/cvp/services/groups.py`
+### New service: `src/cvp/services/item_groups.py`
 
 ```python
-def find_or_create(session, matter_id: str, name: str) -> Group:
+def find_or_create(session, matter_id: str, name: str) -> ItemGroup:
     normalized = name.strip().lower()
     if not normalized:
         raise ValueError("group name cannot be empty")
     existing = session.execute(
-        select(Group).where(
-            Group.matter_id == matter_id,
-            Group.name_normalized == normalized,
+        select(ItemGroup).where(
+            ItemGroup.matter_id == matter_id,
+            ItemGroup.name_normalized == normalized,
         )
     ).scalar_one_or_none()
     if existing is not None:
         return existing
-    group = Group(matter_id=matter_id, name=name.strip(), name_normalized=normalized)
+    group = ItemGroup(matter_id=matter_id, name=name.strip(), name_normalized=normalized)
     session.add(group)
     session.flush()
     return group
@@ -164,16 +173,16 @@ re-query.
 ### Evidence grid (`src/cvp/templates/_evidence_grid.html`)
 
 Next to each image's scan controls, render a `<select>` whose `change` event
-issues an HTMX `PATCH /matters/{matter_id}/evidence/{file_id}/group`:
+issues an HTMX `PATCH /matters/{matter_id}/evidence/{file_id}/item-group`:
 
-- `(Auto-detect)` — `value=""`, default when `pinned_group_id` is NULL.
+- `(Auto-detect)` — `value=""`, default when `pinned_item_group_id` is NULL.
 - One `<option>` per existing Group in the matter, sorted by `created_at`.
 - `+ New group…` — sentinel value (`__new__`). On selection, HTMX swaps in a
   small inline name prompt fragment. Submitting the prompt:
-  1. `POST /matters/{matter_id}/groups` with the name.
+  1. `POST /matters/{matter_id}/item-groups` with the name.
   2. Server creates the group (via `find_or_create`) and responds with the
      refreshed `<select>` fragment, with the new group selected and persisted
-     as the file's `pinned_group_id`.
+     as the file's `pinned_item_group_id`.
 
 Per-CLAUDE.md, all interactivity is wired via `data-*` attributes and delegated
 listeners in `static/app.js` (lines 225–275 pattern). No inline `onclick=` /
@@ -187,7 +196,7 @@ Add a Group field:
   `+ New group…` sentinel.
 - Choosing `+ New group…` swaps in a text input (HTMX) where the user types the
   new name; on save, the items router calls `find_or_create` first, then sets
-  `item.group_id`.
+  `item.item_group_id`.
 
 ### Rooms & Groups tab (`src/cvp/templates/_tab_rooms.html`)
 
@@ -198,31 +207,31 @@ Add a Group field:
   - Header + create form (name input, Add button), HTMX-driven; mirrors the
     rooms create UX.
   - List of groups: each row shows name (inline-editable), item count, and a
-    delete button with a confirmation step. Item count = `COUNT(items WHERE group_id = g.id)`.
-  - Delete triggers `DELETE /matters/{id}/groups/{group_id}`; on success, the
+    delete button with a confirmation step. Item count = `COUNT(items WHERE item_group_id = g.id)`.
+  - Delete triggers `DELETE /matters/{id}/item-groups/{item_group_id}`; on success, the
     panel re-renders. Items keep their data but lose their group reference via
     `ON DELETE SET NULL`.
 
 ## Endpoints
 
-New router: `src/cvp/routers/groups.py` (keeps `rooms.py` focused per the
+New router: `src/cvp/routers/item_groups.py` (keeps `rooms.py` focused per the
 under-200-lines convention).
 
-| method | path                                                    | purpose                              |
-|--------|---------------------------------------------------------|--------------------------------------|
-| POST   | `/matters/{matter_id}/groups`                           | Create a group (uses `find_or_create`) |
-| PATCH  | `/matters/{matter_id}/groups/{group_id}`                | Rename                               |
-| DELETE | `/matters/{matter_id}/groups/{group_id}`                | Delete                               |
-| PATCH  | `/matters/{matter_id}/evidence/{file_id}/group`         | Set / clear `pinned_group_id`        |
+| method | path                                                         | purpose                                       |
+|--------|--------------------------------------------------------------|-----------------------------------------------|
+| POST   | `/matters/{matter_id}/item-groups`                           | Create a group (uses `find_or_create`)        |
+| PATCH  | `/matters/{matter_id}/item-groups/{item_group_id}`           | Rename                                        |
+| DELETE | `/matters/{matter_id}/item-groups/{item_group_id}`           | Delete                                        |
+| PATCH  | `/matters/{matter_id}/evidence/{file_id}/item-group`         | Set / clear `pinned_item_group_id`            |
 
 The existing item update handler (in `routers/items.py`) is extended:
 
-- Accepts `group_id` (existing group) or `new_group_name` (string). If
-  `new_group_name` is present and non-empty, the handler calls `find_or_create`
-  before assigning `item.group_id`.
-- Sending `group_id=""` clears the item's group (sets `item.group_id` to NULL).
-  Same convention applies to `PATCH /evidence/{file_id}/group` for clearing
-  the file's pinned group.
+- Accepts form field `item_group_id` (existing group) or `new_item_group_name`
+  (string). If `new_item_group_name` is present and non-empty, the handler
+  calls `find_or_create` before assigning `item.item_group_id`.
+- Sending `item_group_id=""` clears the item's group (sets `item.item_group_id`
+  to NULL). Same convention applies to `PATCH /evidence/{file_id}/group` for
+  clearing the file's pinned group.
 
 All endpoints follow the existing auth/RBAC patterns used by `rooms.py` and
 `evidence.py`. Routes require an authenticated user with access to the matter.
@@ -231,35 +240,37 @@ All endpoints follow the existing auth/RBAC patterns used by `rooms.py` and
 
 Single Alembic revision (`uv run alembic revision --autogenerate -m "add item groups"` followed by manual review):
 
-1. Create `groups` table with columns above.
-2. Add `items.group_id` (nullable, FK with `ON DELETE SET NULL`).
-3. Add `evidence_files.pinned_group_id` (nullable, FK with `ON DELETE SET NULL`).
-4. Index `groups.matter_id`; unique index on `(matter_id, name_normalized)`.
+1. Create `item_groups` table with columns above.
+2. Add `items.item_group_id` (nullable, FK with `ON DELETE SET NULL`).
+3. Add `evidence_files.pinned_item_group_id` (nullable, FK with `ON DELETE SET NULL`).
+4. Index `item_groups.matter_id`; unique index on `(matter_id, name_normalized)`.
 5. No data backfill — every new column defaults to NULL.
+6. SQLite ALTER limitations require `op.batch_alter_table(...)` for the FK
+   additions on `items` and `evidence_files`.
 
 ## Tests
 
 `tests/` mirrors `src/cvp/`:
 
-- `tests/services/test_groups.py`
+- `tests/services/test_item_groups.py`
   - `find_or_create` happy path
   - dedupe: `"12"`, `" 12 "`, `"12 "` collapse; `"Box A"` vs `"box a"` collapse
   - empty / whitespace-only name raises `ValueError`
   - `IntegrityError` race is recovered by re-query
-- `tests/services/test_vision_worker_groups.py`
+- `tests/services/test_vision_worker_item_groups.py`
   - pinned set, placard empty → items get pinned group
   - pinned set, placard present and conflicting → pinned wins; INFO log emitted
   - pinned NULL, placard present → group created; items tagged
-  - pinned NULL, placard empty → items have `group_id IS NULL`
+  - pinned NULL, placard empty → items have `item_group_id IS NULL`
   - two scans with the same placard text reuse the same group row
-- `tests/routers/test_groups.py`
+- `tests/routers/test_item_groups.py`
   - POST creates and returns group; duplicate POST returns the existing one
-  - PATCH renames; DELETE nulls items' `group_id`
-  - PATCH evidence group persists `pinned_group_id` and clears on `""`
+  - PATCH renames; DELETE nulls items' `item_group_id`
+  - PATCH evidence group persists `pinned_item_group_id` and clears on `""`
   - Permissions: another matter's user gets 403/404
 - `tests/routers/test_items_group_assignment.py`
   - PATCH item with `new_group_name` creates and assigns
-  - PATCH item with `group_id=""` clears the assignment
+  - PATCH item with `item_group_id=""` clears the assignment
 - `tests/templates/test_tab_rooms.py` (or extend the existing tab test)
   - Rooms & Groups panel renders with item counts
 
