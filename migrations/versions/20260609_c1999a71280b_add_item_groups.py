@@ -26,10 +26,10 @@ def upgrade() -> None:
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("name_normalized", sa.String(), nullable=False),
         sa.Column(
-            "created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+            "created_at", sa.DateTime(), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column(
-            "updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+            "updated_at", sa.DateTime(), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.ForeignKeyConstraint(["matter_id"], ["matters.id"]),
         sa.PrimaryKeyConstraint("id"),
