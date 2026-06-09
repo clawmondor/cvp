@@ -262,6 +262,18 @@ document.addEventListener('click', function (e) {
   toggleCropEditor(btn.dataset.toggleCropEditor, opts);
 });
 
+// Esc closes the crop editor modal (ignores when typing in form fields).
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  var root = document.getElementById('crop-editor-modal-root');
+  if (!root || root.children.length === 0) return;
+  var tag = (e.target && e.target.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  root.innerHTML = '';
+  delete root.dataset.preselectCrop;
+  document.body.classList.remove('overflow-hidden');
+});
+
 // Delegated click: data-serp-panel-close → remove serp panel row
 document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-serp-panel-close]');
