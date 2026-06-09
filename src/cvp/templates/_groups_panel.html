@@ -15,9 +15,9 @@
     </form>
   </div>
 
+  {% set matter_id = matter.id %}
   <ul id="item-groups-list" class="space-y-2">
     {% for group, item_count in item_groups %}
-      {% set matter_id = matter.id %}
       {% include "_item_group_li.html" %}
     {% else %}
     <li id="item-groups-empty" class="text-sm text-gray-400 italic">

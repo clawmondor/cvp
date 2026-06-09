@@ -304,6 +304,15 @@ document.addEventListener('htmx:afterRequest', function (e) {
     }
 });
 
+// Same pattern for the add-item-group form on the Rooms & Groups tab.
+document.addEventListener('htmx:afterRequest', function (e) {
+    if (e.detail.elt && e.detail.elt.id === 'add-item-group-form' && e.detail.successful) {
+        e.detail.elt.reset();
+        var empty = document.getElementById('item-groups-empty');
+        if (empty) empty.remove();
+    }
+});
+
 // Lens search: "Searching…" while in-flight
 document.addEventListener('htmx:beforeRequest', function (e) {
     if (!e.detail.elt.hasAttribute('data-lens-form')) return;

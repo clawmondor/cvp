@@ -251,26 +251,23 @@ def test_pin_evidence_wrong_matter_returns_404(seeded_db, make_client):
     assert r.status_code == 404
 
 
-def test_matter_detail_renames_rooms_tab(seeded_db, make_client, monkeypatch):
-    monkeypatch.setattr("cvp.routers.matters.SessionLocal", lambda: seeded_db)
+def test_matter_detail_renames_rooms_tab(seeded_db, make_client):
     client, matter_id = make_client(role="viewer")
     r = client.get(f"/matters/{matter_id}")
     assert r.status_code == 200
     assert "Rooms &amp; Groups" in r.text
 
 
-def test_matter_detail_groups_panel_empty_state(seeded_db, make_client, monkeypatch):
-    monkeypatch.setattr("cvp.routers.matters.SessionLocal", lambda: seeded_db)
+def test_matter_detail_groups_panel_empty_state(seeded_db, make_client):
     client, matter_id = make_client(role="viewer")
     r = client.get(f"/matters/{matter_id}")
     assert r.status_code == 200
     assert "No groups yet" in r.text
 
 
-def test_matter_detail_groups_panel_shows_group(seeded_db, make_client, monkeypatch):
+def test_matter_detail_groups_panel_shows_group(seeded_db, make_client):
     seeded_db.add(ItemGroup(matter_id="m1", name="12", name_normalized="12"))
     seeded_db.commit()
-    monkeypatch.setattr("cvp.routers.matters.SessionLocal", lambda: seeded_db)
     client, matter_id = make_client(role="viewer")
     r = client.get(f"/matters/{matter_id}")
     assert r.status_code == 200
