@@ -80,25 +80,46 @@ def _match_category_id(hint: str | None, categories: list[Category]) -> int:
 # ---------------------------------------------------------------------------
 
 
-def _parse_response(text: str) -> list[dict]:
+def _parse_response(text: str) -> tuple[list[dict], str]:
+    """Parse a vision response into ``(items, placard_text)``.
+
+    Accepts both the v4 object shape ``{"items": [...], "placard_text": "..."}``
+    and the v3 legacy shape (bare JSON array of item objects). The legacy case
+    returns ``placard_text=""`` so downstream code can stay branch-free.
+    """
     text = text.strip()
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
+
+    def _coerce(parsed: object) -> tuple[list[dict], str]:
+        if isinstance(parsed, dict):
+            items_raw = parsed.get("items")
+            items = items_raw if isinstance(items_raw, list) else []
+            placard = parsed.get("placard_text")
+            return ([i for i in items if isinstance(i, dict)], str(placard or ""))
+        if isinstance(parsed, list):
+            return ([i for i in parsed if isinstance(i, dict)], "")
+        return ([], "")
+
     try:
-        data = json.loads(text)
-        if isinstance(data, list):
-            return data
+        return _coerce(json.loads(text))
     except json.JSONDecodeError:
         pass
+
+    # Last-ditch: recover an embedded JSON object or array.
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    if m:
+        try:
+            return _coerce(json.loads(m.group()))
+        except json.JSONDecodeError:
+            pass
     m = re.search(r"\[.*\]", text, re.DOTALL)
     if m:
         try:
-            data = json.loads(m.group())
-            if isinstance(data, list):
-                return data
+            return _coerce(json.loads(m.group()))
         except json.JSONDecodeError:
             pass
-    return []
+    return [], ""
 
 
 # ---------------------------------------------------------------------------
@@ -247,7 +268,8 @@ def process_one_image(job_image_id: str) -> None:
             mime_type=mime,
             prompt=build_scan_prompt(scan_w, scan_h),
         )
-        parsed = _parse_response(raw_text)
+        parsed_items, placard_text = _parse_response(raw_text)
+        # placard_text is consumed by Task 11's group resolution; not yet used.
 
         max_line = (
             db.query(sqlfunc.max(Item.line_number)).filter(Item.matter_id == job.matter_id).scalar()
@@ -255,7 +277,7 @@ def process_one_image(job_image_id: str) -> None:
         )
         items_this_file = 0
 
-        for raw_item in parsed:
+        for raw_item in parsed_items:
             if not isinstance(raw_item, dict):
                 continue
             description = str(raw_item.get("description") or "").strip()
