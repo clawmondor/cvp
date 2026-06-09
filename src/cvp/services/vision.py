@@ -149,7 +149,8 @@ def _resolve_effective_item_group_id(
             pinned = db.get(ItemGroup, pinned_id)
             if pinned is not None and pinned.name_normalized != text.lower():
                 logger.info(
-                    "vision: placard mismatch — pinned group %s (%r), detected %r on evidence_file %s",
+                    "vision: placard mismatch — pinned group %s (%r),"
+                    " detected %r on evidence_file %s",
                     pinned_id,
                     pinned.name,
                     text,

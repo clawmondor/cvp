@@ -16,8 +16,8 @@ from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.depreciation import compute_acv
 from cvp.models import Category, Item, ItemGroup, Room, SerpSearch
-from cvp.services.item_groups import find_or_create
 from cvp.services.audit import get_client_ip, write_audit_log
+from cvp.services.item_groups import find_or_create
 from cvp.services.serp_display import extract_results
 
 BASE_DIR = Path(__file__).parent.parent
