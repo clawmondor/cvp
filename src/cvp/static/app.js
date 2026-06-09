@@ -139,35 +139,16 @@ function toggleCropEditor(fileId, opts) {
 
 // ── Crop-edit deep-link auto-init ────────────────────────────────────────────
 // When the page is opened via the "Edit crop" thumbnail link (?file=&crop=#evidence),
-// auto-open the crop editor for the evidence file and pre-select the item's crop.
+// auto-open the modal for the evidence file and pre-select the item's crop.
+// Preselect handling is consolidated in crop-editor.js (reads root.dataset.preselectCrop
+// after htmx:afterSettle).
 document.addEventListener('DOMContentLoaded', function () {
   var params = new URLSearchParams(window.location.search);
   var fileId = params.get('file');
   var cropId = params.get('crop');
   if (!fileId) return;
-
-  // The hash is already #evidence; initTabs (also on DOMContentLoaded) activates the panel.
-  toggleCropEditor(fileId);
-
-  if (cropId) {
-    var settled = false;
-    // The handler stays attached until ceSelect_* exists (crop editor IIFE has run).
-    // removeEventListener is intentionally inside the if-block so unrelated HTMX
-    // settle events (before the editor loads) don't remove the listener prematurely.
-    function handler() {
-      var fnName = 'ceSelect_' + fileId.replace(/-/g, '_');
-      if (window[fnName]) {
-        settled = true;
-        window[fnName](cropId);
-        document.removeEventListener('htmx:afterSettle', handler);
-      }
-    }
-    document.addEventListener('htmx:afterSettle', handler);
-    // Failsafe: remove listener if the crop editor never loads (e.g. network error).
-    setTimeout(function () {
-      if (!settled) document.removeEventListener('htmx:afterSettle', handler);
-    }, 10000);
-  }
+  // The hash is already #evidence (handled by initTabs).
+  toggleCropEditor(fileId, cropId ? { preselectCropId: cropId } : {});
 });
 
 // ── Evidence drag-drop upload ─────────────────────────────────────────────
