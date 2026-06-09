@@ -168,3 +168,83 @@ def test_rename_wrong_matter_returns_404(seeded_db, make_client):
 
     r = client.delete(f"/api/matters/{matter_id}/item-groups/{gid}")
     assert r.status_code == 404
+
+
+def test_pin_evidence_to_group(seeded_db, make_client):
+    client, matter_id = make_client(role="editor")
+    g = ItemGroup(matter_id=matter_id, name="12", name_normalized="12")
+    seeded_db.add(g)
+    seeded_db.commit()
+    gid = g.id
+    ef = EvidenceFile(matter_id=matter_id, filename="a.jpg", stored_path="a.jpg")
+    seeded_db.add(ef)
+    seeded_db.commit()
+    ef_id = ef.id
+
+    r = client.patch(
+        f"/api/matters/{matter_id}/evidence/{ef_id}/item-group",
+        data={"item_group_id": gid},
+    )
+    assert r.status_code == 200
+    seeded_db.expire_all()
+    assert seeded_db.get(EvidenceFile, ef_id).pinned_item_group_id == gid
+
+
+def test_pin_evidence_clear_with_empty_value(seeded_db, make_client):
+    client, matter_id = make_client(role="editor")
+    g = ItemGroup(matter_id=matter_id, name="12", name_normalized="12")
+    seeded_db.add(g)
+    seeded_db.commit()
+    gid = g.id
+    ef = EvidenceFile(
+        matter_id=matter_id,
+        filename="a.jpg",
+        stored_path="a.jpg",
+        pinned_item_group_id=gid,
+    )
+    seeded_db.add(ef)
+    seeded_db.commit()
+    ef_id = ef.id
+
+    r = client.patch(
+        f"/api/matters/{matter_id}/evidence/{ef_id}/item-group",
+        data={"item_group_id": ""},
+    )
+    assert r.status_code == 200
+    seeded_db.expire_all()
+    assert seeded_db.get(EvidenceFile, ef_id).pinned_item_group_id is None
+
+
+def test_pin_evidence_new_group_name_creates(seeded_db, make_client):
+    client, matter_id = make_client(role="editor")
+    ef = EvidenceFile(matter_id=matter_id, filename="a.jpg", stored_path="a.jpg")
+    seeded_db.add(ef)
+    seeded_db.commit()
+    ef_id = ef.id
+
+    r = client.patch(
+        f"/api/matters/{matter_id}/evidence/{ef_id}/item-group",
+        data={"new_item_group_name": "Box C"},
+    )
+    assert r.status_code == 200
+    seeded_db.expire_all()
+    groups = seeded_db.query(ItemGroup).filter(ItemGroup.matter_id == matter_id).all()
+    assert len(groups) == 1 and groups[0].name == "Box C"
+    assert seeded_db.get(EvidenceFile, ef_id).pinned_item_group_id == groups[0].id
+
+
+def test_pin_evidence_wrong_matter_returns_404(seeded_db, make_client):
+    """Pinning evidence from a different matter must 404."""
+    other = Matter(id="m2", owner_group_id="ig", created_by_id="ia")
+    seeded_db.add(other)
+    ef = EvidenceFile(matter_id="m2", filename="other.jpg", stored_path="other.jpg")
+    seeded_db.add(ef)
+    seeded_db.commit()
+    ef_id = ef.id
+
+    client, matter_id = make_client(role="editor")  # access to m1, not m2
+    r = client.patch(
+        f"/api/matters/{matter_id}/evidence/{ef_id}/item-group",
+        data={"new_item_group_name": "Box X"},
+    )
+    assert r.status_code == 404

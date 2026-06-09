@@ -130,3 +130,51 @@ def delete_item_group(
         ip_address=get_client_ip(request),
     )
     return HTMLResponse("", status_code=200)
+
+
+@router.patch(
+    "/api/matters/{matter_id}/evidence/{file_id}/item-group",
+    response_class=HTMLResponse,
+)
+def pin_evidence_to_group(
+    request: Request,
+    matter_id: str,
+    file_id: str,
+    background_tasks: BackgroundTasks,
+    item_group_id: str = Form(""),
+    new_item_group_name: str = Form(""),
+    user: CurrentUser = Depends(require_matter_role("editor")),
+) -> HTMLResponse:
+    db = SessionLocal()
+    try:
+        ef = db.get(EvidenceFile, file_id)
+        if ef is None or ef.matter_id != matter_id:
+            raise HTTPException(status_code=404, detail="Evidence file not found")
+
+        if new_item_group_name.strip():
+            group = find_or_create(db, matter_id, new_item_group_name)
+            db.commit()
+            db.refresh(group)
+            ef.pinned_item_group_id = group.id
+        elif item_group_id:
+            group = db.get(ItemGroup, item_group_id)
+            if group is None or group.matter_id != matter_id:
+                raise HTTPException(status_code=400, detail="Group not in matter")
+            ef.pinned_item_group_id = group.id
+        else:
+            ef.pinned_item_group_id = None
+
+        db.commit()
+        db.refresh(ef)
+    finally:
+        db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="evidence.pin_item_group",
+        resource_type="evidence_file",
+        resource_id=file_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
+    return HTMLResponse("", status_code=200)
