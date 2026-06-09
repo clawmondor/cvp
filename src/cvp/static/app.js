@@ -471,3 +471,28 @@ document.addEventListener('click', function (e) {
         window.location.href = '/admin/system/feedback/' + encodeURIComponent(row.dataset.feedbackAdminRow);
     }
 });
+
+// Delegated change: data-item-group-select handles "+ New group…" by prompting
+// and stashing the name in the sibling hidden input named new_item_group_name.
+// On submit, the items router calls find_or_create(matter_id, new_item_group_name)
+// before assigning item.item_group_id.
+document.addEventListener('change', function (e) {
+    var sel = e.target;
+    if (!sel.matches || !sel.matches('select[data-item-group-select]')) return;
+    var itemId = sel.dataset.itemGroupSelect;
+    var hidden = document.querySelector('input[data-new-item-group-name="' + itemId + '"]');
+    if (sel.value === '__new__') {
+        var name = window.prompt('New group name:');
+        if (name && name.trim()) {
+            if (hidden) hidden.value = name.trim();
+            // Visually reset the select to (none); the hidden input drives the
+            // create on submit.
+            sel.value = '';
+        } else {
+            sel.value = '';
+            if (hidden) hidden.value = '';
+        }
+    } else {
+        if (hidden) hidden.value = '';
+    }
+});
