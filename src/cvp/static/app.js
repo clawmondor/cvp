@@ -130,6 +130,10 @@ function toggleCropEditor(fileId, opts) {
     swap: 'innerHTML',
   }).finally(function () {
     delete root.dataset.loading;
+    // If the request failed, the root is still empty — release the body scroll lock so the page isn't stuck.
+    if (root.children.length === 0) {
+      document.body.classList.remove('overflow-hidden');
+    }
   });
 }
 
