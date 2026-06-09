@@ -114,16 +114,22 @@ function showEditCrop(itemId, cropId) {
 }
 
 // ── Crop editor toggle ───────────────────────────────────────────────────
-function toggleCropEditor(fileId) {
-  const existing = document.getElementById('crop-editor-' + fileId);
-  if (existing) {
-    existing.remove();
-    return;
+function toggleCropEditor(fileId, opts) {
+  opts = opts || {};
+  const root = document.getElementById('crop-editor-modal-root');
+  if (!root) return;
+  // Re-entrancy guard: don't stack a second open while one is loaded or in flight.
+  if (root.children.length > 0 || root.dataset.loading === '1') return;
+  if (opts.preselectCropId) {
+    root.dataset.preselectCrop = opts.preselectCropId;
   }
-  const grid = document.getElementById('evidence-grid');
+  root.dataset.loading = '1';
+  document.body.classList.add('overflow-hidden');
   htmx.ajax('GET', '/api/evidence/' + fileId + '/crop-editor', {
-    target: grid,
-    swap: 'afterend',
+    target: root,
+    swap: 'innerHTML',
+  }).finally(function () {
+    delete root.dataset.loading;
   });
 }
 
@@ -240,10 +246,16 @@ document.addEventListener('click', function (e) {
     if (btn) startRename(btn.dataset.renameRoomId);
 });
 
-// Delegated click: data-toggle-crop-editor → toggleCropEditor(fileId)
+// Delegated click: data-toggle-crop-editor → toggleCropEditor(fileId, opts)
 document.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-toggle-crop-editor]');
-    if (btn) toggleCropEditor(btn.dataset.toggleCropEditor);
+  var btn = e.target.closest('[data-toggle-crop-editor]');
+  if (!btn) return;
+  e.preventDefault();
+  var opts = {};
+  if (btn.dataset.preselectCrop) {
+    opts.preselectCropId = btn.dataset.preselectCrop;
+  }
+  toggleCropEditor(btn.dataset.toggleCropEditor, opts);
 });
 
 // Delegated click: data-serp-panel-close → remove serp panel row
