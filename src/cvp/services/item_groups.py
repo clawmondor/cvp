@@ -36,12 +36,12 @@ def find_or_create(session: Session, matter_id: str, name: str) -> ItemGroup:
         name=name.strip(),
         name_normalized=normalized,
     )
-    session.add(group)
     try:
-        session.flush()
+        with session.begin_nested():
+            session.add(group)
     except IntegrityError:
-        session.rollback()
-        # Re-query after a concurrent insert won the race.
+        # Concurrent insert won the race; SAVEPOINT was rolled back so the
+        # caller's outer transaction is intact.
         return session.execute(
             select(ItemGroup).where(
                 ItemGroup.matter_id == matter_id,
