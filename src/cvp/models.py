@@ -147,6 +147,9 @@ class Item(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
     matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
     room_id: Mapped[str | None] = mapped_column(String, ForeignKey("rooms.id"), nullable=True)
+    item_group_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("item_groups.id", ondelete="SET NULL"), nullable=True
+    )
     category_id: Mapped[int] = mapped_column(Integer, ForeignKey("categories.id"), nullable=False)
     line_number: Mapped[int] = mapped_column(Integer, default=0)
     description: Mapped[str] = mapped_column(String, default="")
@@ -182,6 +185,7 @@ class Item(Base):
     matter: Mapped["Matter"] = relationship("Matter", back_populates="items")
     room: Mapped["Room | None"] = relationship("Room", back_populates="items")
     category: Mapped["Category"] = relationship("Category", back_populates="items")
+    item_group: Mapped["ItemGroup | None"] = relationship("ItemGroup")
     crops: Mapped[list["ItemCrop"]] = relationship(
         "ItemCrop", back_populates="item", cascade="all, delete-orphan"
     )
@@ -199,6 +203,9 @@ class EvidenceFile(Base):
     mime_type: Mapped[str] = mapped_column(String, default="")
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
     kind: Mapped[str] = mapped_column(String, default="other")
+    pinned_item_group_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("item_groups.id", ondelete="SET NULL"), nullable=True
+    )
     scanned: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -207,6 +214,7 @@ class EvidenceFile(Base):
 
     # Relationships
     matter: Mapped["Matter"] = relationship("Matter", back_populates="evidence_files")
+    pinned_item_group: Mapped["ItemGroup | None"] = relationship("ItemGroup")
     vision_runs: Mapped[list["VisionRun"]] = relationship(
         "VisionRun", back_populates="evidence_file", cascade="all, delete-orphan"
     )
