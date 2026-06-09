@@ -175,3 +175,19 @@ def test_assign_400_when_group_in_wrong_matter(seeded_db, make_client):
     form["item_group_id"] = other_gid
     r = client.patch(f"/api/items/{item_id}", data=form)
     assert r.status_code == 400
+
+
+def test_create_item_with_new_group(seeded_db, make_client):
+    """POST /api/matters/{id}/items creates a new group when new_item_group_name is set."""
+    client, matter_id = make_client(role="contributor")
+    form = _base_form()
+    form["new_item_group_name"] = "Garage shelf 2"
+    r = client.post(f"/api/matters/{matter_id}/items", data=form)
+    assert r.status_code == 200
+    seeded_db.expire_all()
+    groups = seeded_db.query(ItemGroup).filter(ItemGroup.matter_id == matter_id).all()
+    assert len(groups) == 1
+    assert groups[0].name == "Garage shelf 2"
+    items = seeded_db.query(Item).filter(Item.matter_id == matter_id).all()
+    assert len(items) == 1
+    assert items[0].item_group_id == groups[0].id

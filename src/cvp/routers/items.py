@@ -100,6 +100,29 @@ def _items_tbody_html(matter_id: str, db) -> str:
     )
 
 
+def _resolve_item_group_id(
+    db,
+    matter_id: str,
+    item_group_id: str,
+    new_item_group_name: str,
+) -> str | None:
+    """Apply the item-group form fields to a candidate ``item_group_id`` value.
+
+    ``new_item_group_name`` wins over ``item_group_id`` (explicit create beats
+    select). Returns ``None`` when both are empty (clear / leave unset). Raises
+    HTTPException(400) when ``item_group_id`` refers to a group in another matter.
+    """
+    if new_item_group_name.strip():
+        ig = find_or_create(db, matter_id, new_item_group_name)
+        return ig.id
+    if item_group_id:
+        ig = db.get(ItemGroup, item_group_id)
+        if ig is None or ig.matter_id != matter_id:
+            raise HTTPException(status_code=400, detail="Group not in matter")
+        return ig.id
+    return None
+
+
 def _parse_cents(dollars_str: str) -> int:
     try:
         return round(float(dollars_str or 0) * 100)
@@ -150,14 +173,9 @@ def create_item(
             notes=notes.strip(),
             confirmed=True,  # manually entered items start confirmed; Vision drafts use False
         )
-        if new_item_group_name.strip():
-            ig = find_or_create(db, matter_id, new_item_group_name)
-            item.item_group_id = ig.id
-        elif item_group_id:
-            ig = db.get(ItemGroup, item_group_id)
-            if ig is None or ig.matter_id != matter_id:
-                raise HTTPException(status_code=400, detail="Group not in matter")
-            item.item_group_id = ig.id
+        item.item_group_id = _resolve_item_group_id(
+            db, matter_id, item_group_id, new_item_group_name
+        )
         _compute_and_set_totals(item, cat)
         db.add(item)
         db.commit()
@@ -285,16 +303,9 @@ def update_item(
             item.acv_override_cents = None
             item.acv_override_reason = None
 
-        if new_item_group_name.strip():
-            ig = find_or_create(db, item.matter_id, new_item_group_name)
-            item.item_group_id = ig.id
-        elif item_group_id:
-            ig = db.get(ItemGroup, item_group_id)
-            if ig is None or ig.matter_id != item.matter_id:
-                raise HTTPException(status_code=400, detail="Group not in matter")
-            item.item_group_id = ig.id
-        else:
-            item.item_group_id = None
+        item.item_group_id = _resolve_item_group_id(
+            db, item.matter_id, item_group_id, new_item_group_name
+        )
 
         _compute_and_set_totals(item, cat)
         db.commit()

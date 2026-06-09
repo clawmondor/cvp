@@ -14,7 +14,7 @@ from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, optional_user, require_matter_role
 from cvp.depreciation import compute_acv
-from cvp.models import Category, Item, ItemCrop, Room, SerpSearch
+from cvp.models import Category, Item, ItemCrop, ItemGroup, Room, SerpSearch
 from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.serp import build_crop_url, call_serp
 from cvp.services.serp_display import extract_results
@@ -183,9 +183,15 @@ def serp_apply(
         matter_id = item.matter_id
         categories = db.query(Category).order_by(Category.id).all()
         rooms = db.query(Room).filter(Room.matter_id == matter_id).order_by(Room.sort_order).all()
+        item_groups = (
+            db.query(ItemGroup)
+            .filter(ItemGroup.matter_id == matter_id)
+            .order_by(ItemGroup.created_at)
+            .all()
+        )
 
         html = templates.get_template("_item_row.html").render(
-            item=item, categories=categories, rooms=rooms
+            item=item, categories=categories, rooms=rooms, item_groups=item_groups
         )
     finally:
         db.close()
