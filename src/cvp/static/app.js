@@ -371,16 +371,13 @@ document.addEventListener('change', function (e) {
     if (sel.value !== '__new__') return;
     var name = window.prompt('New group name:');
     if (!name || !name.trim()) {
-        // User cancelled — revert to Auto-detect and trigger the htmx PATCH so
-        // the (no-op) clear is sent and the form behaves consistently.
+        // User cancelled — just revert the select; no PATCH needed since the
+        // pinned group never actually changed.
         sel.value = '';
-        sel.dispatchEvent(new Event('change', { bubbles: true }));
         return;
     }
     var fileId = sel.dataset.evidenceGroupSelect;
-    var hxPatch = sel.closest('form').getAttribute('hx-patch') || '';
-    // hxPatch is /api/matters/{matter_id}/evidence/{file_id}/item-group
-    var matterId = hxPatch.split('/')[3];
+    var matterId = sel.dataset.matterId;
     var fd = new FormData();
     fd.append('new_item_group_name', name.trim());
     fetch('/api/matters/' + matterId + '/evidence/' + fileId + '/item-group', {
