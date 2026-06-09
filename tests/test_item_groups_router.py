@@ -48,11 +48,9 @@ def seeded_db(db_session):
     return db_session
 
 
-def _client_with_role(seeded_db, monkeypatch, role: str = "manager"):
-    """Build a TestClient where the current user holds ``role`` on matter ``m1``.
-
-    role: 'manager' (default) | 'editor' | 'contributor' | 'viewer'
-    """
+@pytest.fixture
+def make_client(seeded_db, monkeypatch):
+    """Factory: returns ``(client, matter_id)`` for the given role on matter 'm1'."""
     from cvp.db import get_db
     from cvp.dependencies import CurrentUser, require_active_user
     from cvp.main import app
@@ -72,61 +70,50 @@ def _client_with_role(seeded_db, monkeypatch, role: str = "manager"):
             group_kind="internal",
         )
 
-    # Permission gate: succeed iff the requested role is at or below `role`.
-    # ROLE_HIERARCHY ordering: viewer < contributor < editor < manager.
     levels = {"viewer": 0, "contributor": 1, "editor": 2, "manager": 3}
 
-    def fake_check(db, user, matter_id, required):
-        return levels[role] >= levels[required]
+    def _make(role: str = "manager"):
+        def fake_check(db, user, matter_id, required):
+            return levels[role] >= levels[required]
 
-    app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[require_active_user] = mock_user
-    monkeypatch.setattr(deps, "_check_matter_access", fake_check)
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[require_active_user] = mock_user
+        monkeypatch.setattr(deps, "_check_matter_access", fake_check)
+        monkeypatch.setattr("cvp.routers.item_groups.SessionLocal", lambda: seeded_db)
+        return TestClient(app), "m1"
 
-    # Route the router's direct SessionLocal() calls to the in-memory DB.
-    monkeypatch.setattr("cvp.routers.item_groups.SessionLocal", lambda: seeded_db)
-
-    client = TestClient(app)
-    return client, "m1"
+    yield _make
+    app.dependency_overrides.clear()
 
 
-def test_create_group(seeded_db, monkeypatch):
-    client, matter_id = _client_with_role(seeded_db, monkeypatch)
+def test_create_group(seeded_db, make_client):
+    client, matter_id = make_client()
     r = client.post(f"/api/matters/{matter_id}/item-groups", data={"name": "12"})
     assert r.status_code == 200
     groups = seeded_db.query(ItemGroup).filter(ItemGroup.matter_id == matter_id).all()
     assert len(groups) == 1
     assert groups[0].name == "12"
     assert groups[0].name_normalized == "12"
-    from cvp.main import app
-
-    app.dependency_overrides.clear()
 
 
-def test_create_duplicate_returns_existing(seeded_db, monkeypatch):
-    client, matter_id = _client_with_role(seeded_db, monkeypatch)
+def test_create_duplicate_returns_existing(seeded_db, make_client):
+    client, matter_id = make_client()
     r1 = client.post(f"/api/matters/{matter_id}/item-groups", data={"name": "Box A"})
     assert r1.status_code == 200
     r2 = client.post(f"/api/matters/{matter_id}/item-groups", data={"name": "box a"})
     assert r2.status_code == 200
     groups = seeded_db.query(ItemGroup).filter(ItemGroup.matter_id == matter_id).all()
     assert len(groups) == 1
-    from cvp.main import app
-
-    app.dependency_overrides.clear()
 
 
-def test_create_rejects_empty_name(seeded_db, monkeypatch):
-    client, matter_id = _client_with_role(seeded_db, monkeypatch)
+def test_create_rejects_empty_name(seeded_db, make_client):
+    client, matter_id = make_client()
     r = client.post(f"/api/matters/{matter_id}/item-groups", data={"name": "   "})
     assert r.status_code == 400
-    from cvp.main import app
-
-    app.dependency_overrides.clear()
 
 
-def test_rename_group(seeded_db, monkeypatch):
-    client, matter_id = _client_with_role(seeded_db, monkeypatch)
+def test_rename_group(seeded_db, make_client):
+    client, matter_id = make_client()
     client.post(f"/api/matters/{matter_id}/item-groups", data={"name": "old"})
     gid = seeded_db.query(ItemGroup).filter(ItemGroup.matter_id == matter_id).first().id
     r = client.patch(f"/api/matters/{matter_id}/item-groups/{gid}", data={"name": "new"})
@@ -135,35 +122,49 @@ def test_rename_group(seeded_db, monkeypatch):
     g = seeded_db.get(ItemGroup, gid)
     assert g.name == "new"
     assert g.name_normalized == "new"
-    from cvp.main import app
-
-    app.dependency_overrides.clear()
 
 
-def test_delete_group_nulls_item_group_id(seeded_db, monkeypatch):
-    client, matter_id = _client_with_role(seeded_db, monkeypatch)
+def test_delete_group_nulls_item_and_evidence_pin(seeded_db, make_client):
+    client, matter_id = make_client()
     client.post(f"/api/matters/{matter_id}/item-groups", data={"name": "tmp"})
     g = seeded_db.query(ItemGroup).filter(ItemGroup.matter_id == matter_id).first()
     item = Item(matter_id=matter_id, category_id=1, item_group_id=g.id)
-    seeded_db.add(item)
+    ef = EvidenceFile(
+        matter_id=matter_id,
+        filename="x.jpg",
+        stored_path="x.jpg",
+        pinned_item_group_id=g.id,
+    )
+    seeded_db.add_all([item, ef])
     seeded_db.commit()
-    item_id = item.id
-    gid = g.id
+    item_id, ef_id, gid = item.id, ef.id, g.id
+
     r = client.delete(f"/api/matters/{matter_id}/item-groups/{gid}")
     assert r.status_code == 200
     seeded_db.expire_all()
     assert seeded_db.get(ItemGroup, gid) is None
     assert seeded_db.get(Item, item_id).item_group_id is None
-    from cvp.main import app
-
-    app.dependency_overrides.clear()
+    assert seeded_db.get(EvidenceFile, ef_id).pinned_item_group_id is None
 
 
-def test_create_requires_role(seeded_db, monkeypatch):
+def test_create_requires_role(seeded_db, make_client):
     """A viewer cannot create groups."""
-    client, matter_id = _client_with_role(seeded_db, monkeypatch, role="viewer")
+    client, matter_id = make_client(role="viewer")
     r = client.post(f"/api/matters/{matter_id}/item-groups", data={"name": "12"})
     assert r.status_code == 403
-    from cvp.main import app
 
-    app.dependency_overrides.clear()
+
+def test_rename_wrong_matter_returns_404(seeded_db, make_client):
+    """PATCH and DELETE via the wrong matter_id return 404."""
+    other = Matter(id="m2", owner_group_id="ig", created_by_id="ia")
+    seeded_db.add(other)
+    seeded_db.add(ItemGroup(matter_id="m2", name="other-12", name_normalized="other-12"))
+    seeded_db.commit()
+    gid = seeded_db.query(ItemGroup).filter(ItemGroup.matter_id == "m2").first().id
+
+    client, matter_id = make_client()  # user has access to m1, not m2
+    r = client.patch(f"/api/matters/{matter_id}/item-groups/{gid}", data={"name": "x"})
+    assert r.status_code == 404
+
+    r = client.delete(f"/api/matters/{matter_id}/item-groups/{gid}")
+    assert r.status_code == 404
