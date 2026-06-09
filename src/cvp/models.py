@@ -96,6 +96,34 @@ class Room(Base):
     items: Mapped[list["Item"]] = relationship("Item", back_populates="room")
 
 
+class ItemGroup(Base):
+    """An on-site organizational group (e.g. items grouped under a numbered placard).
+
+    Named `ItemGroup` to avoid collision with the auth/RBAC `Group` model
+    (`src/cvp/models_auth.py`). The user-facing label in the UI is "Group".
+    """
+
+    __tablename__ = "item_groups"
+    __table_args__ = (
+        Index("ix_item_groups_matter_id", "matter_id"),
+        Index(
+            "uq_item_groups_matter_name_normalized",
+            "matter_id",
+            "name_normalized",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
+    matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    name_normalized: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
 class Category(Base):
     """Depreciation category (seed data, 42 rows per depreciation schedule)."""
 
