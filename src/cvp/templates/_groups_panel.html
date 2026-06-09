@@ -1,0 +1,28 @@
+<div class="space-y-4 mt-6">
+  <div class="flex items-center justify-between">
+    <h3 class="text-sm font-semibold text-gray-700">Groups ({{ item_groups | length }})</h3>
+    <form id="add-item-group-form"
+          hx-post="/api/matters/{{ matter.id }}/item-groups"
+          hx-target="#item-groups-list"
+          hx-swap="beforeend"
+          class="flex items-center gap-2">
+      <input name="name" placeholder="Group name (e.g. 12, Box A)" required maxlength="100"
+             class="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+      <button type="submit"
+              class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">
+        Add group
+      </button>
+    </form>
+  </div>
+
+  <ul id="item-groups-list" class="space-y-2">
+    {% for group, item_count in item_groups %}
+      {% set matter_id = matter.id %}
+      {% include "_item_group_li.html" %}
+    {% else %}
+    <li id="item-groups-empty" class="text-sm text-gray-400 italic">
+      No groups yet — add one above or have a scan auto-detect a placard.
+    </li>
+    {% endfor %}
+  </ul>
+</div>

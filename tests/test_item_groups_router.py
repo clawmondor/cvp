@@ -80,6 +80,7 @@ def make_client(seeded_db, monkeypatch):
         app.dependency_overrides[require_active_user] = mock_user
         monkeypatch.setattr(deps, "_check_matter_access", fake_check)
         monkeypatch.setattr("cvp.routers.item_groups.SessionLocal", lambda: seeded_db)
+        monkeypatch.setattr("cvp.routers.matters.SessionLocal", lambda: seeded_db)
         return TestClient(app), "m1"
 
     yield _make
@@ -248,3 +249,30 @@ def test_pin_evidence_wrong_matter_returns_404(seeded_db, make_client):
         data={"new_item_group_name": "Box X"},
     )
     assert r.status_code == 404
+
+
+def test_matter_detail_renames_rooms_tab(seeded_db, make_client, monkeypatch):
+    monkeypatch.setattr("cvp.routers.matters.SessionLocal", lambda: seeded_db)
+    client, matter_id = make_client(role="viewer")
+    r = client.get(f"/matters/{matter_id}")
+    assert r.status_code == 200
+    assert "Rooms &amp; Groups" in r.text
+
+
+def test_matter_detail_groups_panel_empty_state(seeded_db, make_client, monkeypatch):
+    monkeypatch.setattr("cvp.routers.matters.SessionLocal", lambda: seeded_db)
+    client, matter_id = make_client(role="viewer")
+    r = client.get(f"/matters/{matter_id}")
+    assert r.status_code == 200
+    assert "No groups yet" in r.text
+
+
+def test_matter_detail_groups_panel_shows_group(seeded_db, make_client, monkeypatch):
+    seeded_db.add(ItemGroup(matter_id="m1", name="12", name_normalized="12"))
+    seeded_db.commit()
+    monkeypatch.setattr("cvp.routers.matters.SessionLocal", lambda: seeded_db)
+    client, matter_id = make_client(role="viewer")
+    r = client.get(f"/matters/{matter_id}")
+    assert r.status_code == 200
+    assert "12" in r.text
+    assert "0 items" in r.text
