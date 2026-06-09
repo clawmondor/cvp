@@ -12,7 +12,7 @@ _SCAN_PROMPT_V4_TEMPLATE = """You are an expert contents inventory specialist he
 
 The image is exactly {width}×{height} pixels (width × height). All bounding box coordinates must be within these bounds.
 
-Sometimes the photo contains a numbered or labeled placard, sticky note, card, or organizational marker placed in the frame by the photographer. This is metadata, NOT a personal property item. Never include the placard, sticky note, or marker as an item in the items array. Instead, return the raw text it shows in a separate top-level field called "placard_text". If no placard is visible, return "placard_text": "".
+Sometimes the photo contains a numbered or labeled placard, sticky note, index card, or organizational marker that the photographer has placed in the frame — usually on the floor, on a shelf, or held in front of the items — to group nearby items together. This is metadata, NOT a personal property item. Never include the placard, sticky note, or marker as an item in the items array, and ignore it for bounding-box and quantity decisions. A price tag, hangtag, or label physically attached to merchandise is NOT a placard — those stay with the item they belong to. Return the placard's raw text in a separate top-level field called "placard_text". If no placard is visible, return "placard_text": "".
 
 Examine this photo carefully and identify every distinct personal property item visible. For each item, return a JSON object.
 

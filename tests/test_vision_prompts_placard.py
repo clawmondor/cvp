@@ -55,3 +55,25 @@ def test_parse_response_strips_markdown_fences() -> None:
     items, placard = _parse_response(payload)
     assert items == []
     assert placard == "A"
+
+
+def test_parse_response_object_without_items_key() -> None:
+    """A dict that omits 'items' yields an empty list, but placard still parses."""
+    payload = json.dumps({"placard_text": "A"})
+    items, placard = _parse_response(payload)
+    assert items == []
+    assert placard == "A"
+
+
+def test_parse_response_non_string_placard_coerced() -> None:
+    """A numeric placard_text is coerced to its string form."""
+    payload = json.dumps({"items": [], "placard_text": 12})
+    items, placard = _parse_response(payload)
+    assert items == []
+    assert placard == "12"
+
+
+def test_prompt_distinguishes_placard_from_price_tag() -> None:
+    """The prompt should clarify that price tags / hangtags aren't placards."""
+    prompt = build_scan_prompt(800, 600)
+    assert "price tag" in prompt.lower() or "hangtag" in prompt.lower()
