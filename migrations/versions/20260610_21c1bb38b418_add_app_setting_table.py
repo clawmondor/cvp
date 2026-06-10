@@ -30,6 +30,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("updated_by_user_id", sa.String(), nullable=True),
+        sa.ForeignKeyConstraint(["updated_by_user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("key"),
     )
 
