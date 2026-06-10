@@ -20,6 +20,7 @@ from cvp.models import (
     EvidenceFile,
     Item,
     ItemCrop,
+    ItemGroup,
     VisionJob,
     VisionJobImage,
     VisionRun,
@@ -27,6 +28,7 @@ from cvp.models import (
 from cvp.models_vision import VisionModel
 from cvp.services import openrouter
 from cvp.services.crop import recrop_item_crop
+from cvp.services.item_groups import find_or_create
 from cvp.services.vision_adapters import resolve as resolve_adapter
 from cvp.services.vision_prompts import SCAN_PROMPT_VERSION, build_scan_prompt
 
@@ -80,25 +82,87 @@ def _match_category_id(hint: str | None, categories: list[Category]) -> int:
 # ---------------------------------------------------------------------------
 
 
-def _parse_response(text: str) -> list[dict]:
+def _parse_response(text: str) -> tuple[list[dict], str]:
+    """Parse a vision response into ``(items, placard_text)``.
+
+    Accepts both the v4 object shape ``{"items": [...], "placard_text": "..."}``
+    and the v3 legacy shape (bare JSON array of item objects). The legacy case
+    returns ``placard_text=""`` so downstream code can stay branch-free.
+    """
     text = text.strip()
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
+
+    def _coerce(parsed: object) -> tuple[list[dict], str]:
+        if isinstance(parsed, dict):
+            items_raw = parsed.get("items")
+            items = items_raw if isinstance(items_raw, list) else []
+            placard = parsed.get("placard_text")
+            return ([i for i in items if isinstance(i, dict)], str(placard or ""))
+        if isinstance(parsed, list):
+            return ([i for i in parsed if isinstance(i, dict)], "")
+        return ([], "")
+
     try:
-        data = json.loads(text)
-        if isinstance(data, list):
-            return data
+        return _coerce(json.loads(text))
     except json.JSONDecodeError:
         pass
+
+    # Last-ditch: recover an embedded JSON object or array.
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    if m:
+        try:
+            return _coerce(json.loads(m.group()))
+        except json.JSONDecodeError:
+            pass
     m = re.search(r"\[.*\]", text, re.DOTALL)
     if m:
         try:
-            data = json.loads(m.group())
-            if isinstance(data, list):
-                return data
+            return _coerce(json.loads(m.group()))
         except json.JSONDecodeError:
             pass
-    return []
+    return [], ""
+
+
+# ---------------------------------------------------------------------------
+# Item-group resolution
+# ---------------------------------------------------------------------------
+
+
+def _resolve_effective_item_group_id(
+    db: Session, ef: EvidenceFile, placard_text: str
+) -> str | None:
+    """Return the item_group_id to apply to items extracted from ``ef``.
+
+    Rule:
+      1. If ``ef.pinned_item_group_id`` is set, the dropdown wins. A
+         conflicting placard reading is logged at INFO and ignored.
+      2. Otherwise, if ``placard_text`` is non-empty, find-or-create a group
+         on the matter using normalize-and-dedupe matching.
+      3. Otherwise, return ``None``.
+    """
+    pinned_id = ef.pinned_item_group_id
+    text = (placard_text or "").strip()
+
+    if pinned_id is not None:
+        if text:
+            pinned = db.get(ItemGroup, pinned_id)
+            if pinned is not None and pinned.name_normalized != text.lower():
+                logger.info(
+                    "vision: placard mismatch — pinned group %s (%r),"
+                    " detected %r on evidence_file %s",
+                    pinned_id,
+                    pinned.name,
+                    text,
+                    ef.id,
+                )
+        return pinned_id
+
+    if not text:
+        return None
+
+    group = find_or_create(db, ef.matter_id, text)
+    return group.id
 
 
 # ---------------------------------------------------------------------------
@@ -247,15 +311,16 @@ def process_one_image(job_image_id: str) -> None:
             mime_type=mime,
             prompt=build_scan_prompt(scan_w, scan_h),
         )
-        parsed = _parse_response(raw_text)
+        parsed_items, placard_text = _parse_response(raw_text)
 
         max_line = (
             db.query(sqlfunc.max(Item.line_number)).filter(Item.matter_id == job.matter_id).scalar()
             or 0
         )
+        effective_item_group_id = _resolve_effective_item_group_id(db, ef, placard_text)
         items_this_file = 0
 
-        for raw_item in parsed:
+        for raw_item in parsed_items:
             if not isinstance(raw_item, dict):
                 continue
             description = str(raw_item.get("description") or "").strip()
@@ -273,6 +338,7 @@ def process_one_image(job_image_id: str) -> None:
             item = Item(
                 matter_id=job.matter_id,
                 category_id=cat_id,
+                item_group_id=effective_item_group_id,
                 line_number=max_line,
                 description=description,
                 brand=str(raw_item.get("brand") or "").strip() or None,

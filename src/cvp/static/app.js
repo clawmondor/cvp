@@ -304,6 +304,15 @@ document.addEventListener('htmx:afterRequest', function (e) {
     }
 });
 
+// Same pattern for the add-item-group form on the Rooms & Groups tab.
+document.addEventListener('htmx:afterRequest', function (e) {
+    if (e.detail.elt && e.detail.elt.id === 'add-item-group-form' && e.detail.successful) {
+        e.detail.elt.reset();
+        var empty = document.getElementById('item-groups-empty');
+        if (empty) empty.remove();
+    }
+});
+
 // Lens search: "Searching…" while in-flight
 document.addEventListener('htmx:beforeRequest', function (e) {
     if (!e.detail.elt.hasAttribute('data-lens-form')) return;
@@ -352,6 +361,38 @@ function dismissScanBanner(jobId) {
   var el = document.getElementById('scan-banner-' + jobId);
   if (el) el.remove();
 }
+
+// Delegated change: data-evidence-group-select handles "+ New group…" sentinel.
+// Selecting __new__ prompts for a name, posts via fetch, then reloads so the
+// new group appears in every dropdown on the page.
+document.addEventListener('change', function (e) {
+    var sel = e.target;
+    if (!sel.matches || !sel.matches('select[data-evidence-group-select]')) return;
+    if (sel.value !== '__new__') return;
+    var name = window.prompt('New group name:');
+    if (!name || !name.trim()) {
+        // User cancelled — just revert the select; no PATCH needed since the
+        // pinned group never actually changed.
+        sel.value = '';
+        return;
+    }
+    var fileId = sel.dataset.evidenceGroupSelect;
+    var matterId = sel.dataset.matterId;
+    var fd = new FormData();
+    fd.append('new_item_group_name', name.trim());
+    fetch('/api/matters/' + matterId + '/evidence/' + fileId + '/item-group', {
+        method: 'PATCH',
+        body: fd,
+        credentials: 'same-origin',
+    }).then(function (r) {
+        if (r.ok) {
+            window.location.reload();
+        } else {
+            sel.value = '';
+            alert('Could not create group.');
+        }
+    });
+});
 
 document.addEventListener('DOMContentLoaded', function () {
   document.querySelectorAll('[data-job-id]').forEach(function (el) {
@@ -428,5 +469,30 @@ document.addEventListener('click', function (e) {
     var row = e.target.closest('[data-feedback-admin-row]');
     if (row) {
         window.location.href = '/admin/system/feedback/' + encodeURIComponent(row.dataset.feedbackAdminRow);
+    }
+});
+
+// Delegated change: data-item-group-select handles "+ New group…" by prompting
+// and stashing the name in the sibling hidden input named new_item_group_name.
+// On submit, the items router calls find_or_create(matter_id, new_item_group_name)
+// before assigning item.item_group_id.
+document.addEventListener('change', function (e) {
+    var sel = e.target;
+    if (!sel.matches || !sel.matches('select[data-item-group-select]')) return;
+    var itemId = sel.dataset.itemGroupSelect;
+    var hidden = document.querySelector('input[data-new-item-group-name="' + itemId + '"]');
+    if (sel.value === '__new__') {
+        var name = window.prompt('New group name:');
+        if (name && name.trim()) {
+            if (hidden) hidden.value = name.trim();
+            // Visually reset the select to (none); the hidden input drives the
+            // create on submit.
+            sel.value = '';
+        } else {
+            sel.value = '';
+            if (hidden) hidden.value = '';
+        }
+    } else {
+        if (hidden) hidden.value = '';
     }
 });

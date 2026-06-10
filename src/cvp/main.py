@@ -22,6 +22,7 @@ from cvp.routers import (
     exports,
     feedback,
     health,
+    item_groups,
     items,
     matters,
     profile,
@@ -68,6 +69,7 @@ app.include_router(auth.router)
 app.include_router(matters.router)
 app.include_router(evidence.router)
 app.include_router(rooms.router)
+app.include_router(item_groups.router)
 app.include_router(items.router)
 app.include_router(vision.router)
 app.include_router(serp.router)

@@ -15,8 +15,9 @@ from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.depreciation import compute_acv
-from cvp.models import Category, Item, Room, SerpSearch
+from cvp.models import Category, Item, ItemGroup, Room, SerpSearch
 from cvp.services.audit import get_client_ip, write_audit_log
+from cvp.services.item_groups import find_or_create
 from cvp.services.serp_display import extract_results
 
 BASE_DIR = Path(__file__).parent.parent
@@ -33,7 +34,13 @@ CONDITIONS = ["excellent", "above_average", "average", "below_average"]
 def _get_context(matter_id: str, db):
     categories = db.query(Category).order_by(Category.id).all()
     rooms = db.query(Room).filter(Room.matter_id == matter_id).order_by(Room.sort_order).all()
-    return categories, rooms
+    item_groups = (
+        db.query(ItemGroup)
+        .filter(ItemGroup.matter_id == matter_id)
+        .order_by(ItemGroup.created_at)
+        .all()
+    )
+    return categories, rooms, item_groups
 
 
 def _compute_and_set_totals(item: Item, cat: Category) -> None:
@@ -49,9 +56,9 @@ def _compute_and_set_totals(item: Item, cat: Category) -> None:
     )
 
 
-def _item_row_html(item: Item, categories: list, rooms: list) -> str:
+def _item_row_html(item: Item, categories: list, rooms: list, item_groups: list) -> str:
     return templates.get_template("_item_row.html").render(
-        item=item, categories=categories, rooms=rooms
+        item=item, categories=categories, rooms=rooms, item_groups=item_groups
     )
 
 
@@ -59,6 +66,7 @@ def _item_row_edit_html(
     item: Item,
     categories: list,
     rooms: list,
+    item_groups: list,
     latest_by_crop: dict | None = None,
     display_by_crop: dict | None = None,
 ) -> str:
@@ -66,6 +74,7 @@ def _item_row_edit_html(
         item=item,
         categories=categories,
         rooms=rooms,
+        item_groups=item_groups,
         conditions=CONDITIONS,
         public_base_url=settings.public_base_url,
         latest_by_crop=latest_by_crop or {},
@@ -81,10 +90,37 @@ def _items_tbody_html(matter_id: str, db) -> str:
         .order_by(Item.line_number)
         .all()
     )
-    categories, rooms = _get_context(matter_id, db)
+    categories, rooms, item_groups = _get_context(matter_id, db)
     return templates.get_template("_items_tbody.html").render(
-        items=items, categories=categories, rooms=rooms, conditions=CONDITIONS
+        items=items,
+        categories=categories,
+        rooms=rooms,
+        item_groups=item_groups,
+        conditions=CONDITIONS,
     )
+
+
+def _resolve_item_group_id(
+    db,
+    matter_id: str,
+    item_group_id: str,
+    new_item_group_name: str,
+) -> str | None:
+    """Apply the item-group form fields to a candidate ``item_group_id`` value.
+
+    ``new_item_group_name`` wins over ``item_group_id`` (explicit create beats
+    select). Returns ``None`` when both are empty (clear / leave unset). Raises
+    HTTPException(400) when ``item_group_id`` refers to a group in another matter.
+    """
+    if new_item_group_name.strip():
+        ig = find_or_create(db, matter_id, new_item_group_name)
+        return ig.id
+    if item_group_id:
+        ig = db.get(ItemGroup, item_group_id)
+        if ig is None or ig.matter_id != matter_id:
+            raise HTTPException(status_code=400, detail="Group not in matter")
+        return ig.id
+    return None
 
 
 def _parse_cents(dollars_str: str) -> int:
@@ -110,6 +146,8 @@ def create_item(
     brand: str = Form(""),
     model_num: str = Form(""),
     notes: str = Form(""),
+    item_group_id: str = Form(""),
+    new_item_group_name: str = Form(""),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -134,6 +172,9 @@ def create_item(
             rcv_unit_cents=_parse_cents(rcv_unit_dollars),
             notes=notes.strip(),
             confirmed=True,  # manually entered items start confirmed; Vision drafts use False
+        )
+        item.item_group_id = _resolve_item_group_id(
+            db, matter_id, item_group_id, new_item_group_name
         )
         _compute_and_set_totals(item, cat)
         db.add(item)
@@ -163,7 +204,7 @@ def item_edit_form(
         item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
         if item is None:
             raise HTTPException(status_code=404)
-        categories, rooms = _get_context(item.matter_id, db)
+        categories, rooms, item_groups = _get_context(item.matter_id, db)
 
         latest_by_crop: dict = {}
         display_by_crop: dict = {}
@@ -182,7 +223,9 @@ def item_edit_form(
             else:
                 display_by_crop[crop.id] = []
 
-        html = _item_row_edit_html(item, categories, rooms, latest_by_crop, display_by_crop)
+        html = _item_row_edit_html(
+            item, categories, rooms, item_groups, latest_by_crop, display_by_crop
+        )
     finally:
         db.close()
     return HTMLResponse(html)
@@ -197,8 +240,8 @@ def item_view_row(
         item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
         if item is None:
             raise HTTPException(status_code=404)
-        categories, rooms = _get_context(item.matter_id, db)
-        html = _item_row_html(item, categories, rooms)
+        categories, rooms, item_groups = _get_context(item.matter_id, db)
+        html = _item_row_html(item, categories, rooms, item_groups)
     finally:
         db.close()
     return HTMLResponse(html)
@@ -226,6 +269,8 @@ def update_item(
     acv_override_dollars: str = Form(""),
     acv_override_reason: str = Form(""),
     confirmed: bool = Form(False),
+    item_group_id: str = Form(""),
+    new_item_group_name: str = Form(""),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -258,12 +303,16 @@ def update_item(
             item.acv_override_cents = None
             item.acv_override_reason = None
 
+        item.item_group_id = _resolve_item_group_id(
+            db, item.matter_id, item_group_id, new_item_group_name
+        )
+
         _compute_and_set_totals(item, cat)
         db.commit()
         db.refresh(item)
         matter_id = item.matter_id
-        categories, rooms = _get_context(matter_id, db)
-        html = _item_row_html(item, categories, rooms)
+        categories, rooms, item_groups = _get_context(matter_id, db)
+        html = _item_row_html(item, categories, rooms, item_groups)
     finally:
         db.close()
     background_tasks.add_task(
@@ -300,8 +349,8 @@ def toggle_confirm(
         db.commit()
         db.refresh(item)
         matter_id = item.matter_id
-        categories, rooms = _get_context(matter_id, db)
-        html = _item_row_html(item, categories, rooms)
+        categories, rooms, item_groups = _get_context(matter_id, db)
+        html = _item_row_html(item, categories, rooms, item_groups)
     finally:
         db.close()
     background_tasks.add_task(
@@ -332,8 +381,8 @@ def toggle_exclude(
         db.commit()
         db.refresh(item)
         matter_id = item.matter_id
-        categories, rooms = _get_context(matter_id, db)
-        html = _item_row_html(item, categories, rooms)
+        categories, rooms, item_groups = _get_context(matter_id, db)
+        html = _item_row_html(item, categories, rooms, item_groups)
     finally:
         db.close()
     background_tasks.add_task(

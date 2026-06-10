@@ -7,7 +7,7 @@
 
       <!-- Row 1: core fields -->
       <div class="grid grid-cols-12 gap-2 items-end">
-        <div class="col-span-4">
+        <div class="col-span-3">
           <label class="text-xs font-medium text-gray-600">Description</label>
           <input name="description" value="{{ item.description }}" required maxlength="255"
                  class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
@@ -22,7 +22,7 @@
           <input name="model_num" value="{{ item.model or '' }}" maxlength="100"
                  class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
         </div>
-        <div class="col-span-2">
+        <div class="col-span-1">
           <label class="text-xs font-medium text-gray-600">Room</label>
           <select name="room_id"
                   class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
@@ -31,6 +31,19 @@
             <option value="{{ room.id }}" {% if item.room_id == room.id %}selected{% endif %}>{{ room.name }}</option>
             {% endfor %}
           </select>
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs font-medium text-gray-600">Group</label>
+          <select name="item_group_id"
+                  data-item-group-select="{{ item.id }}"
+                  class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+            <option value="" {% if not item.item_group_id %}selected{% endif %}>— none —</option>
+            {% for g in item_groups %}
+            <option value="{{ g.id }}" {% if item.item_group_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+            {% endfor %}
+            <option value="__new__">+ New group…</option>
+          </select>
+          <input type="hidden" name="new_item_group_name" value="" data-new-item-group-name="{{ item.id }}">
         </div>
         <div class="col-span-2">
           <label class="text-xs font-medium text-gray-600">Category</label>

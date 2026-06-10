@@ -3,16 +3,20 @@
 v3 — merged from:
   - tor v2: insurance framing, RCV documentation purpose, category hints
   - productdetector v7: bounding box guidance (generous, overlapping ok, skip partial/racked items)
+
+v4 — adds placard_text top-level field so numbered/labeled placards are never extracted as items.
 """
 
 # NOTE: ruff E501 (line length) is suppressed for this file in pyproject.toml
-_SCAN_PROMPT_V3_TEMPLATE = """You are an expert contents inventory specialist helping document personal property for an insurance claim. Your goal is to produce line items detailed enough that a pricing researcher can find an exact or near-exact replacement on a retail website within 60 seconds.
+_SCAN_PROMPT_V4_TEMPLATE = """You are an expert contents inventory specialist helping document personal property for an insurance claim. Your goal is to produce line items detailed enough that a pricing researcher can find an exact or near-exact replacement on a retail website within 60 seconds.
 
 The image is exactly {width}×{height} pixels (width × height). All bounding box coordinates must be within these bounds.
 
+Sometimes the photo contains a numbered or labeled placard, sticky note, index card, or organizational marker that the photographer has placed in the frame — usually on the floor, on a shelf, or held in front of the items — to group nearby items together. This is metadata, NOT a personal property item. Never include the placard, sticky note, or marker as an item in the items array, and ignore it for bounding-box and quantity decisions. A price tag, hangtag, or label physically attached to merchandise is NOT a placard — those stay with the item they belong to. Return the placard's raw text in a separate top-level field called "placard_text". If no placard is visible, return "placard_text": "".
+
 Examine this photo carefully and identify every distinct personal property item visible. For each item, return a JSON object.
 
-Return ONLY a JSON array with no preamble, explanation, or markdown fences. Each object must have these exact keys:
+Return ONLY a JSON object with these exact top-level keys: "items" (array) and "placard_text" (string, empty when no placard is visible). No preamble, explanation, or markdown fences. Each object inside "items" must have these exact keys:
 
 - "bounding_box": [left, upper, right, lower] — pixel coordinates of the item's bounding box relative to the original image dimensions (top-left origin, x increases right, y increases down).
   Estimate carefully; every item MUST have one. Ensure 0 ≤ left < right ≤ {width} and 0 ≤ upper < lower ≤ {height}.
@@ -79,15 +83,15 @@ Rules:
 - Only include clearly visible personal property. Exclude structural elements (walls, floors, built-in fixtures, plumbing), whiteboards, easels, and display furniture.
 - Skip items too blurry or too small to identify at "low" confidence or better.
 - If the same item appears multiple times and they are individually placed, use quantity rather than separate entries, and draw the box around the cluster.
-- Return ONLY the JSON array. No commentary before or after.
+- Return ONLY the JSON object. No commentary before or after.
 """
 
-SCAN_PROMPT_VERSION = "v3"
+SCAN_PROMPT_VERSION = "v4"
 
 
 def build_scan_prompt(width: int, height: int) -> str:
-    """Return the v3 scan prompt with actual image dimensions substituted in."""
-    return _SCAN_PROMPT_V3_TEMPLATE.format(
+    """Return the v4 scan prompt with actual image dimensions substituted in."""
+    return _SCAN_PROMPT_V4_TEMPLATE.format(
         width=width,
         height=height,
         ex_left=round(width * 2 / 3),

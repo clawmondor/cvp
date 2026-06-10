@@ -1,10 +1,10 @@
-"""Tests for vision prompt v3."""
+"""Tests for vision prompt v4."""
 
 from cvp.services.vision_prompts import SCAN_PROMPT_VERSION, build_scan_prompt
 
 
-def test_version_is_v3():
-    assert SCAN_PROMPT_VERSION == "v3"
+def test_version_is_v4():
+    assert SCAN_PROMPT_VERSION == "v4"
 
 
 def test_build_scan_prompt_injects_dimensions():
