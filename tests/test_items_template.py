@@ -50,7 +50,9 @@ class FakeItem:
 
 def test_tbody_renders_crop_edit_link(env):
     tmpl = env.get_template("_items_tbody.html")
-    html = tmpl.render(items=[FakeItem()], categories=[], rooms=[], conditions=[])
+    html = tmpl.render(
+        items=[FakeItem()], items_total_count=1, categories=[], rooms=[], conditions=[]
+    )
     assert "Edit crop" in html
     assert 'data-toggle-crop-editor="ef-xyz"' in html
     assert 'data-preselect-crop="crop-abc"' in html
@@ -64,7 +66,7 @@ def test_tbody_no_overlay_when_no_crop(env):
     item = FakeItem()
     item.crops = []
     tmpl = env.get_template("_items_tbody.html")
-    html = tmpl.render(items=[item], categories=[], rooms=[], conditions=[])
+    html = tmpl.render(items=[item], items_total_count=1, categories=[], rooms=[], conditions=[])
     assert "Edit crop" not in html
 
 
@@ -72,7 +74,7 @@ def test_tbody_no_overlay_when_crop_path_empty(env):
     item = FakeItem()
     item.crops[0].crop_path = None
     tmpl = env.get_template("_items_tbody.html")
-    html = tmpl.render(items=[item], categories=[], rooms=[], conditions=[])
+    html = tmpl.render(items=[item], items_total_count=1, categories=[], rooms=[], conditions=[])
     assert "Edit crop" not in html
 
 

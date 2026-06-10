@@ -18,6 +18,7 @@ from cvp.depreciation import compute_acv
 from cvp.models import Category, Item, ItemGroup, Room, SerpSearch
 from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.item_groups import find_or_create
+from cvp.services.pagination import paginate_by_cursor
 from cvp.services.serp_display import extract_results
 
 BASE_DIR = Path(__file__).parent.parent
@@ -29,6 +30,7 @@ templates.env.filters["pretty_json"] = lambda v: json.dumps(json.loads(v), inden
 router = APIRouter()
 
 CONDITIONS = ["excellent", "above_average", "average", "below_average"]
+ITEMS_PAGE_SIZE = 50
 
 
 def _get_context(matter_id: str, db):
@@ -82,24 +84,6 @@ def _item_row_edit_html(
     )
 
 
-def _items_tbody_html(matter_id: str, db) -> str:
-    items = (
-        db.query(Item)
-        .filter(Item.matter_id == matter_id)
-        .options(selectinload(Item.crops))
-        .order_by(Item.line_number)
-        .all()
-    )
-    categories, rooms, item_groups = _get_context(matter_id, db)
-    return templates.get_template("_items_tbody.html").render(
-        items=items,
-        categories=categories,
-        rooms=rooms,
-        item_groups=item_groups,
-        conditions=CONDITIONS,
-    )
-
-
 def _resolve_item_group_id(
     db,
     matter_id: str,
@@ -128,6 +112,42 @@ def _parse_cents(dollars_str: str) -> int:
         return round(float(dollars_str or 0) * 100)
     except ValueError:
         return 0
+
+
+@router.get("/api/matters/{matter_id}/items-rows", response_class=HTMLResponse)
+def get_items_rows(
+    request: Request,
+    matter_id: str,
+    cursor: str = "",
+    user: CurrentUser = Depends(require_matter_role("viewer")),
+) -> HTMLResponse:
+    """Render one cursor-paginated page of item `<tr>` rows + sentinel.
+
+    `cursor` is the line_number of the last row from the previous page
+    (empty string for the first page). Rows are ordered by `line_number` ASC.
+    """
+    cursor_int = int(cursor) if cursor else None
+    db = SessionLocal()
+    try:
+        rows, next_cursor = paginate_by_cursor(
+            db.query(Item).options(selectinload(Item.crops)).filter(Item.matter_id == matter_id),
+            cursor_col=Item.line_number,
+            cursor_value=cursor_int,
+            limit=ITEMS_PAGE_SIZE,
+            order="asc",
+        )
+        categories, room_objs, _groups = _get_context(matter_id, db)
+    finally:
+        db.close()
+    return HTMLResponse(
+        templates.get_template("_items_rows_fragment.html").render(
+            items=rows,
+            items_next_cursor=next_cursor,
+            matter_id=matter_id,
+            categories=categories,
+            rooms=room_objs,
+        )
+    )
 
 
 @router.post("/api/matters/{matter_id}/items", response_class=HTMLResponse)
@@ -179,8 +199,10 @@ def create_item(
         _compute_and_set_totals(item, cat)
         db.add(item)
         db.commit()
+        db.refresh(item)
         item_id = item.id
-        html = _items_tbody_html(matter_id, db)
+        categories, rooms, item_groups = _get_context(matter_id, db)
+        row_html = _item_row_html(item, categories, rooms, item_groups)
     finally:
         db.close()
     background_tasks.add_task(
@@ -192,7 +214,9 @@ def create_item(
         matter_id=matter_id,
         ip_address=get_client_ip(request),
     )
-    return HTMLResponse(html)
+    # Use HX-Trigger to nudge the client to refresh totals + drop empty-state row.
+    headers = {"HX-Trigger": "item-created"}
+    return HTMLResponse(row_html, headers=headers, status_code=200)
 
 
 @router.get("/api/items/{item_id}/edit", response_class=HTMLResponse)
