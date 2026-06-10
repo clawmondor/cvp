@@ -268,7 +268,9 @@ def require_matter_role(minimum_role: str):
         if matter_id is None:
             raise HTTPException(status_code=404, detail="Resource not found")
 
-        if not _check_matter_access(db, user, matter_id, minimum_role):
+        from cvp.services.access_cache import check_matter_access_cached
+
+        if not check_matter_access_cached(db, user, matter_id, minimum_role):
             raise HTTPException(status_code=403, detail="Insufficient permissions")
 
         return user
