@@ -203,6 +203,10 @@ def create_item(
         item_id = item.id
         categories, rooms, item_groups = _get_context(matter_id, db)
         row_html = _item_row_html(item, categories, rooms, item_groups)
+        # Remove the empty-state placeholder if it's present; HTMX silently
+        # no-ops when the target element isn't in the DOM.
+        oob_clear_empty = '<tr id="items-empty-row" hx-swap-oob="delete"></tr>'
+        row_html = row_html + oob_clear_empty
     finally:
         db.close()
     background_tasks.add_task(

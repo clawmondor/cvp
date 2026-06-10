@@ -116,3 +116,52 @@ def test_empty_matter_returns_no_rows_no_sentinel(client):
     assert resp.status_code == 200
     assert '<tr id="item-row-' not in resp.text
     assert 'hx-trigger="revealed"' not in resp.text
+
+
+@pytest.fixture
+def client_contrib(db_session, monkeypatch):
+    """TestClient that authenticates as a system_admin (implicit manager on
+    every matter), bypassing the need to seed MatterAccess to exercise
+    contributor-gated POST /api/matters/{matter_id}/items.
+    """
+    import inspect
+
+    import cvp.routers.items as items_router
+
+    async def mock_admin():
+        return CurrentUser(
+            id=VIEWER_ID,
+            email="v@test.com",
+            system_role="system_admin",
+            group_id=None,
+            group_kind="internal",
+        )
+
+    def override_get_db():
+        yield db_session
+
+    create_dep = inspect.signature(items_router.create_item).parameters["user"].default.dependency
+    rows_dep = inspect.signature(items_router.get_items_rows).parameters["user"].default.dependency
+    app.dependency_overrides[create_dep] = mock_admin
+    app.dependency_overrides[rows_dep] = mock_admin
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("cvp.routers.items.SessionLocal", lambda: db_session)
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+def test_create_item_emits_oob_delete_for_empty_state(client_contrib, db_session):
+    resp = client_contrib.post(
+        f"/api/matters/{MATTER_ID}/items",
+        data={
+            "category_id": "1",
+            "quantity": "1",
+            "age_years": "0",
+            "condition": "average",
+            "rcv_unit_dollars": "0",
+        },
+    )
+    assert resp.status_code == 200
+    assert 'id="items-empty-row"' in resp.text
+    assert 'hx-swap-oob="delete"' in resp.text
