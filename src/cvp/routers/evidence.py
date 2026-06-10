@@ -5,13 +5,16 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
 
 from cvp.config import settings
-from cvp.db import SessionLocal
+from cvp.db import SessionLocal, get_db
 from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.models import EvidenceFile
+from cvp.services import runtime_config
 from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.evidence_cleanup import delete_evidence_file
 
@@ -36,43 +39,97 @@ async def upload_evidence(
     request: Request,
     matter_id: str,
     background_tasks: BackgroundTasks,
-    files: list[UploadFile],
+    file: UploadFile,
     user: CurrentUser = Depends(require_matter_role("contributor")),
+    db: Session = Depends(get_db),
 ) -> HTMLResponse:
+    """Accept a single evidence file, stream it to disk, return its tile fragment.
+
+    Streaming + per-file requests replace the previous batch endpoint so we
+    don't hit Cloudflare's edge timeout on big drops. Concurrency is handled
+    by the browser queue in app.js.
+    """
+    max_mb = runtime_config.get_int(db, "evidence_upload_max_file_mb")
+    max_bytes = max_mb * 1024 * 1024
+    hard_ceiling = 2 * max_bytes
+
+    # Cheap pre-check: if Content-Length is present and clearly oversize, reject
+    # before reading any bytes.
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit() and int(content_length) > hard_ceiling:
+        raise HTTPException(status_code=413, detail=f"File exceeds {max_mb} MB cap")
+
     upload_base = Path(settings.upload_dir).resolve()
     matter_dir = upload_base / matter_id
     matter_dir.mkdir(parents=True, exist_ok=True)
 
-    # Write all files to disk first, building records in memory.
-    # Opening the DB session only after I/O is complete prevents holding a
-    # pool connection during the (potentially slow) multipart read loop.
-    new_records: list[EvidenceFile] = []
-    for upload in files:
-        raw_name = Path(upload.filename or "file").name  # strip any path components
-        uid8 = str(uuid.uuid4())[:8]
-        stored_name = f"{uid8}_{raw_name}"
-        dest = matter_dir / stored_name
-        content = await upload.read()
-        dest.write_bytes(content)
+    raw_name = Path(file.filename or "file").name
+    uid8 = str(uuid.uuid4())[:8]
+    stored_name = f"{uid8}_{raw_name}"
+    dest = matter_dir / stored_name
 
-        mime = upload.content_type or (mimetypes.guess_type(raw_name)[0] or "")
-        new_records.append(
-            EvidenceFile(
-                matter_id=matter_id,
-                filename=raw_name,
-                stored_path=f"{matter_id}/{stored_name}",
-                mime_type=mime,
-                size_bytes=len(content),
-                kind=_kind_from_mime(mime),
-            )
-        )
+    # Stream to disk in 1 MB chunks, enforcing the size cap as we go.
+    bytes_written = 0
+    chunk_size = 1 << 20  # 1 MB
+    try:
+        with dest.open("wb") as out:
+            while True:
+                chunk = await file.read(chunk_size)
+                if not chunk:
+                    break
+                bytes_written += len(chunk)
+                if bytes_written > max_bytes:
+                    out.close()
+                    dest.unlink(missing_ok=True)
+                    raise HTTPException(status_code=413, detail=f"File exceeds {max_mb} MB cap")
+                await run_in_threadpool(out.write, chunk)
+    except HTTPException:
+        raise
+    except Exception:
+        dest.unlink(missing_ok=True)
+        raise
 
+    mime = file.content_type or (mimetypes.guess_type(raw_name)[0] or "")
+    ef = EvidenceFile(
+        matter_id=matter_id,
+        filename=raw_name,
+        stored_path=f"{matter_id}/{stored_name}",
+        mime_type=mime,
+        size_bytes=bytes_written,
+        kind=_kind_from_mime(mime),
+    )
+
+    write_db = SessionLocal()
+    try:
+        write_db.add(ef)
+        write_db.commit()
+        write_db.refresh(ef)
+    finally:
+        write_db.close()
+
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="evidence.create",
+        resource_type="evidence",
+        resource_id=ef.id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
+
+    return HTMLResponse(
+        templates.get_template("_evidence_tile.html").render(f=ef, matter_id=matter_id)
+    )
+
+
+@router.get("/api/matters/{matter_id}/evidence-grid", response_class=HTMLResponse)
+def get_evidence_grid(
+    request: Request,
+    matter_id: str,
+    user: CurrentUser = Depends(require_matter_role("viewer")),
+) -> HTMLResponse:
     db = SessionLocal()
     try:
-        for ef in new_records:
-            db.add(ef)
-        db.commit()
-
         evidence_files = (
             db.query(EvidenceFile)
             .filter(EvidenceFile.matter_id == matter_id)
@@ -81,16 +138,6 @@ async def upload_evidence(
         )
     finally:
         db.close()
-
-    background_tasks.add_task(
-        write_audit_log,
-        user_id=user.id,
-        action="evidence.create",
-        resource_type="evidence",
-        resource_id=matter_id,
-        matter_id=matter_id,
-        ip_address=get_client_ip(request),
-    )
     return HTMLResponse(
         templates.get_template("_evidence_grid.html").render(
             evidence_files=evidence_files, matter_id=matter_id

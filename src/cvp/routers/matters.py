@@ -16,6 +16,7 @@ from cvp.dependencies import CurrentUser, require_active_user, require_matter_ro
 from cvp.models import Category, Item, ItemGroup, Matter, VisionJob, VisionJobImage
 from cvp.models_auth import User as UserORM
 from cvp.models_vision import VisionModel
+from cvp.services import runtime_config
 from cvp.services.audit import get_client_ip, should_debounce_view, write_audit_log
 
 BASE_DIR = Path(__file__).parent.parent
@@ -198,6 +199,12 @@ def matter_detail(
                     "success_count": sum(1 for i in job_images if i.status == "done"),
                     "error_count": error_count,
                 }
+
+        evidence_upload_concurrency = runtime_config.get_int(db, "evidence_upload_concurrency")
+        evidence_upload_max_file_mb = runtime_config.get_int(db, "evidence_upload_max_file_mb")
+        evidence_upload_max_batch_count = runtime_config.get_int(
+            db, "evidence_upload_max_batch_count"
+        )
     finally:
         db.close()
 
@@ -234,6 +241,9 @@ def matter_detail(
             "default_vision_slug": default_vision_slug,
             "scan_errors": scan_errors,
             "latest_scan_job": latest_scan_job,
+            "evidence_upload_concurrency": evidence_upload_concurrency,
+            "evidence_upload_max_file_mb": evidence_upload_max_file_mb,
+            "evidence_upload_max_batch_count": evidence_upload_max_batch_count,
         },
     )
 

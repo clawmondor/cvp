@@ -1,22 +1,24 @@
 <div class="space-y-4">
 
-  <!-- Upload zone -->
-  <form id="evidence-form"
-        hx-post="/api/matters/{{ matter.id }}/evidence"
-        hx-target="#evidence-grid"
-        hx-swap="outerHTML"
-        hx-encoding="multipart/form-data">
+  <!-- Upload zone (queue-driven; no hx-post here — JS handles requests) -->
+  <div id="evidence-form">
     <div id="drop-zone"
+         data-matter-id="{{ matter.id }}"
+         data-csrf-token="{{ request.cookies.get('cvp_csrf', '') }}"
+         data-evidence-upload-concurrency="{{ evidence_upload_concurrency }}"
+         data-evidence-upload-max-file-mb="{{ evidence_upload_max_file_mb }}"
+         data-evidence-upload-max-batch-count="{{ evidence_upload_max_batch_count }}"
          class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white px-6 py-10 text-center transition-colors hover:border-indigo-400 cursor-pointer">
       <svg class="mx-auto mb-3 h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
               d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
       </svg>
       <p class="text-sm font-medium text-gray-600">Drop files here or <span class="text-indigo-600">browse</span></p>
-      <p class="mt-1 text-xs text-gray-400">Photos, PDFs, videos — any file type accepted</p>
+      <p class="mt-1 text-xs text-gray-400">Photos, PDFs, videos — up to {{ evidence_upload_max_file_mb }} MB each, {{ evidence_upload_max_batch_count }} per drop</p>
       <input id="evidence-input" name="files" type="file" multiple class="hidden">
     </div>
-  </form>
+    <div id="evidence-upload-progress" class="mt-2 space-y-1"></div>
+  </div>
 
   {% set image_files = evidence_files | selectattr("kind", "equalto", "image") | list %}
   {% set unscanned_files = image_files | rejectattr("scanned") | list %}

@@ -365,6 +365,7 @@ class SerpSearch(Base):
 
 
 import cvp.models_access as _access_models  # noqa: F401, E402 — register access tables with Base
+import cvp.models_app_setting as _app_setting_models  # noqa: F401, E402 — register app_setting table with Base
 import cvp.models_audit as _audit_models  # noqa: F401, E402
 import cvp.models_auth as _auth_models  # noqa: F401, E402 — register auth tables with Base
 import cvp.models_comments as _comment_models  # noqa: F401, E402 — register comments table with Base
