@@ -1,4 +1,4 @@
-<div data-file-card class="group relative rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
+<div data-file-card class="evidence-tile group relative rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
   {% if f.kind == "image" %}
   <img src="/files/{{ f.stored_path }}"
        alt="{{ f.filename }}"
@@ -50,7 +50,7 @@
 
   <button
     hx-delete="/api/evidence/{{ f.id }}"
-    hx-target="closest [data-file-card]"
+    hx-target="closest .evidence-tile"
     hx-swap="outerHTML"
     hx-confirm="Delete {{ f.filename }}?"
     class="absolute right-1 top-1 hidden rounded bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white opacity-90 group-hover:block hover:bg-red-700">

@@ -17,6 +17,7 @@ from cvp.models import EvidenceFile
 from cvp.services import runtime_config
 from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.evidence_cleanup import delete_evidence_file
+from cvp.services.pagination import paginate_by_cursor
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -122,25 +123,41 @@ async def upload_evidence(
     )
 
 
+EVIDENCE_PAGE_SIZE = 24
+
+
 @router.get("/api/matters/{matter_id}/evidence-grid", response_class=HTMLResponse)
 def get_evidence_grid(
     request: Request,
     matter_id: str,
+    cursor: str = "",
     user: CurrentUser = Depends(require_matter_role("viewer")),
 ) -> HTMLResponse:
+    """Render one cursor-paginated page of evidence tiles + sentinel.
+
+    `cursor` is the ISO timestamp of the oldest tile from the previous page
+    (empty string for the first page). Tiles are ordered by `created_at DESC`.
+    """
+    from datetime import datetime
+
+    cursor_dt = datetime.fromisoformat(cursor) if cursor else None
     db = SessionLocal()
     try:
-        evidence_files = (
-            db.query(EvidenceFile)
-            .filter(EvidenceFile.matter_id == matter_id)
-            .order_by(EvidenceFile.created_at.desc())
-            .all()
+        rows, next_cursor = paginate_by_cursor(
+            db.query(EvidenceFile).filter(EvidenceFile.matter_id == matter_id),
+            cursor_col=EvidenceFile.created_at,
+            cursor_value=cursor_dt,
+            limit=EVIDENCE_PAGE_SIZE,
+            order="desc",
         )
     finally:
         db.close()
+    next_cursor_str = next_cursor.isoformat() if next_cursor else None
     return HTMLResponse(
-        templates.get_template("_evidence_grid.html").render(
-            evidence_files=evidence_files, matter_id=matter_id
+        templates.get_template("_evidence_grid_fragment.html").render(
+            evidence_files=rows,
+            evidence_next_cursor=next_cursor_str,
+            matter_id=matter_id,
         )
     )
 

@@ -13,11 +13,12 @@ from sqlalchemy.orm import selectinload
 from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, require_active_user, require_matter_role
-from cvp.models import Category, Item, ItemGroup, Matter, VisionJob, VisionJobImage
+from cvp.models import Category, EvidenceFile, Item, ItemGroup, Matter, VisionJob, VisionJobImage
 from cvp.models_auth import User as UserORM
 from cvp.models_vision import VisionModel
 from cvp.services import runtime_config
 from cvp.services.audit import get_client_ip, should_debounce_view, write_audit_log
+from cvp.services.pagination import paginate_by_cursor
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -118,23 +119,51 @@ def matter_detail(
     try:
         matter = (
             db.query(Matter)
-            .options(
-                selectinload(Matter.items).selectinload(Item.crops),
-                selectinload(Matter.evidence_files),
-                selectinload(Matter.rooms),
-            )
+            .options(selectinload(Matter.rooms))
             .filter(Matter.id == matter_id)
             .first()
         )
         if matter is None:
             return HTMLResponse("Matter not found", status_code=404)
-        items = sorted(matter.items, key=lambda i: i.line_number)
-        confirmed = [i for i in items if i.confirmed and not i.excluded]
-        total_rcv_cents = sum(i.rcv_total_cents for i in confirmed)
-        total_acv_cents = sum(i.acv_total_cents for i in confirmed)
-        unconfirmed_count = sum(1 for i in items if not i.confirmed)
-        missing_price_count = sum(1 for i in confirmed if i.rcv_unit_cents == 0)
-        evidence_files = sorted(matter.evidence_files, key=lambda f: f.created_at, reverse=True)
+
+        # First page of evidence (newest-first), with cursor for infinite scroll.
+        evidence_files, evidence_next_cursor = paginate_by_cursor(
+            db.query(EvidenceFile).filter(EvidenceFile.matter_id == matter_id),
+            cursor_col=EvidenceFile.created_at,
+            cursor_value=None,
+            limit=24,
+            order="desc",
+        )
+        evidence_next_cursor = evidence_next_cursor.isoformat() if evidence_next_cursor else None
+
+        # Full-set items totals (aggregate query, not row-by-row).
+        items_for_totals = (
+            db.query(
+                Item.confirmed,
+                Item.excluded,
+                Item.rcv_total_cents,
+                Item.acv_total_cents,
+                Item.rcv_unit_cents,
+            )
+            .filter(Item.matter_id == matter_id)
+            .all()
+        )
+        confirmed_rows = [r for r in items_for_totals if r.confirmed and not r.excluded]
+        total_rcv_cents = sum(r.rcv_total_cents for r in confirmed_rows)
+        total_acv_cents = sum(r.acv_total_cents for r in confirmed_rows)
+        unconfirmed_count = sum(1 for r in items_for_totals if not r.confirmed)
+        missing_price_count = sum(1 for r in confirmed_rows if r.rcv_unit_cents == 0)
+        items_total_count = len(items_for_totals)
+        items_confirmed_count = len(confirmed_rows)
+
+        # First page of items rows (line_number ASC), with cursor.
+        items, items_next_cursor = paginate_by_cursor(
+            db.query(Item).options(selectinload(Item.crops)).filter(Item.matter_id == matter_id),
+            cursor_col=Item.line_number,
+            cursor_value=None,
+            limit=50,
+            order="asc",
+        )
         rooms = sorted(matter.rooms, key=lambda r: r.sort_order)
         item_groups_rows = (
             db.query(ItemGroup, func.count(Item.id))
@@ -225,7 +254,13 @@ def matter_detail(
         context={
             "matter": matter,
             "items": items,
+            "items_next_cursor": items_next_cursor,
+            "items_total_count": items_total_count,
+            "items_confirmed_count": items_confirmed_count,
+            "items_rcv_total_cents": total_rcv_cents,
+            "items_acv_total_cents": total_acv_cents,
             "evidence_files": evidence_files,
+            "evidence_next_cursor": evidence_next_cursor,
             "rooms": rooms,
             "item_groups": item_groups,
             "item_groups_flat": item_groups_flat,
