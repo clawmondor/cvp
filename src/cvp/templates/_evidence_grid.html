@@ -3,7 +3,5 @@
 {% endif %}
 <div id="evidence-grid"
      class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-  {% for f in evidence_files %}
-  {% include "_evidence_tile.html" %}
-  {% endfor %}
+  {% include "_evidence_grid_fragment.html" %}
 </div>

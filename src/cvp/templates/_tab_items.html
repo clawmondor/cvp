@@ -8,7 +8,7 @@
     <div class="border-t border-gray-100 px-4 py-4">
       <form hx-post="/api/matters/{{ matter.id }}/items"
             hx-target="#items-tbody"
-            hx-swap="innerHTML"
+            hx-swap="beforeend"
             hx-on::after-request="if(event.detail.successful){ this.reset(); document.getElementById('add-item-details').removeAttribute('open'); }"
             class="space-y-3">
         <div class="grid grid-cols-12 gap-3 items-end">
@@ -98,12 +98,11 @@
     </table>
   </div>
 
-  {% if items %}
+  {% if items_total_count and items_total_count > 0 %}
   <div class="flex justify-end gap-6 text-sm text-gray-600">
-    {% set confirmed_items = items | selectattr("confirmed") | rejectattr("excluded") | list %}
-    <span>Confirmed: <strong class="text-gray-900">{{ confirmed_items | length }}</strong> of {{ items | length }}</span>
-    <span>RCV total: <strong class="font-mono text-gray-900">${{ "%.2f" % (confirmed_items | sum(attribute="rcv_total_cents") / 100) }}</strong></span>
-    <span>ACV total: <strong class="font-mono text-gray-900">${{ "%.2f" % (confirmed_items | sum(attribute="acv_total_cents") / 100) }}</strong></span>
+    <span>Confirmed: <strong class="text-gray-900">{{ items_confirmed_count }}</strong> of {{ items_total_count }}</span>
+    <span>RCV total: <strong class="font-mono text-gray-900">${{ "%.2f" % (items_rcv_total_cents / 100) }}</strong></span>
+    <span>ACV total: <strong class="font-mono text-gray-900">${{ "%.2f" % (items_acv_total_cents / 100) }}</strong></span>
   </div>
   {% endif %}
 
