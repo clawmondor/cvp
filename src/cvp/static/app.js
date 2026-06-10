@@ -152,22 +152,123 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // ── Evidence drag-drop upload ─────────────────────────────────────────────
+// Per-file uploads with bounded concurrency. Caps come from data-* attrs on
+// the drop zone (server-rendered from runtime_config).
 function initEvidenceUpload() {
     var zone = document.getElementById('drop-zone');
     var input = document.getElementById('evidence-input');
-    var form = document.getElementById('evidence-form');
-    if (!zone) return;
+    var progress = document.getElementById('evidence-upload-progress');
+    var grid = document.getElementById('evidence-grid');
+    if (!zone || !input) return;
 
-    function submitFiles(fileList) {
-        if (!fileList || fileList.length === 0) return;
-        var dt = new DataTransfer();
-        Array.from(fileList).forEach(function (f) { dt.items.add(f); });
-        input.files = dt.files;
-        htmx.trigger(form, 'submit');
+    var matterId = zone.dataset.matterId;
+    var csrf = zone.dataset.csrfToken || '';
+    var concurrency = Math.max(1, parseInt(zone.dataset.evidenceUploadConcurrency, 10) || 4);
+    var maxFileBytes = (parseInt(zone.dataset.evidenceUploadMaxFileMb, 10) || 10) * 1024 * 1024;
+    var maxBatch = parseInt(zone.dataset.evidenceUploadMaxBatchCount, 10) || 500;
+
+    var queue = [];
+    var inFlight = 0;
+    var rowId = 0;
+
+    function newRow(name, state, message) {
+        rowId += 1;
+        var div = document.createElement('div');
+        div.id = 'upload-row-' + rowId;
+        div.className = 'flex items-center gap-2 text-xs';
+        div.innerHTML =
+            '<span class="truncate flex-1">' + name + '</span>' +
+            '<span data-state class="' + stateClass(state) + '">' + (message || state) + '</span>';
+        progress.appendChild(div);
+        return div;
+    }
+
+    function stateClass(state) {
+        if (state === 'done') return 'text-green-600';
+        if (state === 'failed') return 'text-red-600 cursor-pointer underline';
+        if (state === 'uploading') return 'text-blue-600';
+        return 'text-gray-400';
+    }
+
+    function setRowState(row, state, message) {
+        var badge = row.querySelector('[data-state]');
+        badge.className = stateClass(state);
+        badge.textContent = message || state;
+        if (state === 'done') {
+            setTimeout(function () { row.remove(); }, 2000);
+        }
+    }
+
+    function enqueueDrop(fileList) {
+        var files = Array.from(fileList || []);
+        if (files.length === 0) return;
+        if (files.length > maxBatch) {
+            alert('Limit is ' + maxBatch + ' files per drop. Try smaller batches.');
+            return;
+        }
+        files.forEach(function (f) {
+            if (f.size > maxFileBytes) {
+                newRow(f.name, 'failed', 'Too large (max ' + (maxFileBytes / 1024 / 1024) + ' MB)');
+                return;
+            }
+            var row = newRow(f.name, 'queued', 'Queued');
+            queue.push({ file: f, row: row });
+        });
+        pump();
+    }
+
+    function pump() {
+        while (inFlight < concurrency && queue.length > 0) {
+            var job = queue.shift();
+            startJob(job);
+        }
+        if (inFlight === 0 && queue.length === 0) {
+            // Queue fully drained — refresh grid chrome (counts, banners) once.
+            htmx.ajax('GET', '/api/matters/' + matterId + '/evidence-grid', '#evidence-grid');
+        }
+    }
+
+    function startJob(job) {
+        inFlight += 1;
+        setRowState(job.row, 'uploading', 'Uploading…');
+        var form = new FormData();
+        form.append('file', job.file, job.file.name);
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/matters/' + matterId + '/evidence');
+        if (csrf) xhr.setRequestHeader('X-CSRF-Token', csrf);
+        xhr.onload = function () {
+            inFlight -= 1;
+            if (xhr.status >= 200 && xhr.status < 300) {
+                if (grid && xhr.responseText) {
+                    grid.insertAdjacentHTML('beforeend', xhr.responseText);
+                    htmx.process(grid);
+                }
+                setRowState(job.row, 'done', '✓');
+            } else {
+                var msg = (xhr.status === 413) ? 'Too large' : ('Failed (' + xhr.status + ')');
+                setRowState(job.row, 'failed', msg + ' — retry');
+                job.row.addEventListener('click', function retry() {
+                    job.row.removeEventListener('click', retry);
+                    setRowState(job.row, 'queued', 'Queued');
+                    queue.push(job);
+                    pump();
+                });
+            }
+            pump();
+        };
+        xhr.onerror = function () {
+            inFlight -= 1;
+            setRowState(job.row, 'failed', 'Network — retry');
+            pump();
+        };
+        xhr.send(form);
     }
 
     zone.addEventListener('click', function () { input.click(); });
-    input.addEventListener('change', function () { submitFiles(input.files); });
+    input.addEventListener('change', function () {
+        enqueueDrop(input.files);
+        input.value = ''; // allow re-selecting same files
+    });
     zone.addEventListener('dragover', function (e) {
         e.preventDefault();
         zone.classList.add('border-indigo-500', 'bg-indigo-50');
@@ -178,7 +279,14 @@ function initEvidenceUpload() {
     zone.addEventListener('drop', function (e) {
         e.preventDefault();
         zone.classList.remove('border-indigo-500', 'bg-indigo-50');
-        submitFiles(e.dataTransfer.files);
+        enqueueDrop(e.dataTransfer.files);
+    });
+
+    window.addEventListener('beforeunload', function (e) {
+        if (inFlight > 0 || queue.length > 0) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
     });
 }
 

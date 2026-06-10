@@ -122,6 +122,29 @@ async def upload_evidence(
     )
 
 
+@router.get("/api/matters/{matter_id}/evidence-grid", response_class=HTMLResponse)
+def get_evidence_grid(
+    request: Request,
+    matter_id: str,
+    user: CurrentUser = Depends(require_matter_role("viewer")),
+) -> HTMLResponse:
+    db = SessionLocal()
+    try:
+        evidence_files = (
+            db.query(EvidenceFile)
+            .filter(EvidenceFile.matter_id == matter_id)
+            .order_by(EvidenceFile.created_at.desc())
+            .all()
+        )
+    finally:
+        db.close()
+    return HTMLResponse(
+        templates.get_template("_evidence_grid.html").render(
+            evidence_files=evidence_files, matter_id=matter_id
+        )
+    )
+
+
 @router.delete("/api/evidence/{file_id}", response_class=HTMLResponse)
 def delete_evidence(
     request: Request,
