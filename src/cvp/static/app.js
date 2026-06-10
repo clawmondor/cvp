@@ -176,9 +176,18 @@ function initEvidenceUpload() {
         var div = document.createElement('div');
         div.id = 'upload-row-' + rowId;
         div.className = 'flex items-center gap-2 text-xs';
-        div.innerHTML =
-            '<span class="truncate flex-1">' + name + '</span>' +
-            '<span data-state class="' + stateClass(state) + '">' + (message || state) + '</span>';
+
+        var nameSpan = document.createElement('span');
+        nameSpan.className = 'truncate flex-1';
+        nameSpan.textContent = name;
+        div.appendChild(nameSpan);
+
+        var stateSpan = document.createElement('span');
+        stateSpan.setAttribute('data-state', '');
+        stateSpan.className = stateClass(state);
+        stateSpan.textContent = message || state;
+        div.appendChild(stateSpan);
+
         progress.appendChild(div);
         return div;
     }
