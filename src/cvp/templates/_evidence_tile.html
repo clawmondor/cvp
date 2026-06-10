@@ -2,6 +2,8 @@
   {% if f.kind == "image" %}
   <img src="/files/{{ f.stored_path }}"
        alt="{{ f.filename }}"
+       loading="lazy"
+       decoding="async"
        class="h-32 w-full object-cover">
   {% elif f.kind == "pdf" %}
   <div class="flex h-32 items-center justify-center bg-red-50 text-4xl">📄</div>
