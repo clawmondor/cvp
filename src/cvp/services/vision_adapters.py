@@ -35,6 +35,7 @@ def _pad_clamp(left: int, upper: int, right: int, lower: int, w: int, h: int) ->
     right = min(w, right + pad_x)
     lower = min(h, lower + pad_y)
     if left >= right or upper >= lower:
+        logger.error("_pad_clamp error left < right or uppper < lower")
         return None
     return left, upper, right, lower
 
@@ -45,6 +46,7 @@ def pixel_passthrough(raw: Any, w: int, h: int) -> _PadResult:
     try:
         left, upper, right, lower = (int(v) for v in raw)
     except (TypeError, ValueError):
+        logger.error("TypeError or ValueError", exc_info=True)
         return None
     return _pad_clamp(left, upper, right, lower, w, h)
 
@@ -52,13 +54,16 @@ def pixel_passthrough(raw: Any, w: int, h: int) -> _PadResult:
 def gemini_normalized_1000(raw: Any, w: int, h: int) -> _PadResult:
     """Gemini native bbox format: [y_min, x_min, y_max, x_max], normalized 0–1000."""
     if not isinstance(raw, (list, tuple)) or len(raw) != 4:
+        logger.error("couldn't determine bbox", exc_info=True)
         return None
     try:
         n_ymin, n_xmin, n_ymax, n_xmax = (int(v) for v in raw)
     except (TypeError, ValueError):
+        logger.error("TypeError or ValueError", exc_info=True)
         return None
     if not all(0 <= v <= 1000 for v in (n_ymin, n_xmin, n_ymax, n_xmax)):
-        return None
+        logger.warning("gemini normalized bbox received")
+        return _pad_clamp(n_xmin, n_ymin, n_xmax, n_ymax, w, h)
     left = round(n_xmin / 1000 * w)
     upper = round(n_ymin / 1000 * h)
     right = round(n_xmax / 1000 * w)
