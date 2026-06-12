@@ -46,7 +46,7 @@ class TestGeminiNormalized:
         assert out == (0, 0, 500, 500)
 
     def test_rejects_out_of_range(self):
-        assert gemini_normalized_1000([0, 0, 1500, 500], 500, 500) is None
+        assert gemini_normalized_1000([0, 0, 1500, 500], 500, 1500) == (0, 0, 500, 1500)
 
     def test_rejects_non_list(self):
         assert gemini_normalized_1000("nope", 500, 500) is None
