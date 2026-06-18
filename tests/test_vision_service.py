@@ -371,3 +371,82 @@ def test_process_one_image_region_scan_offsets_bbox(isolated_db, monkeypatch, tm
     ji = isolated_db.get(VisionJobImage, ji_id)
     assert ji.status == "done"
     assert ji.items_created == 1
+
+
+def test_process_one_image_region_scan_downscales_and_offsets(isolated_db, monkeypatch, tmp_path):
+    """Region crop large enough to trigger the >1MB downscale: verifies the
+    scale-back-from-downscale and region-offset coordinate math together.
+
+    Random noise compresses poorly, so a 2400x2400 image guarantees the
+    2000x2000 region crop's JPEG exceeds the 1MB downscale threshold (the crop
+    is downscaled to long-edge 1568px before scanning). A full-frame model bbox
+    in that 1568px scan space scales back to the 2000px crop and offsets by the
+    region origin (200, 200) -> (200, 200, 2200, 2200) in original-image coords.
+    """
+    import os
+
+    from PIL import Image
+
+    side = 2400
+    img = Image.frombytes("RGB", (side, side), os.urandom(side * side * 3))
+    img_path = tmp_path / "noise.jpg"
+    img.save(img_path, "JPEG", quality=95)
+
+    matter = Matter(policyholder_name="Owner", loss_type="total_loss")
+    isolated_db.add(matter)
+    isolated_db.flush()
+    matter_id = matter.id
+
+    ef = EvidenceFile(
+        matter_id=matter_id,
+        filename="noise.jpg",
+        stored_path=str(img_path),
+        mime_type="image/jpeg",
+        kind="image",
+        size_bytes=img_path.stat().st_size,
+    )
+    isolated_db.add(ef)
+    isolated_db.flush()
+
+    job = VisionJob(matter_id=matter_id, model_slug="anthropic/claude-opus-4", status="running")
+    isolated_db.add(job)
+    isolated_db.flush()
+    ji = VisionJobImage(
+        job_id=job.id,
+        evidence_file_id=ef.id,
+        status="running",
+        region_left=200,
+        region_upper=200,
+        region_right=2200,
+        region_lower=2200,
+    )
+    isolated_db.add(ji)
+    isolated_db.commit()
+    ji_id = ji.id
+
+    _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
+
+    # Full-frame bbox in the downscaled (1568px long-edge) crop's pixel space.
+    fake_response = json.dumps(
+        [
+            {
+                "description": "Sectional sofa",
+                "category_hint": "Miscellaneous household goods",
+                "quantity": 1,
+                "condition": "average",
+                "bounding_box": [0, 0, 1568, 1568],
+            }
+        ]
+    )
+
+    with patch("cvp.services.vision.openrouter.call_vision", return_value=fake_response):
+        vision_svc.process_one_image(ji_id)
+
+    items = isolated_db.query(Item).filter_by(matter_id=matter_id).all()
+    assert len(items) == 1
+    crop = isolated_db.query(ItemCrop).filter_by(item_id=items[0].id).one()
+    # Scaled back to the 2000px crop and offset by the region origin (200, 200).
+    assert abs(crop.bbox_left - 200) <= 2
+    assert abs(crop.bbox_upper - 200) <= 2
+    assert abs(crop.bbox_right - 2200) <= 2
+    assert abs(crop.bbox_lower - 2200) <= 2

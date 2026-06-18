@@ -225,8 +225,11 @@ async def region_scan(
             )
 
         upload_base = Path(settings.upload_dir).resolve()
-        with Image.open((upload_base / ef.stored_path).resolve()) as img:
-            img_w, img_h = img.size
+        try:
+            with Image.open((upload_base / ef.stored_path).resolve()) as img:
+                img_w, img_h = img.size
+        except OSError:
+            return JSONResponse({"error": "image file not found on disk"}, status_code=404)
 
         if body.left >= body.right or body.upper >= body.lower:
             return JSONResponse(

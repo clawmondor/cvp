@@ -251,8 +251,9 @@ def process_one_image(job_image_id: str) -> None:
             return
 
         # Restart recovery: a whole-image scan that already succeeded is skipped.
-        # Region rescans run even when the file is already marked scanned —
-        # their idempotency comes from the claimed VisionJobImage status.
+        # Region rescans run even when the file is already marked scanned; the
+        # worker only dispatches pending rows and all per-image side effects
+        # commit atomically, so reprocessing a re-dispatched region row is safe.
         if ef.scanned and job_image.region_bbox is None:
             job_image.status = "done"
             job_image.completed_at = datetime.now(timezone.utc)
