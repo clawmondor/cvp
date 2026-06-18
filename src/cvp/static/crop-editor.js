@@ -1,11 +1,20 @@
 (function () {
 
+  var activeRegionInterval = null;
+  function clearRegionInterval() {
+    if (activeRegionInterval) {
+      clearInterval(activeRegionInterval);
+      activeRegionInterval = null;
+    }
+  }
+
   // Close button: data-crop-editor-close="<ef-id>" clears the modal root.
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-crop-editor-close]');
     if (!btn) return;
     var root = document.getElementById('crop-editor-modal-root');
     if (root) {
+      clearRegionInterval();
       root.innerHTML = '';
       delete root.dataset.preselectCrop;
     }
@@ -37,6 +46,7 @@
   }
 
   function initCropEditor(container) {
+    clearRegionInterval();
     var EF_ID = container.dataset.efId;
     var IMG_W = parseInt(container.dataset.imgW, 10);
     var IMG_H = parseInt(container.dataset.imgH, 10);
@@ -383,6 +393,7 @@
       drawToggleBtn.classList.toggle('bg-emerald-600', drawMode);
       drawToggleBtn.classList.toggle('text-white', drawMode);
       drawToggleBtn.textContent = drawMode ? 'Drawing… click + drag a box' : 'Draw scan region';
+      canvas.style.cursor = drawMode ? 'crosshair' : '';
       if (!drawMode) {
         pendingRegion = null;
         scanRegionBtn.disabled = true;
@@ -391,7 +402,8 @@
     });
 
     function pollRegionJob(matterId, jobId) {
-      var iv = setInterval(function () {
+      clearRegionInterval();
+      activeRegionInterval = setInterval(function () {
         fetch('/api/matters/' + matterId + '/vision-scan/' + jobId + '/status')
           .then(function (r) { return r.json(); })
           .then(function (d) {
@@ -399,18 +411,23 @@
               regionStatusEl.textContent = 'Scanning region… ' + d.progress + '/' + d.total;
               return;
             }
-            clearInterval(iv);
-            regionStatusEl.textContent =
-              (d.status === 'error' ? 'Finished with errors — ' : 'Done — ') +
-              d.items_created + ' item(s) created.';
+            clearRegionInterval();
+            if (d.status === 'error') {
+              regionStatusEl.textContent =
+                'Finished with errors — ' + d.items_created + ' item(s) created.';
+              scanRegionBtn.disabled = false;  // allow retry; pendingRegion is still set
+              return;
+            }
+            regionStatusEl.textContent = 'Done — ' + d.items_created + ' item(s) created.';
             if (window.htmx) {
               htmx.ajax('GET', '/api/evidence/' + EF_ID + '/crop-editor',
                 {target: '#crop-editor-modal-root', swap: 'innerHTML'});
             }
           })
           .catch(function () {
-            clearInterval(iv);
+            clearRegionInterval();
             regionStatusEl.textContent = 'Error polling scan — check console.';
+            scanRegionBtn.disabled = false;
           });
       }, 2000);
     }
