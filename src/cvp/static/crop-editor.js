@@ -50,6 +50,11 @@
     var sidebar = document.getElementById('ce-sidebar-' + EF_ID);
     var recropBtn = document.getElementById('ce-recrop-btn-' + EF_ID);
     var statusEl = document.getElementById('ce-status-' + EF_ID);
+    var drawToggleBtn = document.getElementById('ce-draw-toggle-' + EF_ID);
+    var scanRegionBtn = document.getElementById('ce-scan-region-btn-' + EF_ID);
+    var regionStatusEl = document.getElementById('ce-region-status-' + EF_ID);
+    var drawMode = false;
+    var pendingRegion = null;
 
     var MAX_W = 600;
     var scale = Math.min(1, MAX_W / IMG_W);
@@ -128,6 +133,17 @@
           });
         }
       });
+      if (pendingRegion) {
+        var pl = tc(pendingRegion.left), pu = tc(pendingRegion.upper);
+        var pw = tc(pendingRegion.right) - pl, ph = tc(pendingRegion.lower) - pu;
+        ctx.fillStyle = 'rgba(16,185,129,0.15)';
+        ctx.fillRect(pl, pu, pw, ph);
+        ctx.strokeStyle = '#10b981';
+        ctx.setLineDash([6, 3]);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(pl, pu, pw, ph);
+        ctx.setLineDash([]);
+      }
     }
 
     function hitHandle(box, cx, cy) {
@@ -144,6 +160,13 @@
     canvas.addEventListener('mousedown', function (e) {
       var rect = canvas.getBoundingClientRect();
       var cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+      if (drawMode) {
+        drag = {type: 'region', startX: cx, startY: cy};
+        selectedIdx = null;
+        pendingRegion = null;
+        scanRegionBtn.disabled = true;
+        return;
+      }
       if (selectedIdx !== null) {
         var hi = hitHandle(boxes[selectedIdx], cx, cy);
         if (hi >= 0) {
@@ -167,6 +190,18 @@
       if (!drag) return;
       var rect = canvas.getBoundingClientRect();
       var cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+      if (drag.type === 'region') {
+        var rl = fc(Math.min(drag.startX, cx)), ru = fc(Math.min(drag.startY, cy));
+        var rr = fc(Math.max(drag.startX, cx)), rlo = fc(Math.max(drag.startY, cy));
+        pendingRegion = {
+          left: Math.max(0, Math.min(IMG_W, rl)),
+          upper: Math.max(0, Math.min(IMG_H, ru)),
+          right: Math.max(0, Math.min(IMG_W, rr)),
+          lower: Math.max(0, Math.min(IMG_H, rlo)),
+        };
+        draw();
+        return;
+      }
       var dx = fc(cx - drag.startX), dy = fc(cy - drag.startY);
       var ob = drag.origBox, box = boxes[selectedIdx];
       if (drag.type === 'move') {
@@ -189,7 +224,17 @@
 
     canvas.addEventListener('mouseup', function () {
       if (!drag) return;
+      var wasRegion = (drag.type === 'region');
       drag = null;
+      if (wasRegion) {
+        var ok = pendingRegion &&
+          (pendingRegion.right - pendingRegion.left) >= MIN_SIZE &&
+          (pendingRegion.lower - pendingRegion.upper) >= MIN_SIZE;
+        if (!ok) pendingRegion = null;
+        scanRegionBtn.disabled = !ok;
+        draw();
+        return;
+      }
       if (selectedIdx !== null) autosave(selectedIdx);
     });
 
@@ -330,6 +375,67 @@
         .catch(function () {
           statusEl.textContent = 'Error — check console.';
           recropBtn.disabled = false;
+        });
+    });
+
+    drawToggleBtn.addEventListener('click', function () {
+      drawMode = !drawMode;
+      drawToggleBtn.classList.toggle('bg-emerald-600', drawMode);
+      drawToggleBtn.classList.toggle('text-white', drawMode);
+      drawToggleBtn.textContent = drawMode ? 'Drawing… click + drag a box' : 'Draw scan region';
+      if (!drawMode) {
+        pendingRegion = null;
+        scanRegionBtn.disabled = true;
+        draw();
+      }
+    });
+
+    function pollRegionJob(matterId, jobId) {
+      var iv = setInterval(function () {
+        fetch('/api/matters/' + matterId + '/vision-scan/' + jobId + '/status')
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d.status === 'running') {
+              regionStatusEl.textContent = 'Scanning region… ' + d.progress + '/' + d.total;
+              return;
+            }
+            clearInterval(iv);
+            regionStatusEl.textContent =
+              (d.status === 'error' ? 'Finished with errors — ' : 'Done — ') +
+              d.items_created + ' item(s) created.';
+            if (window.htmx) {
+              htmx.ajax('GET', '/api/evidence/' + EF_ID + '/crop-editor',
+                {target: '#crop-editor-modal-root', swap: 'innerHTML'});
+            }
+          })
+          .catch(function () {
+            clearInterval(iv);
+            regionStatusEl.textContent = 'Error polling scan — check console.';
+          });
+      }, 2000);
+    }
+
+    scanRegionBtn.addEventListener('click', function () {
+      if (!pendingRegion) return;
+      scanRegionBtn.disabled = true;
+      regionStatusEl.textContent = 'Starting scan…';
+      fetch('/api/evidence/' + EF_ID + '/region-scan', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken()},
+        body: JSON.stringify(pendingRegion),
+      })
+        .then(function (r) { return r.json().then(function (d) { return {ok: r.ok, d: d}; }); })
+        .then(function (res) {
+          if (!res.ok) {
+            regionStatusEl.textContent = res.d.error || 'Error starting scan.';
+            scanRegionBtn.disabled = false;
+            return;
+          }
+          pollRegionJob(res.d.matter_id, res.d.job_id);
+        })
+        .catch(function () {
+          regionStatusEl.textContent = 'Error — check console.';
+          scanRegionBtn.disabled = false;
         });
     });
 
