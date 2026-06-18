@@ -250,8 +250,10 @@ def process_one_image(job_image_id: str) -> None:
             _maybe_complete_job(db, job_id)
             return
 
-        # Restart recovery: already successfully scanned in a prior run.
-        if ef.scanned:
+        # Restart recovery: a whole-image scan that already succeeded is skipped.
+        # Region rescans run even when the file is already marked scanned —
+        # their idempotency comes from the claimed VisionJobImage status.
+        if ef.scanned and job_image.region_bbox is None:
             job_image.status = "done"
             job_image.completed_at = datetime.now(timezone.utc)
             db.commit()
@@ -284,14 +286,28 @@ def process_one_image(job_image_id: str) -> None:
             _maybe_complete_job(db, job_id)
             return
 
+        # `base_*` is the coordinate space the model sees before any downscale:
+        # the full image for a whole-image scan, or the region crop for a region
+        # scan. `offset_*` shifts region-relative coords back into the original.
+        region = job_image.region_bbox
         with Image.open(image_path) as img:
             orig_w, orig_h = img.size
-
-        mime = ef.mime_type or "image/jpeg"
-        image_bytes = image_path.read_bytes()
+            if region is not None:
+                region_img = img.crop(region).convert("RGB")
+                buf = io.BytesIO()
+                region_img.save(buf, "JPEG", quality=90)
+                image_bytes = buf.getvalue()
+                mime = "image/jpeg"
+                base_w, base_h = region[2] - region[0], region[3] - region[1]
+                offset_x, offset_y = region[0], region[1]
+            else:
+                image_bytes = image_path.read_bytes()
+                mime = ef.mime_type or "image/jpeg"
+                base_w, base_h = orig_w, orig_h
+                offset_x, offset_y = 0, 0
 
         # Downscale only if >1 MB.
-        scan_w, scan_h = orig_w, orig_h
+        scan_w, scan_h = base_w, base_h
         if len(image_bytes) > 1_000_000:
             image_bytes, mime = _downscale(image_bytes)
             with Image.open(io.BytesIO(image_bytes)) as small:
@@ -359,17 +375,22 @@ def process_one_image(job_image_id: str) -> None:
             db.add(item)
             db.flush()
 
-            # Scale bbox from downscaled coords back to original image coords.
+            # Scale bbox from downscaled coords back to the scanned image's
+            # coordinate space, then offset into the original (region scans).
             bbox = adapter_fn(raw_item.get("bounding_box"), scan_w, scan_h)
             if bbox is not None:
                 left, upper, right, lower = bbox
-                if scan_w != orig_w:
-                    sx = orig_w / scan_w
-                    sy = orig_h / scan_h
+                if scan_w != base_w:
+                    sx = base_w / scan_w
+                    sy = base_h / scan_h
                     left = round(left * sx)
                     upper = round(upper * sy)
                     right = round(right * sx)
                     lower = round(lower * sy)
+                left += offset_x
+                right += offset_x
+                upper += offset_y
+                lower += offset_y
                 item_crop = ItemCrop(
                     id=str(uuid.uuid4()),
                     item_id=item.id,

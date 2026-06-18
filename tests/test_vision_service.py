@@ -290,3 +290,84 @@ def test_estimate_cost_unknown_model(isolated_db, monkeypatch):
     monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: isolated_db)
     result = vision_svc.estimate_cost(1, "unknown/model")
     assert result == "~$?"
+
+
+def test_process_one_image_region_scan_offsets_bbox(isolated_db, monkeypatch, tmp_path):
+    """A region scan crops the original image, scans it, and offsets returned
+    bboxes back into original-image coords. It must run even when the file is
+    already marked scanned."""
+    from PIL import Image
+
+    img_path = tmp_path / "big.jpg"
+    Image.new("RGB", (400, 400), color="white").save(img_path)
+
+    matter = Matter(policyholder_name="Owner", loss_type="total_loss")
+    isolated_db.add(matter)
+    isolated_db.flush()
+
+    ef = EvidenceFile(
+        matter_id=matter.id,
+        filename="big.jpg",
+        stored_path=str(img_path),
+        mime_type="image/jpeg",
+        kind="image",
+        size_bytes=img_path.stat().st_size,
+        scanned=True,  # region scans bypass the already-scanned skip guard
+    )
+    isolated_db.add(ef)
+    isolated_db.flush()
+
+    job = VisionJob(matter_id=matter.id, model_slug="anthropic/claude-opus-4", status="running")
+    isolated_db.add(job)
+    isolated_db.flush()
+    ji = VisionJobImage(
+        job_id=job.id,
+        evidence_file_id=ef.id,
+        status="running",
+        region_left=100,
+        region_upper=100,
+        region_right=300,
+        region_lower=300,
+    )
+    isolated_db.add(ji)
+    isolated_db.commit()
+    ji_id = ji.id
+    matter_id = matter.id  # capture before session is closed by process_one_image
+
+    _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
+
+    # bbox spans the full 200x200 crop; pixel_passthrough's 15% padding clamps
+    # back to the crop bounds, so after the region offset the crop lands exactly
+    # on (100, 100, 300, 300) in original-image coords.
+    fake_response = json.dumps(
+        [
+            {
+                "description": "Floor lamp",
+                "category_hint": "Miscellaneous household goods",
+                "quantity": 1,
+                "condition": "average",
+                "bounding_box": [0, 0, 200, 200],
+            }
+        ]
+    )
+
+    with patch(
+        "cvp.services.vision.openrouter.call_vision", return_value=fake_response
+    ) as mock_call:
+        vision_svc.process_one_image(ji_id)
+        mock_call.assert_called_once()
+
+    items = isolated_db.query(Item).filter_by(matter_id=matter_id).all()
+    assert len(items) == 1
+    crop = isolated_db.query(ItemCrop).filter_by(item_id=items[0].id).one()
+    assert (crop.bbox_left, crop.bbox_upper, crop.bbox_right, crop.bbox_lower) == (
+        100,
+        100,
+        300,
+        300,
+    )
+
+    isolated_db.expire_all()
+    ji = isolated_db.get(VisionJobImage, ji_id)
+    assert ji.status == "done"
+    assert ji.items_created == 1
