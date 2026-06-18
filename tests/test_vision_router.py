@@ -205,6 +205,7 @@ def test_region_scan_requires_last_used_model(client_contributor, db_session, mo
 
 
 def test_poll_scan_status_returns_json(client_contributor, db_session, monkeypatch):
+    monkeypatch.setattr("cvp.routers.vision.SessionLocal", lambda: db_session)
     monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: db_session)
     job = VisionJob(matter_id=MATTER_ID, model_slug="anthropic/claude-opus-4", status="done")
     db_session.add(job)
@@ -219,3 +220,19 @@ def test_poll_scan_status_returns_json(client_contributor, db_session, monkeypat
     data = resp.json()
     assert data["status"] == "done"
     assert data["items_created"] == 2
+
+
+def test_poll_scan_status_rejects_foreign_matter(client_contributor, db_session, monkeypatch):
+    monkeypatch.setattr("cvp.routers.vision.SessionLocal", lambda: db_session)
+    # Job belongs to a different matter than the one in the request path.
+    other = Matter(id="matter-other", policyholder_name="Other", loss_type="total_loss")
+    db_session.add(other)
+    db_session.flush()
+    job = VisionJob(
+        matter_id="matter-other", model_slug="anthropic/claude-opus-4", status="running"
+    )
+    db_session.add(job)
+    db_session.commit()
+
+    resp = client_contributor.get(f"/api/matters/{MATTER_ID}/vision-scan/{job.id}/status")
+    assert resp.status_code == 404

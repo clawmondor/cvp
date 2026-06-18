@@ -211,19 +211,6 @@ async def region_scan(
         if ef is None or ef.kind != "image":
             return JSONResponse({"error": "image not found"}, status_code=404)
 
-        upload_base = Path(settings.upload_dir).resolve()
-        with Image.open((upload_base / ef.stored_path).resolve()) as img:
-            img_w, img_h = img.size
-
-        if body.left >= body.right or body.upper >= body.lower:
-            return JSONResponse(
-                {"error": "left must be < right and upper must be < lower"}, status_code=422
-            )
-        if not (0 <= body.left <= img_w and 0 <= body.right <= img_w):
-            return JSONResponse({"error": f"x out of range [0, {img_w}]"}, status_code=422)
-        if not (0 <= body.upper <= img_h and 0 <= body.lower <= img_h):
-            return JSONResponse({"error": f"y out of range [0, {img_h}]"}, status_code=422)
-
         u = db.query(User).filter_by(id=user.id).first()
         model_slug = u.last_vision_model_slug if u else None
         if not model_slug:
@@ -236,6 +223,19 @@ async def region_scan(
             return JSONResponse(
                 {"error": f"Last-used model unavailable: {model_slug}"}, status_code=400
             )
+
+        upload_base = Path(settings.upload_dir).resolve()
+        with Image.open((upload_base / ef.stored_path).resolve()) as img:
+            img_w, img_h = img.size
+
+        if body.left >= body.right or body.upper >= body.lower:
+            return JSONResponse(
+                {"error": "left must be < right and upper must be < lower"}, status_code=422
+            )
+        if not (0 <= body.left <= img_w and 0 <= body.right <= img_w):
+            return JSONResponse({"error": f"x out of range [0, {img_w}]"}, status_code=422)
+        if not (0 <= body.upper <= img_h and 0 <= body.lower <= img_h):
+            return JSONResponse({"error": f"y out of range [0, {img_h}]"}, status_code=422)
 
         matter_id = ef.matter_id
         job = VisionJob(
@@ -281,4 +281,11 @@ def poll_scan_status(
     job_id: str,
     user: CurrentUser = Depends(require_matter_role("contributor")),
 ) -> JSONResponse:
+    db = SessionLocal()
+    try:
+        job = db.get(VisionJob, job_id)
+        if job is None or job.matter_id != matter_id:
+            return JSONResponse({"error": "not found"}, status_code=404)
+    finally:
+        db.close()
     return JSONResponse(vision_svc.get_job_data(job_id))
