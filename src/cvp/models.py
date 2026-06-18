@@ -289,9 +289,27 @@ class VisionJobImage(Base):
     status: Mapped[str] = mapped_column(String, default="pending")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     items_created: Mapped[int] = mapped_column(Integer, default=0)
+    # Region rescan: when all four are set, the worker scans only this
+    # sub-rectangle of the evidence image (original-image pixel coords).
+    region_left: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    region_upper: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    region_right: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    region_lower: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    @property
+    def region_bbox(self) -> tuple[int, int, int, int] | None:
+        vals = (self.region_left, self.region_upper, self.region_right, self.region_lower)
+        if all(v is not None for v in vals):
+            return (
+                self.region_left,
+                self.region_upper,
+                self.region_right,
+                self.region_lower,
+            )
+        return None
 
     job: Mapped["VisionJob"] = relationship("VisionJob", back_populates="images")
 
