@@ -1,13 +1,21 @@
 """Tests for the items-totals helper and the items-summary endpoint."""
 
+import inspect
+
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import cvp.models_vision  # noqa: F401
+from cvp.db import get_db
+from cvp.dependencies import CurrentUser
+from cvp.main import app
 from cvp.models import Base, Category, Item, Matter
+from cvp.models_auth import User
 from cvp.routers.items import compute_items_totals
+from cvp.services import access_cache
 
 MATTER_ID = "m-totals"
 
@@ -103,16 +111,6 @@ def test_missing_price_counts_confirmed_zero_rcv(db_session):
 # ---------------------------------------------------------------------------
 # Endpoint tests — GET /api/matters/{matter_id}/items-summary
 # ---------------------------------------------------------------------------
-
-import inspect
-
-from fastapi.testclient import TestClient
-
-from cvp.db import get_db
-from cvp.dependencies import CurrentUser
-from cvp.main import app
-from cvp.models_auth import User
-from cvp.services import access_cache
 
 VIEWER_ID = "v-totals"
 
