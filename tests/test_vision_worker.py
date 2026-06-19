@@ -150,3 +150,23 @@ def test_worker_processes_pending_row(db, Session, monkeypatch):
         time.sleep(0.05)
 
     assert ji_id in processed
+
+
+def test_region_bbox_property():
+    from cvp.models import VisionJobImage
+
+    none_set = VisionJobImage(job_id="j", evidence_file_id="ef1")
+    assert none_set.region_bbox is None
+
+    all_set = VisionJobImage(
+        job_id="j",
+        evidence_file_id="ef1",
+        region_left=10,
+        region_upper=20,
+        region_right=110,
+        region_lower=120,
+    )
+    assert all_set.region_bbox == (10, 20, 110, 120)
+
+    partial = VisionJobImage(job_id="j", evidence_file_id="ef1", region_left=10)
+    assert partial.region_bbox is None

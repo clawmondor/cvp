@@ -290,3 +290,160 @@ def test_estimate_cost_unknown_model(isolated_db, monkeypatch):
     monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: isolated_db)
     result = vision_svc.estimate_cost(1, "unknown/model")
     assert result == "~$?"
+
+
+def test_region_scan_uses_drawn_region_as_crop(isolated_db, monkeypatch, tmp_path):
+    """A region scan ignores the model's per-item bounding box and uses the
+    user-drawn region as the crop bbox, so no second model-derived box appears
+    on the image. It must run even when the file is already marked scanned."""
+    from PIL import Image
+
+    img_path = tmp_path / "big.jpg"
+    Image.new("RGB", (400, 400), color="white").save(img_path)
+
+    matter = Matter(policyholder_name="Owner", loss_type="total_loss")
+    isolated_db.add(matter)
+    isolated_db.flush()
+
+    ef = EvidenceFile(
+        matter_id=matter.id,
+        filename="big.jpg",
+        stored_path=str(img_path),
+        mime_type="image/jpeg",
+        kind="image",
+        size_bytes=img_path.stat().st_size,
+        scanned=True,  # region scans bypass the already-scanned skip guard
+    )
+    isolated_db.add(ef)
+    isolated_db.flush()
+
+    job = VisionJob(matter_id=matter.id, model_slug="anthropic/claude-opus-4", status="running")
+    isolated_db.add(job)
+    isolated_db.flush()
+    ji = VisionJobImage(
+        job_id=job.id,
+        evidence_file_id=ef.id,
+        status="running",
+        region_left=100,
+        region_upper=100,
+        region_right=300,
+        region_lower=300,
+    )
+    isolated_db.add(ji)
+    isolated_db.commit()
+    ji_id = ji.id
+    matter_id = matter.id  # capture before session is closed by process_one_image
+
+    _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
+
+    # The model returns a small partial box inside the crop; the worker must
+    # ignore it and use the full drawn region (100, 100, 300, 300) as the crop.
+    fake_response = json.dumps(
+        [
+            {
+                "description": "Floor lamp",
+                "category_hint": "Miscellaneous household goods",
+                "quantity": 1,
+                "condition": "average",
+                "bounding_box": [10, 10, 60, 60],
+            }
+        ]
+    )
+
+    with patch(
+        "cvp.services.vision.openrouter.call_vision", return_value=fake_response
+    ) as mock_call:
+        vision_svc.process_one_image(ji_id)
+        mock_call.assert_called_once()
+
+    items = isolated_db.query(Item).filter_by(matter_id=matter_id).all()
+    assert len(items) == 1
+    crop = isolated_db.query(ItemCrop).filter_by(item_id=items[0].id).one()
+    assert (crop.bbox_left, crop.bbox_upper, crop.bbox_right, crop.bbox_lower) == (
+        100,
+        100,
+        300,
+        300,
+    )
+
+    isolated_db.expire_all()
+    ji = isolated_db.get(VisionJobImage, ji_id)
+    assert ji.status == "done"
+    assert ji.items_created == 1
+
+
+def test_region_scan_crop_equals_region_regardless_of_model_box(isolated_db, monkeypatch, tmp_path):
+    """Even when the model reports several boxes far from the drawn region, every
+    item from a region scan gets the drawn region as its crop bbox."""
+    from PIL import Image
+
+    img_path = tmp_path / "big.jpg"
+    Image.new("RGB", (800, 800), color="white").save(img_path)
+
+    matter = Matter(policyholder_name="Owner", loss_type="total_loss")
+    isolated_db.add(matter)
+    isolated_db.flush()
+    matter_id = matter.id
+
+    ef = EvidenceFile(
+        matter_id=matter_id,
+        filename="big.jpg",
+        stored_path=str(img_path),
+        mime_type="image/jpeg",
+        kind="image",
+        size_bytes=img_path.stat().st_size,
+    )
+    isolated_db.add(ef)
+    isolated_db.flush()
+
+    job = VisionJob(matter_id=matter_id, model_slug="anthropic/claude-opus-4", status="running")
+    isolated_db.add(job)
+    isolated_db.flush()
+    region = (300, 300, 500, 500)
+    ji = VisionJobImage(
+        job_id=job.id,
+        evidence_file_id=ef.id,
+        status="running",
+        region_left=region[0],
+        region_upper=region[1],
+        region_right=region[2],
+        region_lower=region[3],
+    )
+    isolated_db.add(ji)
+    isolated_db.commit()
+    ji_id = ji.id
+
+    _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
+
+    # Two items with different model boxes; both must end up cropped to `region`.
+    fake_response = json.dumps(
+        [
+            {
+                "description": "Table lamp",
+                "category_hint": "Miscellaneous household goods",
+                "quantity": 1,
+                "condition": "average",
+                "bounding_box": [0, 0, 40, 40],
+            },
+            {
+                "description": "Picture frame",
+                "category_hint": "Miscellaneous household goods",
+                "quantity": 1,
+                "condition": "average",
+                "bounding_box": [150, 150, 200, 200],
+            },
+        ]
+    )
+
+    with patch("cvp.services.vision.openrouter.call_vision", return_value=fake_response):
+        vision_svc.process_one_image(ji_id)
+
+    crops = (
+        isolated_db.query(ItemCrop)
+        .join(Item, ItemCrop.item_id == Item.id)
+        .filter(Item.matter_id == matter_id)
+        .all()
+    )
+    assert len(crops) == 2
+    for crop in crops:
+        assert (crop.bbox_left, crop.bbox_upper, crop.bbox_right, crop.bbox_lower) == region
