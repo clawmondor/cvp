@@ -16,9 +16,9 @@ from cvp.dependencies import CurrentUser, require_active_user, require_matter_ro
 from cvp.models import Category, EvidenceFile, Item, ItemGroup, Matter, VisionJob, VisionJobImage
 from cvp.models_auth import User as UserORM
 from cvp.models_vision import VisionModel
+from cvp.routers.items import compute_items_totals
 from cvp.services import runtime_config
 from cvp.services.audit import get_client_ip, should_debounce_view, write_audit_log
-from cvp.routers.items import compute_items_totals
 from cvp.services.pagination import paginate_by_cursor
 
 BASE_DIR = Path(__file__).parent.parent
