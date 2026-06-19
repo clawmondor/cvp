@@ -98,3 +98,84 @@ def test_missing_price_counts_confirmed_zero_rcv(db_session):
     db_session.commit()
     totals = compute_items_totals(MATTER_ID, db_session)
     assert totals["missing_price_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Endpoint tests — GET /api/matters/{matter_id}/items-summary
+# ---------------------------------------------------------------------------
+
+import inspect
+
+from fastapi.testclient import TestClient
+
+from cvp.db import get_db
+from cvp.dependencies import CurrentUser
+from cvp.main import app
+from cvp.models_auth import User
+from cvp.services import access_cache
+
+VIEWER_ID = "v-totals"
+
+
+@pytest.fixture(autouse=True)
+def _clear_access_cache():
+    access_cache._cache.clear()
+    yield
+    access_cache._cache.clear()
+
+
+@pytest.fixture
+def client(db_session, monkeypatch):
+    db_session.add(
+        User(id=VIEWER_ID, email="v@t.com", display_name="V", system_role="internal_user")
+    )
+    db_session.commit()
+
+    import cvp.routers.items as items_router
+
+    async def mock_viewer():
+        return CurrentUser(
+            id=VIEWER_ID,
+            email="v@t.com",
+            system_role="internal_user",
+            group_id=None,
+            group_kind="internal",
+        )
+
+    def override_get_db():
+        yield db_session
+
+    dep = inspect.signature(items_router.get_items_summary).parameters["user"].default.dependency
+    app.dependency_overrides[dep] = mock_viewer
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr("cvp.routers.items.SessionLocal", lambda: db_session)
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+def test_items_summary_renders_totals(client, db_session):
+    _add_item(
+        db_session,
+        line=1,
+        confirmed=True,
+        excluded=False,
+        rcv_total=10000,
+        acv_total=8000,
+        rcv_unit=10000,
+    )
+    db_session.commit()
+    resp = client.get(f"/api/matters/{MATTER_ID}/items-summary")
+    assert resp.status_code == 200
+    body = resp.text
+    assert 'id="items-summary"' in body
+    assert "$100.00" in body  # RCV total
+    assert "$80.00" in body  # ACV total
+    assert 'hx-trigger="item-created from:body"' in body
+
+
+def test_items_summary_empty_matter_renders_no_totals_row(client):
+    resp = client.get(f"/api/matters/{MATTER_ID}/items-summary")
+    assert resp.status_code == 200
+    assert 'id="items-summary"' in resp.text
+    assert "RCV total" not in resp.text

@@ -178,6 +178,22 @@ def get_items_rows(
     )
 
 
+@router.get("/api/matters/{matter_id}/items-summary", response_class=HTMLResponse)
+def get_items_summary(
+    matter_id: str,
+    user: CurrentUser = Depends(require_matter_role("viewer")),
+) -> HTMLResponse:
+    """Render the Confirmed / RCV total / ACV total summary block."""
+    db = SessionLocal()
+    try:
+        totals = compute_items_totals(matter_id, db)
+    finally:
+        db.close()
+    return HTMLResponse(
+        templates.get_template("_items_summary.html").render(matter_id=matter_id, **totals)
+    )
+
+
 @router.post("/api/matters/{matter_id}/items", response_class=HTMLResponse)
 def create_item(
     request: Request,
