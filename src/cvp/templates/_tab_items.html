@@ -1,5 +1,15 @@
 <div class="space-y-4">
 
+  <!-- New-items banner: shown by app.js when a scan/region rescan adds items -->
+  <div id="items-new-banner" data-matter-id="{{ matter.id }}"
+       class="hidden flex items-center justify-between gap-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-800">
+    <span><span aria-hidden="true">✦</span> <span data-new-items-label>New items added</span></span>
+    <button type="button" data-view-new-items
+            class="rounded-md bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-500">
+      View them →
+    </button>
+  </div>
+
   <!-- Add item form -->
   <details id="add-item-details" class="rounded-lg border border-gray-200 bg-white shadow-sm">
     <summary class="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 select-none">

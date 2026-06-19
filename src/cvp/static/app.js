@@ -613,3 +613,72 @@ document.addEventListener('change', function (e) {
         if (hidden) hidden.value = '';
     }
 });
+
+// ---- Live items list: surface scan / region-rescan results -------------
+// Both the full-scan HTMX poll and the region-scan JSON poll converge on a
+// single document event: cvp:items-added {detail:{matterId, jobId, count}}.
+(function () {
+  var handledScanJobs = new Set();
+  var newItemsCount = 0;
+
+  // Detect full-scan completion from the swapped scan-progress fragment.
+  document.addEventListener('htmx:afterSwap', function (e) {
+    var root = e.target;
+    if (!root || !root.querySelector) return;
+    var el = (root.matches && root.matches('[data-scan-state]'))
+      ? root
+      : root.querySelector('[data-scan-state]');
+    if (!el) return;
+    var state = el.dataset.scanState;
+    if (state !== 'done' && state !== 'error') return;
+    var jobId = el.dataset.jobId;
+    if (!jobId || handledScanJobs.has(jobId)) return;
+    handledScanJobs.add(jobId);
+    var count = parseInt(el.dataset.itemsCreated, 10) || 0;
+    if (count <= 0) return;
+    document.dispatchEvent(new CustomEvent('cvp:items-added', {
+      detail: { matterId: el.dataset.matterId, jobId: jobId, count: count }
+    }));
+  });
+
+  // Accumulate count + reveal the banner.
+  document.addEventListener('cvp:items-added', function (e) {
+    var detail = e.detail || {};
+    newItemsCount += (detail.count || 0);
+    var banner = document.getElementById('items-new-banner');
+    if (!banner) return;
+    if (detail.matterId) banner.dataset.matterId = detail.matterId;
+    var label = banner.querySelector('[data-new-items-label]');
+    if (label) {
+      label.textContent =
+        newItemsCount + ' new item' + (newItemsCount === 1 ? '' : 's') + ' added';
+    }
+    banner.classList.remove('hidden');
+  });
+
+  // "View them": dedup-safe page-1 refresh + totals refresh + scroll to bottom.
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-view-new-items]');
+    if (!btn || !window.htmx) return;
+    var banner = document.getElementById('items-new-banner');
+    var matterId = banner ? banner.dataset.matterId : null;
+    if (!matterId) return;
+
+    htmx.ajax('GET', '/api/matters/' + matterId + '/items-rows',
+      { target: '#items-tbody', swap: 'innerHTML' });
+    htmx.ajax('GET', '/api/matters/' + matterId + '/items-summary',
+      { target: '#items-summary', swap: 'outerHTML' });
+
+    newItemsCount = 0;
+    if (banner) banner.classList.add('hidden');
+
+    var onSettle = function (ev) {
+      if (ev.detail && ev.detail.target && ev.detail.target.id === 'items-tbody') {
+        document.removeEventListener('htmx:afterSettle', onSettle);
+        var tbody = document.getElementById('items-tbody');
+        if (tbody) tbody.scrollIntoView({ block: 'end', behavior: 'smooth' });
+      }
+    };
+    document.addEventListener('htmx:afterSettle', onSettle);
+  });
+})();
