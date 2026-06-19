@@ -289,7 +289,7 @@ def process_one_image(job_image_id: str) -> None:
 
         # `base_*` is the coordinate space the model sees before any downscale:
         # the full image for a whole-image scan, or the region crop for a region
-        # scan. `offset_*` shifts region-relative coords back into the original.
+        # scan.
         region = job_image.region_bbox
         with Image.open(image_path) as img:
             orig_w, orig_h = img.size
@@ -300,12 +300,10 @@ def process_one_image(job_image_id: str) -> None:
                 image_bytes = buf.getvalue()
                 mime = "image/jpeg"
                 base_w, base_h = region[2] - region[0], region[3] - region[1]
-                offset_x, offset_y = region[0], region[1]
             else:
                 image_bytes = image_path.read_bytes()
                 mime = ef.mime_type or "image/jpeg"
                 base_w, base_h = orig_w, orig_h
-                offset_x, offset_y = 0, 0
 
         # Downscale only if >1 MB.
         scan_w, scan_h = base_w, base_h
@@ -376,22 +374,27 @@ def process_one_image(job_image_id: str) -> None:
             db.add(item)
             db.flush()
 
-            # Scale bbox from downscaled coords back to the scanned image's
-            # coordinate space, then offset into the original (region scans).
-            bbox = adapter_fn(raw_item.get("bounding_box"), scan_w, scan_h)
-            if bbox is not None:
-                left, upper, right, lower = bbox
-                if scan_w != base_w:
+            # For a region scan the user drew the exact crop, so use that region
+            # as the crop bbox and ignore the model's per-item box — we don't
+            # want a second, model-derived box on the image. For a whole-image
+            # scan, use the model's bbox scaled back from any downscale into
+            # original-image coordinates.
+            if region is not None:
+                bbox = region
+            else:
+                bbox = adapter_fn(raw_item.get("bounding_box"), scan_w, scan_h)
+                if bbox is not None and scan_w != base_w:
                     sx = base_w / scan_w
                     sy = base_h / scan_h
-                    left = round(left * sx)
-                    upper = round(upper * sy)
-                    right = round(right * sx)
-                    lower = round(lower * sy)
-                left += offset_x
-                right += offset_x
-                upper += offset_y
-                lower += offset_y
+                    left, upper, right, lower = bbox
+                    bbox = (
+                        round(left * sx),
+                        round(upper * sy),
+                        round(right * sx),
+                        round(lower * sy),
+                    )
+            if bbox is not None:
+                left, upper, right, lower = bbox
                 item_crop = ItemCrop(
                     id=str(uuid.uuid4()),
                     item_id=item.id,

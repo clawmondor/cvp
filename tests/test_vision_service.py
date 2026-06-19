@@ -292,10 +292,10 @@ def test_estimate_cost_unknown_model(isolated_db, monkeypatch):
     assert result == "~$?"
 
 
-def test_process_one_image_region_scan_offsets_bbox(isolated_db, monkeypatch, tmp_path):
-    """A region scan crops the original image, scans it, and offsets returned
-    bboxes back into original-image coords. It must run even when the file is
-    already marked scanned."""
+def test_region_scan_uses_drawn_region_as_crop(isolated_db, monkeypatch, tmp_path):
+    """A region scan ignores the model's per-item bounding box and uses the
+    user-drawn region as the crop bbox, so no second model-derived box appears
+    on the image. It must run even when the file is already marked scanned."""
     from PIL import Image
 
     img_path = tmp_path / "big.jpg"
@@ -336,9 +336,8 @@ def test_process_one_image_region_scan_offsets_bbox(isolated_db, monkeypatch, tm
 
     _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
 
-    # bbox spans the full 200x200 crop; pixel_passthrough's 15% padding clamps
-    # back to the crop bounds, so after the region offset the crop lands exactly
-    # on (100, 100, 300, 300) in original-image coords.
+    # The model returns a small partial box inside the crop; the worker must
+    # ignore it and use the full drawn region (100, 100, 300, 300) as the crop.
     fake_response = json.dumps(
         [
             {
@@ -346,7 +345,7 @@ def test_process_one_image_region_scan_offsets_bbox(isolated_db, monkeypatch, tm
                 "category_hint": "Miscellaneous household goods",
                 "quantity": 1,
                 "condition": "average",
-                "bounding_box": [0, 0, 200, 200],
+                "bounding_box": [10, 10, 60, 60],
             }
         ]
     )
@@ -373,24 +372,13 @@ def test_process_one_image_region_scan_offsets_bbox(isolated_db, monkeypatch, tm
     assert ji.items_created == 1
 
 
-def test_process_one_image_region_scan_downscales_and_offsets(isolated_db, monkeypatch, tmp_path):
-    """Region crop large enough to trigger the >1MB downscale: verifies the
-    scale-back-from-downscale and region-offset coordinate math together.
-
-    Random noise compresses poorly, so a 2400x2400 image guarantees the
-    2000x2000 region crop's JPEG exceeds the 1MB downscale threshold (the crop
-    is downscaled to long-edge 1568px before scanning). A full-frame model bbox
-    in that 1568px scan space scales back to the 2000px crop and offsets by the
-    region origin (200, 200) -> (200, 200, 2200, 2200) in original-image coords.
-    """
-    import os
-
+def test_region_scan_crop_equals_region_regardless_of_model_box(isolated_db, monkeypatch, tmp_path):
+    """Even when the model reports several boxes far from the drawn region, every
+    item from a region scan gets the drawn region as its crop bbox."""
     from PIL import Image
 
-    side = 2400
-    img = Image.frombytes("RGB", (side, side), os.urandom(side * side * 3))
-    img_path = tmp_path / "noise.jpg"
-    img.save(img_path, "JPEG", quality=95)
+    img_path = tmp_path / "big.jpg"
+    Image.new("RGB", (800, 800), color="white").save(img_path)
 
     matter = Matter(policyholder_name="Owner", loss_type="total_loss")
     isolated_db.add(matter)
@@ -399,7 +387,7 @@ def test_process_one_image_region_scan_downscales_and_offsets(isolated_db, monke
 
     ef = EvidenceFile(
         matter_id=matter_id,
-        filename="noise.jpg",
+        filename="big.jpg",
         stored_path=str(img_path),
         mime_type="image/jpeg",
         kind="image",
@@ -411,14 +399,15 @@ def test_process_one_image_region_scan_downscales_and_offsets(isolated_db, monke
     job = VisionJob(matter_id=matter_id, model_slug="anthropic/claude-opus-4", status="running")
     isolated_db.add(job)
     isolated_db.flush()
+    region = (300, 300, 500, 500)
     ji = VisionJobImage(
         job_id=job.id,
         evidence_file_id=ef.id,
         status="running",
-        region_left=200,
-        region_upper=200,
-        region_right=2200,
-        region_lower=2200,
+        region_left=region[0],
+        region_upper=region[1],
+        region_right=region[2],
+        region_lower=region[3],
     )
     isolated_db.add(ji)
     isolated_db.commit()
@@ -426,27 +415,35 @@ def test_process_one_image_region_scan_downscales_and_offsets(isolated_db, monke
 
     _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
 
-    # Full-frame bbox in the downscaled (1568px long-edge) crop's pixel space.
+    # Two items with different model boxes; both must end up cropped to `region`.
     fake_response = json.dumps(
         [
             {
-                "description": "Sectional sofa",
+                "description": "Table lamp",
                 "category_hint": "Miscellaneous household goods",
                 "quantity": 1,
                 "condition": "average",
-                "bounding_box": [0, 0, 1568, 1568],
-            }
+                "bounding_box": [0, 0, 40, 40],
+            },
+            {
+                "description": "Picture frame",
+                "category_hint": "Miscellaneous household goods",
+                "quantity": 1,
+                "condition": "average",
+                "bounding_box": [150, 150, 200, 200],
+            },
         ]
     )
 
     with patch("cvp.services.vision.openrouter.call_vision", return_value=fake_response):
         vision_svc.process_one_image(ji_id)
 
-    items = isolated_db.query(Item).filter_by(matter_id=matter_id).all()
-    assert len(items) == 1
-    crop = isolated_db.query(ItemCrop).filter_by(item_id=items[0].id).one()
-    # Scaled back to the 2000px crop and offset by the region origin (200, 200).
-    assert abs(crop.bbox_left - 200) <= 2
-    assert abs(crop.bbox_upper - 200) <= 2
-    assert abs(crop.bbox_right - 2200) <= 2
-    assert abs(crop.bbox_lower - 2200) <= 2
+    crops = (
+        isolated_db.query(ItemCrop)
+        .join(Item, ItemCrop.item_id == Item.id)
+        .filter(Item.matter_id == matter_id)
+        .all()
+    )
+    assert len(crops) == 2
+    for crop in crops:
+        assert (crop.bbox_left, crop.bbox_upper, crop.bbox_right, crop.bbox_lower) == region
