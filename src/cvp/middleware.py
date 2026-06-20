@@ -27,7 +27,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "script-src 'self' https://unpkg.com https://cdn.tailwindcss.com"
             " https://cvp.cmondor.com https://static.cloudflareinsights.com; "
             "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
-            "img-src 'self' data: https://*.gstatic.com; "
+            "img-src 'self' data: https://*.gstatic.com https://*.google.com https://*.bing.com https://*.duckduckgo.com; "
             "connect-src 'self'"
         )
 
