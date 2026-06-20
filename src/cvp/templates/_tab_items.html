@@ -1,5 +1,7 @@
 <div class="space-y-4">
 
+  {% set matter_id = matter.id %}
+
   <!-- New-items banner: shown by app.js when a scan/region rescan adds items -->
   <div id="items-new-banner" data-matter-id="{{ matter.id }}"
        class="hidden flex items-center justify-between gap-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-800">
@@ -108,7 +110,6 @@
     </table>
   </div>
 
-  {% set matter_id = matter.id %}
   {% include "_items_summary.html" %}
 
 </div>
