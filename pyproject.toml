@@ -55,3 +55,5 @@ select = ["E", "F", "I"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/cvp/services/vision_prompts.py" = ["E501"]
+# Prompt-text fragments for each adapter are long, formatted strings.
+"src/cvp/services/vision_adapters.py" = ["E501"]

@@ -1,5 +1,6 @@
 # tests/test_vision_adapters.py
 from cvp.services.vision_adapters import (
+    bbox_prompt,
     gemini_normalized_1000,
     none_adapter,
     pixel_passthrough,
@@ -64,3 +65,28 @@ class TestResolve:
 
     def test_unknown_falls_back_to_none(self):
         assert resolve("does_not_exist") is none_adapter
+
+
+class TestBboxPrompt:
+    """The prompt fragment must elicit coordinates in the format the matching
+    decode function expects — otherwise the model and adapter disagree and
+    boxes come out wrong (the Gemini full-height-box bug)."""
+
+    def test_pixel_uses_left_upper_right_lower(self):
+        bp = bbox_prompt("pixel_passthrough", 1024, 768)
+        assert "[left, upper, right, lower]" in bp.field
+        assert "pixel coordinates" in bp.field
+        assert "1024" in bp.intro
+        assert "768" in bp.intro
+
+    def test_gemini_uses_normalized_ymin_xmin(self):
+        bp = bbox_prompt("gemini_normalized_1000", 1024, 768)
+        assert "[ymin, xmin, ymax, xmax]" in bp.field
+        assert "1000" in bp.field
+        # Must NOT ask Gemini for pixel left/upper/right/lower — that contract
+        # mismatch is exactly what corrupts the vertical coordinates.
+        assert "[left, upper, right, lower]" not in bp.field
+
+    def test_unknown_adapter_falls_back_to_pixel(self):
+        bp = bbox_prompt("does_not_exist", 800, 600)
+        assert "[left, upper, right, lower]" in bp.field
