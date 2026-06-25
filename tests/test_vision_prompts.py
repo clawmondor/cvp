@@ -43,3 +43,15 @@ def test_build_scan_prompt_bbox_example_coordinates_are_in_bounds():
     assert "427" in prompt
     assert "620" in prompt
     assert "408" in prompt
+
+
+def test_build_scan_prompt_default_adapter_uses_pixel_format():
+    prompt = build_scan_prompt(1024, 768)
+    assert "[left, upper, right, lower]" in prompt
+
+
+def test_build_scan_prompt_gemini_adapter_uses_normalized_format():
+    prompt = build_scan_prompt(1024, 768, adapter="gemini_normalized_1000")
+    assert "[ymin, xmin, ymax, xmax]" in prompt
+    # The pixel contract must not leak into the Gemini prompt.
+    assert "[left, upper, right, lower]" not in prompt

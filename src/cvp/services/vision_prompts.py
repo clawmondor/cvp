@@ -7,10 +7,12 @@ v3 — merged from:
 v4 — adds placard_text top-level field so numbered/labeled placards are never extracted as items.
 """
 
+from cvp.services.vision_adapters import bbox_prompt
+
 # NOTE: ruff E501 (line length) is suppressed for this file in pyproject.toml
 _SCAN_PROMPT_V4_TEMPLATE = """You are an expert contents inventory specialist helping document personal property for an insurance claim. Your goal is to produce line items detailed enough that a pricing researcher can find an exact or near-exact replacement on a retail website within 60 seconds.
 
-The image is exactly {width}×{height} pixels (width × height). All bounding box coordinates must be within these bounds.
+{bbox_intro}
 
 Sometimes the photo contains a numbered or labeled placard, sticky note, index card, or organizational marker that the photographer has placed in the frame — usually on the floor, on a shelf, or held in front of the items — to group nearby items together. This is metadata, NOT a personal property item. Never include the placard, sticky note, or marker as an item in the items array, and ignore it for bounding-box and quantity decisions. A price tag, hangtag, or label physically attached to merchandise is NOT a placard — those stay with the item they belong to. Return the placard's raw text in a separate top-level field called "placard_text". If no placard is visible, return "placard_text": "".
 
@@ -18,15 +20,7 @@ Examine this photo carefully and identify every distinct personal property item 
 
 Return ONLY a JSON object with these exact top-level keys: "items" (array) and "placard_text" (string, empty when no placard is visible). No preamble, explanation, or markdown fences. Each object inside "items" must have these exact keys:
 
-- "bounding_box": [left, upper, right, lower] — pixel coordinates of the item's bounding box relative to the original image dimensions (top-left origin, x increases right, y increases down).
-  Estimate carefully; every item MUST have one. Ensure 0 ≤ left < right ≤ {width} and 0 ≤ upper < lower ≤ {height}.
-  Be GENEROUS — it is far better to include extra background than to clip any part of the item.
-  Extend each edge an extra 10–15% past where you think the item ends.
-  Include the full item extent: soles of footwear, legs of furniture, handles, straps, and any protruding parts.
-  For footwear, always extend the lower edge to include the complete sole resting on the surface.
-  Bounding boxes MAY overlap with the bounding boxes of other items — this is expected and encouraged.
-  Do NOT shrink a box to avoid overlapping a neighbor; always prioritize capturing the full item.
-  Example for an item in the right third of this image: [{ex_left}, 100, {ex_right}, {ex_lower}]
+{bbox_field}
 
 - "description": specific item name including any size, color, material, or style visible
   (e.g. "65-inch Samsung QLED 4K Smart TV", "gray L-shaped microfiber sectional sofa",
@@ -89,12 +83,12 @@ Rules:
 SCAN_PROMPT_VERSION = "v4"
 
 
-def build_scan_prompt(width: int, height: int) -> str:
-    """Return the v4 scan prompt with actual image dimensions substituted in."""
-    return _SCAN_PROMPT_V4_TEMPLATE.format(
-        width=width,
-        height=height,
-        ex_left=round(width * 2 / 3),
-        ex_right=width - 20,
-        ex_lower=round(height * 0.85),
-    )
+def build_scan_prompt(width: int, height: int, adapter: str = "pixel_passthrough") -> str:
+    """Return the v4 scan prompt for ``adapter``'s coordinate format.
+
+    The bounding-box instructions are supplied by the adapter so the prompt and
+    the decoder always agree on the coordinate format (pixel vs. Gemini's native
+    normalized 0–1000). The default keeps the historical pixel behavior.
+    """
+    bp = bbox_prompt(adapter, width, height)
+    return _SCAN_PROMPT_V4_TEMPLATE.format(bbox_intro=bp.intro, bbox_field=bp.field)

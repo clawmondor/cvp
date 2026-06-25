@@ -13,6 +13,7 @@ visually consistent.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
@@ -88,3 +89,87 @@ def resolve(name: str) -> Callable[[Any, int, int], _PadResult]:
         logger.warning("unknown vision adapter %r — falling back to 'none'", name)
         return none_adapter
     return fn
+
+
+# --- Prompt fragments -------------------------------------------------------
+# Each decode function above expects coordinates in a specific format.  The
+# prompt that elicits those coordinates is defined here, next to the decoder,
+# so the encode (prompt) and decode (adapter) contracts cannot drift apart.
+# They previously lived in vision_prompts.py as a single pixel-only prompt
+# shared by every model; Gemini ignores the pixel instruction and emits its
+# native normalized [ymin, xmin, ymax, xmax] format, so the mismatch produced
+# wildly tall bounding boxes.
+
+# Format-agnostic guidance shared by every coordinate format.
+_GENEROUS_GUIDANCE = (
+    "  Be GENEROUS — it is far better to include extra background than to clip any part of the item.\n"
+    "  Extend each edge an extra 10–15% past where you think the item ends.\n"
+    "  Include the full item extent: soles of footwear, legs of furniture, handles, straps, and any protruding parts.\n"
+    "  For footwear, always extend the lower edge to include the complete sole resting on the surface.\n"
+    "  Bounding boxes MAY overlap with the bounding boxes of other items — this is expected and encouraged.\n"
+    "  Do NOT shrink a box to avoid overlapping a neighbor; always prioritize capturing the full item."
+)
+
+
+@dataclass(frozen=True)
+class BboxPrompt:
+    """The two prompt fragments that elicit coordinates in an adapter's format.
+
+    ``intro`` goes near the top of the scan prompt (image context); ``field`` is
+    the ``"bounding_box"`` bullet in the per-item key list.
+    """
+
+    intro: str
+    field: str
+
+
+def _pixel_bbox_prompt(width: int, height: int) -> BboxPrompt:
+    ex_left = round(width * 2 / 3)
+    ex_right = width - 20
+    ex_lower = round(height * 0.85)
+    intro = (
+        f"The image is exactly {width}×{height} pixels (width × height). "
+        "All bounding box coordinates must be within these bounds."
+    )
+    field = (
+        '- "bounding_box": [left, upper, right, lower] — pixel coordinates of the item\'s '
+        "bounding box relative to the original image dimensions (top-left origin, x increases "
+        "right, y increases down).\n"
+        f"  Estimate carefully; every item MUST have one. Ensure 0 ≤ left < right ≤ {width} "
+        f"and 0 ≤ upper < lower ≤ {height}.\n"
+        f"{_GENEROUS_GUIDANCE}\n"
+        f"  Example for an item in the right third of this image: [{ex_left}, 100, {ex_right}, {ex_lower}]"
+    )
+    return BboxPrompt(intro=intro, field=field)
+
+
+def _gemini_normalized_bbox_prompt(width: int, height: int) -> BboxPrompt:
+    intro = f"This photo is {width}×{height} pixels (width × height)."
+    field = (
+        '- "bounding_box": [ymin, xmin, ymax, xmax] — the item\'s 2D bounding box in your '
+        "native box_2d format: four integers normalized to a 0–1000 scale (top-left origin, "
+        "y increases down, x increases right). Do NOT output raw pixel values.\n"
+        "  Estimate carefully; every item MUST have one. Ensure 0 ≤ ymin < ymax ≤ 1000 "
+        "and 0 ≤ xmin < xmax ≤ 1000.\n"
+        f"{_GENEROUS_GUIDANCE}\n"
+        "  Example for an item in the right third of this image: [100, 666, 850, 980]"
+    )
+    return BboxPrompt(intro=intro, field=field)
+
+
+_BBOX_PROMPTS: dict[str, Callable[[int, int], BboxPrompt]] = {
+    "pixel_passthrough": _pixel_bbox_prompt,
+    "gemini_normalized_1000": _gemini_normalized_bbox_prompt,
+    # "none" never produces usable boxes, but the prompt still needs a shape;
+    # the pixel form is the harmless default.
+    "none": _pixel_bbox_prompt,
+}
+
+
+def bbox_prompt(name: str, width: int, height: int) -> BboxPrompt:
+    """Return the prompt fragments matching adapter ``name``'s coordinate format."""
+    fn = _BBOX_PROMPTS.get(name)
+    if fn is None:
+        logger.warning("no bbox prompt for adapter %r — using pixel format", name)
+        fn = _pixel_bbox_prompt
+    return fn(width, height)

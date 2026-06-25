@@ -273,7 +273,8 @@ def process_one_image(job_image_id: str) -> None:
             _maybe_complete_job(db, job_id)
             return
 
-        adapter_fn = resolve_adapter(vm.adapter)
+        adapter_name = vm.adapter
+        adapter_fn = resolve_adapter(adapter_name)
         categories = db.query(Category).order_by(Category.id).all()
 
         image_path = Path(ef.stored_path)
@@ -324,7 +325,7 @@ def process_one_image(job_image_id: str) -> None:
             model_slug=scan_model_slug,
             image_bytes=image_bytes,
             mime_type=mime,
-            prompt=build_scan_prompt(scan_w, scan_h),
+            prompt=build_scan_prompt(scan_w, scan_h, adapter_name),
         )
         parsed_items, placard_text = _parse_response(raw_text)
 
