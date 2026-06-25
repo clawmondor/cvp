@@ -45,6 +45,34 @@ def _get_context(matter_id: str, db):
     return categories, rooms, item_groups
 
 
+def compute_items_totals(matter_id: str, db) -> dict[str, int]:
+    """Money + count totals for a matter's items.
+
+    Money totals (RCV/ACV) count only rows that are confirmed and not
+    excluded. Counts are integer cents — never floats.
+    """
+    rows = (
+        db.query(
+            Item.confirmed,
+            Item.excluded,
+            Item.rcv_total_cents,
+            Item.acv_total_cents,
+            Item.rcv_unit_cents,
+        )
+        .filter(Item.matter_id == matter_id)
+        .all()
+    )
+    confirmed_rows = [r for r in rows if r.confirmed and not r.excluded]
+    return {
+        "items_total_count": len(rows),
+        "items_confirmed_count": len(confirmed_rows),
+        "items_rcv_total_cents": sum(r.rcv_total_cents for r in confirmed_rows),
+        "items_acv_total_cents": sum(r.acv_total_cents for r in confirmed_rows),
+        "unconfirmed_count": sum(1 for r in rows if not r.confirmed),
+        "missing_price_count": sum(1 for r in confirmed_rows if r.rcv_unit_cents == 0),
+    }
+
+
 def _compute_and_set_totals(item: Item, cat: Category) -> None:
     item.rcv_total_cents = item.rcv_unit_cents * item.quantity
     item.acv_total_cents = compute_acv(
@@ -147,6 +175,22 @@ def get_items_rows(
             categories=categories,
             rooms=room_objs,
         )
+    )
+
+
+@router.get("/api/matters/{matter_id}/items-summary", response_class=HTMLResponse)
+def get_items_summary(
+    matter_id: str,
+    user: CurrentUser = Depends(require_matter_role("viewer")),
+) -> HTMLResponse:
+    """Render the Confirmed / RCV total / ACV total summary block."""
+    db = SessionLocal()
+    try:
+        totals = compute_items_totals(matter_id, db)
+    finally:
+        db.close()
+    return HTMLResponse(
+        templates.get_template("_items_summary.html").render(matter_id=matter_id, **totals)
     )
 
 

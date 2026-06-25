@@ -415,10 +415,20 @@
             if (d.status === 'error') {
               regionStatusEl.textContent =
                 'Finished with errors — ' + d.items_created + ' item(s) created.';
+              if (d.items_created > 0) {
+                document.dispatchEvent(new CustomEvent('cvp:items-added', {
+                  detail: { matterId: matterId, jobId: jobId, count: d.items_created }
+                }));
+              }
               scanRegionBtn.disabled = false;  // allow retry; pendingRegion is still set
               return;
             }
             regionStatusEl.textContent = 'Done — ' + d.items_created + ' item(s) created.';
+            if (d.items_created > 0) {
+              document.dispatchEvent(new CustomEvent('cvp:items-added', {
+                detail: { matterId: matterId, jobId: jobId, count: d.items_created }
+              }));
+            }
             if (window.htmx) {
               htmx.ajax('GET', '/api/evidence/' + EF_ID + '/crop-editor',
                 {target: '#crop-editor-modal-root', swap: 'innerHTML'});

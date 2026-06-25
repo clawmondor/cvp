@@ -16,6 +16,7 @@ from cvp.dependencies import CurrentUser, require_active_user, require_matter_ro
 from cvp.models import Category, EvidenceFile, Item, ItemGroup, Matter, VisionJob, VisionJobImage
 from cvp.models_auth import User as UserORM
 from cvp.models_vision import VisionModel
+from cvp.routers.items import compute_items_totals
 from cvp.services import runtime_config
 from cvp.services.audit import get_client_ip, should_debounce_view, write_audit_log
 from cvp.services.pagination import paginate_by_cursor
@@ -137,24 +138,13 @@ def matter_detail(
         evidence_next_cursor = evidence_next_cursor.isoformat() if evidence_next_cursor else None
 
         # Full-set items totals (aggregate query, not row-by-row).
-        items_for_totals = (
-            db.query(
-                Item.confirmed,
-                Item.excluded,
-                Item.rcv_total_cents,
-                Item.acv_total_cents,
-                Item.rcv_unit_cents,
-            )
-            .filter(Item.matter_id == matter_id)
-            .all()
-        )
-        confirmed_rows = [r for r in items_for_totals if r.confirmed and not r.excluded]
-        total_rcv_cents = sum(r.rcv_total_cents for r in confirmed_rows)
-        total_acv_cents = sum(r.acv_total_cents for r in confirmed_rows)
-        unconfirmed_count = sum(1 for r in items_for_totals if not r.confirmed)
-        missing_price_count = sum(1 for r in confirmed_rows if r.rcv_unit_cents == 0)
-        items_total_count = len(items_for_totals)
-        items_confirmed_count = len(confirmed_rows)
+        _totals = compute_items_totals(matter_id, db)
+        total_rcv_cents = _totals["items_rcv_total_cents"]
+        total_acv_cents = _totals["items_acv_total_cents"]
+        unconfirmed_count = _totals["unconfirmed_count"]
+        missing_price_count = _totals["missing_price_count"]
+        items_total_count = _totals["items_total_count"]
+        items_confirmed_count = _totals["items_confirmed_count"]
 
         # First page of items rows (line_number ASC), with cursor.
         items, items_next_cursor = paginate_by_cursor(

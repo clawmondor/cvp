@@ -102,6 +102,21 @@ def test_first_page_returns_50_rows_and_sentinel(client, db_session):
     assert 'hx-trigger="revealed"' in body
 
 
+def test_sentinel_row_contains_matter_id_in_url(client, db_session):
+    """Regression: the sentinel hx-get URL must include the actual matter_id, not an
+    empty string. An empty matter_id produces a malformed URL like
+    `/api/matters//items-rows` that 404s.
+    """
+    # ITEMS_PAGE_SIZE = 50; need >50 items to trigger a sentinel row
+    _seed_items(db_session, 51)
+    resp = client.get(f"/api/matters/{MATTER_ID}/items-rows")
+    assert resp.status_code == 200
+    # The sentinel URL must contain the actual matter_id value
+    assert f"/api/matters/{MATTER_ID}/items-rows" in resp.text
+    # Must NOT contain a double-slash with empty matter_id
+    assert "/api/matters//items-rows" not in resp.text
+
+
 def test_second_page_returns_remainder_and_no_sentinel(client, db_session):
     _seed_items(db_session, 60)
     resp = client.get(f"/api/matters/{MATTER_ID}/items-rows?cursor=50")
