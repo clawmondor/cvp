@@ -25,7 +25,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' https://unpkg.com https://cdn.tailwindcss.com"
-            " https://cvp.cmondor.com https://static.cloudflareinsights.com; "
+            " https://claimos.cmondor.com https://static.cloudflareinsights.com; "
             "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
             "img-src 'self' data: https://*.gstatic.com; "
             "connect-src 'self'"
