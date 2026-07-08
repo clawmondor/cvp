@@ -32,7 +32,7 @@ RUN uv sync --frozen --no-dev
 EXPOSE 8000
 
 # proxy-headers needed because we sit behind Cloudflare + Railway's edge
-CMD ["uv", "run", "uvicorn", "cvp.main:app", \
+CMD ["uv", "run", "uvicorn", "claimos.main:app", \
      "--host", "0.0.0.0", \
      "--port", "8000", \
      "--proxy-headers", \
