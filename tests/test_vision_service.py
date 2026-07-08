@@ -8,20 +8,20 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_vision  # noqa: F401
-from cvp.models import (
+import claimos.models_vision  # noqa: F401
+from claimos.models import (
     Base,
     Category,
+    Claim,
     EvidenceFile,
     Item,
     ItemCrop,
-    Matter,
     VisionJob,
     VisionJobImage,
     VisionRun,
 )
-from cvp.models_vision import VisionModel
-from cvp.services import vision as vision_svc
+from claimos.models_vision import VisionModel
+from claimos.services import vision as vision_svc
 
 
 @pytest.fixture
@@ -78,19 +78,19 @@ def isolated_db(tmp_path):
 
 
 @pytest.fixture
-def matter_with_job(isolated_db, tmp_path):
-    """Returns (matter_id, job_image_id) for a matter with one image ready to scan."""
+def claim_with_job(isolated_db, tmp_path):
+    """Returns (claim_id, job_image_id) for a claim with one image ready to scan."""
     from PIL import Image
 
     img_path = tmp_path / "test.jpg"
     Image.new("RGB", (200, 200), color="white").save(img_path)
 
-    matter = Matter(policyholder_name="Test Owner", loss_type="total_loss")
-    isolated_db.add(matter)
+    claim = Claim(policyholder_name="Test Owner", loss_type="total_loss")
+    isolated_db.add(claim)
     isolated_db.flush()
 
     ef = EvidenceFile(
-        matter_id=matter.id,
+        claim_id=claim.id,
         filename="test.jpg",
         stored_path=str(img_path),
         mime_type="image/jpeg",
@@ -100,20 +100,20 @@ def matter_with_job(isolated_db, tmp_path):
     isolated_db.add(ef)
     isolated_db.flush()
 
-    job = VisionJob(matter_id=matter.id, model_slug="anthropic/claude-opus-4", status="running")
+    job = VisionJob(claim_id=claim.id, model_slug="anthropic/claude-opus-4", status="running")
     isolated_db.add(job)
     isolated_db.flush()
 
     job_image = VisionJobImage(job_id=job.id, evidence_file_id=ef.id, status="running")
     isolated_db.add(job_image)
     isolated_db.commit()
-    return matter.id, job_image.id
+    return claim.id, job_image.id
 
 
 def _monkeypatch_vision(monkeypatch, isolated_db, tmp_path):
-    monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: isolated_db)
+    monkeypatch.setattr("claimos.services.vision.SessionLocal", lambda: isolated_db)
     monkeypatch.setattr(
-        "cvp.config.settings",
+        "claimos.config.settings",
         type(
             "S",
             (),
@@ -129,9 +129,9 @@ def _monkeypatch_vision(monkeypatch, isolated_db, tmp_path):
 
 
 def test_process_one_image_creates_items_and_crops(
-    matter_with_job, isolated_db, monkeypatch, tmp_path
+    claim_with_job, isolated_db, monkeypatch, tmp_path
 ):
-    matter_id, job_image_id = matter_with_job
+    claim_id, job_image_id = claim_with_job
     _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
 
     fake_response = json.dumps(
@@ -151,17 +151,17 @@ def test_process_one_image_creates_items_and_crops(
         ]
     )
 
-    with patch("cvp.services.vision.openrouter.call_vision", return_value=fake_response):
+    with patch("claimos.services.vision.openrouter.call_vision", return_value=fake_response):
         vision_svc.process_one_image(job_image_id)
 
-    items = isolated_db.query(Item).filter_by(matter_id=matter_id).all()
+    items = isolated_db.query(Item).filter_by(claim_id=claim_id).all()
     assert len(items) == 1
     assert items[0].description == "Samsung 65-inch QLED TV"
 
     crops = isolated_db.query(ItemCrop).filter_by(item_id=items[0].id).all()
     assert len(crops) == 1
 
-    runs = isolated_db.query(VisionRun).filter_by(matter_id=matter_id).all()
+    runs = isolated_db.query(VisionRun).filter_by(claim_id=claim_id).all()
     assert len(runs) == 1
     assert runs[0].model == "anthropic/claude-opus-4"
 
@@ -176,13 +176,13 @@ def test_process_one_image_creates_items_and_crops(
 
 
 def test_process_one_image_releases_connection_during_api_call(
-    matter_with_job, isolated_db, monkeypatch, tmp_path
+    claim_with_job, isolated_db, monkeypatch, tmp_path
 ):
     """Regression: the worker held a DB transaction across the OpenRouter HTTP
     call, pegging a pool slot for the full ~30s API duration. Under bulk-scan
     load this exhausted the 5+5 Postgres pool. The fix commits before the API
     call so the connection returns to the pool during the request."""
-    _, job_image_id = matter_with_job
+    _, job_image_id = claim_with_job
     _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
 
     in_tx_at_call: list[bool] = []
@@ -191,7 +191,7 @@ def test_process_one_image_releases_connection_during_api_call(
         in_tx_at_call.append(isolated_db.in_transaction())
         return "[]"
 
-    with patch("cvp.services.vision.openrouter.call_vision", side_effect=_capture_tx_state):
+    with patch("claimos.services.vision.openrouter.call_vision", side_effect=_capture_tx_state):
         vision_svc.process_one_image(job_image_id)
 
     assert in_tx_at_call == [False], (
@@ -201,9 +201,9 @@ def test_process_one_image_releases_connection_during_api_call(
 
 
 def test_process_one_image_skips_crop_when_adapter_none(
-    matter_with_job, isolated_db, monkeypatch, tmp_path
+    claim_with_job, isolated_db, monkeypatch, tmp_path
 ):
-    matter_id, job_image_id = matter_with_job
+    claim_id, job_image_id = claim_with_job
     ji = isolated_db.get(VisionJobImage, job_image_id)
     job = isolated_db.get(VisionJob, ji.job_id)
     job.model_slug = "openai/gpt-4o"
@@ -222,25 +222,25 @@ def test_process_one_image_skips_crop_when_adapter_none(
         ]
     )
 
-    with patch("cvp.services.vision.openrouter.call_vision", return_value=fake_response):
+    with patch("claimos.services.vision.openrouter.call_vision", return_value=fake_response):
         vision_svc.process_one_image(job_image_id)
 
-    items = isolated_db.query(Item).filter_by(matter_id=matter_id).all()
+    items = isolated_db.query(Item).filter_by(claim_id=claim_id).all()
     assert len(items) == 1
     crops = isolated_db.query(ItemCrop).all()
     assert len(crops) == 0
 
 
 def test_process_one_image_marks_error_on_api_failure(
-    matter_with_job, isolated_db, monkeypatch, tmp_path
+    claim_with_job, isolated_db, monkeypatch, tmp_path
 ):
-    _, job_image_id = matter_with_job
+    _, job_image_id = claim_with_job
     _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
 
-    from cvp.services.openrouter import OpenRouterError
+    from claimos.services.openrouter import OpenRouterError
 
     with patch(
-        "cvp.services.vision.openrouter.call_vision",
+        "claimos.services.vision.openrouter.call_vision",
         side_effect=OpenRouterError(429, "rate limit"),
     ):
         vision_svc.process_one_image(job_image_id)
@@ -251,8 +251,8 @@ def test_process_one_image_marks_error_on_api_failure(
     assert "429" in ji.error_message
 
 
-def test_process_skips_already_scanned_file(matter_with_job, isolated_db, monkeypatch, tmp_path):
-    _, job_image_id = matter_with_job
+def test_process_skips_already_scanned_file(claim_with_job, isolated_db, monkeypatch, tmp_path):
+    _, job_image_id = claim_with_job
     _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
 
     ji = isolated_db.get(VisionJobImage, job_image_id)
@@ -260,7 +260,7 @@ def test_process_skips_already_scanned_file(matter_with_job, isolated_db, monkey
     ef.scanned = True
     isolated_db.commit()
 
-    with patch("cvp.services.vision.openrouter.call_vision") as mock_call:
+    with patch("claimos.services.vision.openrouter.call_vision") as mock_call:
         vision_svc.process_one_image(job_image_id)
         mock_call.assert_not_called()
 
@@ -270,14 +270,14 @@ def test_process_skips_already_scanned_file(matter_with_job, isolated_db, monkey
 
 
 def test_estimate_cost_known_model(isolated_db, monkeypatch):
-    monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: isolated_db)
+    monkeypatch.setattr("claimos.services.vision.SessionLocal", lambda: isolated_db)
     # Seed has null pricing -> should return "~$?"
     result = vision_svc.estimate_cost(3, "anthropic/claude-opus-4")
     assert result == "~$?"
 
 
 def test_estimate_cost_with_pricing(isolated_db, monkeypatch):
-    monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: isolated_db)
+    monkeypatch.setattr("claimos.services.vision.SessionLocal", lambda: isolated_db)
     isolated_db.query(VisionModel).filter_by(slug="anthropic/claude-opus-4").update(
         {"prompt_image_cost_cents": 3}
     )
@@ -287,7 +287,7 @@ def test_estimate_cost_with_pricing(isolated_db, monkeypatch):
 
 
 def test_estimate_cost_unknown_model(isolated_db, monkeypatch):
-    monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: isolated_db)
+    monkeypatch.setattr("claimos.services.vision.SessionLocal", lambda: isolated_db)
     result = vision_svc.estimate_cost(1, "unknown/model")
     assert result == "~$?"
 
@@ -301,12 +301,12 @@ def test_region_scan_uses_drawn_region_as_crop(isolated_db, monkeypatch, tmp_pat
     img_path = tmp_path / "big.jpg"
     Image.new("RGB", (400, 400), color="white").save(img_path)
 
-    matter = Matter(policyholder_name="Owner", loss_type="total_loss")
-    isolated_db.add(matter)
+    claim = Claim(policyholder_name="Owner", loss_type="total_loss")
+    isolated_db.add(claim)
     isolated_db.flush()
 
     ef = EvidenceFile(
-        matter_id=matter.id,
+        claim_id=claim.id,
         filename="big.jpg",
         stored_path=str(img_path),
         mime_type="image/jpeg",
@@ -317,7 +317,7 @@ def test_region_scan_uses_drawn_region_as_crop(isolated_db, monkeypatch, tmp_pat
     isolated_db.add(ef)
     isolated_db.flush()
 
-    job = VisionJob(matter_id=matter.id, model_slug="anthropic/claude-opus-4", status="running")
+    job = VisionJob(claim_id=claim.id, model_slug="anthropic/claude-opus-4", status="running")
     isolated_db.add(job)
     isolated_db.flush()
     ji = VisionJobImage(
@@ -332,7 +332,7 @@ def test_region_scan_uses_drawn_region_as_crop(isolated_db, monkeypatch, tmp_pat
     isolated_db.add(ji)
     isolated_db.commit()
     ji_id = ji.id
-    matter_id = matter.id  # capture before session is closed by process_one_image
+    claim_id = claim.id  # capture before session is closed by process_one_image
 
     _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
 
@@ -351,12 +351,12 @@ def test_region_scan_uses_drawn_region_as_crop(isolated_db, monkeypatch, tmp_pat
     )
 
     with patch(
-        "cvp.services.vision.openrouter.call_vision", return_value=fake_response
+        "claimos.services.vision.openrouter.call_vision", return_value=fake_response
     ) as mock_call:
         vision_svc.process_one_image(ji_id)
         mock_call.assert_called_once()
 
-    items = isolated_db.query(Item).filter_by(matter_id=matter_id).all()
+    items = isolated_db.query(Item).filter_by(claim_id=claim_id).all()
     assert len(items) == 1
     crop = isolated_db.query(ItemCrop).filter_by(item_id=items[0].id).one()
     assert (crop.bbox_left, crop.bbox_upper, crop.bbox_right, crop.bbox_lower) == (
@@ -380,13 +380,13 @@ def test_region_scan_crop_equals_region_regardless_of_model_box(isolated_db, mon
     img_path = tmp_path / "big.jpg"
     Image.new("RGB", (800, 800), color="white").save(img_path)
 
-    matter = Matter(policyholder_name="Owner", loss_type="total_loss")
-    isolated_db.add(matter)
+    claim = Claim(policyholder_name="Owner", loss_type="total_loss")
+    isolated_db.add(claim)
     isolated_db.flush()
-    matter_id = matter.id
+    claim_id = claim.id
 
     ef = EvidenceFile(
-        matter_id=matter_id,
+        claim_id=claim_id,
         filename="big.jpg",
         stored_path=str(img_path),
         mime_type="image/jpeg",
@@ -396,7 +396,7 @@ def test_region_scan_crop_equals_region_regardless_of_model_box(isolated_db, mon
     isolated_db.add(ef)
     isolated_db.flush()
 
-    job = VisionJob(matter_id=matter_id, model_slug="anthropic/claude-opus-4", status="running")
+    job = VisionJob(claim_id=claim_id, model_slug="anthropic/claude-opus-4", status="running")
     isolated_db.add(job)
     isolated_db.flush()
     region = (300, 300, 500, 500)
@@ -435,13 +435,13 @@ def test_region_scan_crop_equals_region_regardless_of_model_box(isolated_db, mon
         ]
     )
 
-    with patch("cvp.services.vision.openrouter.call_vision", return_value=fake_response):
+    with patch("claimos.services.vision.openrouter.call_vision", return_value=fake_response):
         vision_svc.process_one_image(ji_id)
 
     crops = (
         isolated_db.query(ItemCrop)
         .join(Item, ItemCrop.item_id == Item.id)
-        .filter(Item.matter_id == matter_id)
+        .filter(Item.claim_id == claim_id)
         .all()
     )
     assert len(crops) == 2

@@ -3,7 +3,7 @@
 **Status:** Source of truth for SQLAlchemy models and Alembic migrations
 **Last reviewed:** [date]
 
-This document describes the full relational schema for the Contents Valuation Prototype, explains the design decisions behind it, and serves as the reference for any future migration. If you're changing the schema, update this file in the same commit as the migration.
+This document describes the full relational schema for ClaimOS, explains the design decisions behind it, and serves as the reference for any future migration. If you're changing the schema, update this file in the same commit as the migration.
 
 ---
 
@@ -15,9 +15,9 @@ Five principles drive the design:
 
 2. **Currency as integer cents, everywhere.** No `FLOAT`, no `NUMERIC`, no `DECIMAL` column ever stores money. Every money field is `INTEGER` and named with a `_cents` suffix. Formatting to dollars happens at the template and export layer only. This eliminates an entire class of rounding bugs that matter a lot in a litigation context.
 
-3. **UUID strings, not integers, for primary keys.** External IDs in URLs, filenames, and file paths should never expose a monotonically increasing counter that leaks business metrics ("oh, they're on matter #47"). Store UUIDs as TEXT in SQLite — no native UUID type, and SQLAlchemy handles the conversion transparently.
+3. **UUID strings, not integers, for primary keys.** External IDs in URLs, filenames, and file paths should never expose a monotonically increasing counter that leaks business metrics ("oh, they're on claim #47"). Store UUIDs as TEXT in SQLite — no native UUID type, and SQLAlchemy handles the conversion transparently.
 
-4. **Deletes are rare and usually soft.** Matters and items are archived, not deleted, once any delivered report has referenced them. The exceptions are evidence files (which the specialist can remove before scanning) and draft items that failed Vision recognition. A `status` column on matters captures archival state; items use an `excluded` flag to keep history intact.
+4. **Deletes are rare and usually soft.** Claims and items are archived, not deleted, once any delivered report has referenced them. The exceptions are evidence files (which the specialist can remove before scanning) and draft items that failed Vision recognition. A `status` column on claims captures archival state; items use an `excluded` flag to keep history intact.
 
 5. **Schema changes need a migration.** Never modify an existing migration file. Never edit `models.py` without generating a new Alembic revision in the same commit. Never drop a column without checking that no delivered report's regeneration path still references it.
 
@@ -28,15 +28,15 @@ Five principles drive the design:
 ### ER diagram (logical)
 
 ```
-matters ─┬─< rooms
+claims ─┬─< rooms
          ├─< items ──> categories
          ├─< evidence_files ──< vision_runs ──> items
          └─< exports
 ```
 
-Every entity below `matters` is scoped to one matter. There are no cross-matter relationships in v0 — a matter is fully self-contained, which means a matter can be archived, exported as a tarball, or deleted without cascading to anything outside its own subtree.
+Every entity below `claims` is scoped to one claim. There are no cross-claim relationships in v0 — a claim is fully self-contained, which means a claim can be archived, exported as a tarball, or deleted without cascading to anything outside its own subtree.
 
-### `matters`
+### `claims`
 
 One row per insurance claim the firm is working on.
 
@@ -66,24 +66,24 @@ One row per insurance claim the firm is working on.
 
 **Indexes:** `status`, `(firm_name, status)` for dashboard queries, `created_at DESC` for recency ordering.
 
-**Why enums are stored as TEXT:** SQLite has no native ENUM type. Using TEXT with a CHECK constraint (via SQLAlchemy) gives us the same validation without the portability headaches. The enum values are defined once as Python literals in `src/cvp/models.py` and imported wherever needed.
+**Why enums are stored as TEXT:** SQLite has no native ENUM type. Using TEXT with a CHECK constraint (via SQLAlchemy) gives us the same validation without the portability headaches. The enum values are defined once as Python literals in `src/claimos/models.py` and imported wherever needed.
 
 ### `rooms`
 
-Rooms are per-matter, not global. Every matter defines its own rooms because "Primary bedroom" in a 4,500 sq ft Palisades home is not the same thing as "Primary bedroom" in a 1,200 sq ft Altadena bungalow.
+Rooms are per-claim, not global. Every claim defines its own rooms because "Primary bedroom" in a 4,500 sq ft Palisades home is not the same thing as "Primary bedroom" in a 1,200 sq ft Altadena bungalow.
 
 | Column       | Type     | Null | Default | Notes |
 |:-------------|:---------|:-----|:--------|:------|
 | id           | TEXT     | no   |         | UUID string |
-| matter_id    | TEXT     | no   |         | FK → matters.id, ON DELETE CASCADE |
+| claim_id    | TEXT     | no   |         | FK → claims.id, ON DELETE CASCADE |
 | name         | TEXT     | no   |         | "Primary bedroom", "Kitchen", "Garage" |
 | sort_order   | INTEGER  | no   | 0       | Ascending; specialist-controlled |
 | created_at   | DATETIME | no   | UTC now |
 | updated_at   | DATETIME | no   | UTC now |
 
-**Indexes:** `(matter_id, sort_order)` for ordered rendering in the UI.
+**Indexes:** `(claim_id, sort_order)` for ordered rendering in the UI.
 
-**Design note:** rooms used to be an enum in an earlier draft, but real Palisades properties have wine cellars, pool houses, guest casitas, and "the kids' reading nook" that don't map to any clean fixed list. Free-text per-matter is the right call.
+**Design note:** rooms used to be an enum in an earlier draft, but real Palisades properties have wine cellars, pool houses, guest casitas, and "the kids' reading nook" that don't map to any clean fixed list. Free-text per-claim is the right call.
 
 ### `categories`
 
@@ -108,9 +108,9 @@ The single most important table. Every delivered report is, at its core, a filte
 | Column                | Type     | Null | Default  | Notes |
 |:----------------------|:---------|:-----|:---------|:------|
 | id                    | TEXT     | no   |          | UUID string |
-| matter_id             | TEXT     | no   |          | FK → matters.id, ON DELETE CASCADE |
+| claim_id             | TEXT     | no   |          | FK → claims.id, ON DELETE CASCADE |
 | room_id               | TEXT     | yes  |          | FK → rooms.id, ON DELETE SET NULL |
-| line_number           | INTEGER  | no   |          | Per-matter sequential, assigned on confirm |
+| line_number           | INTEGER  | no   |          | Per-claim sequential, assigned on confirm |
 | description           | TEXT     | no   |          | Human-readable item description |
 | brand                 | TEXT     | yes  |          | Manufacturer, if identified |
 | model                 | TEXT     | yes  |          | Specific model or SKU, if identified |
@@ -135,9 +135,9 @@ The single most important table. Every delivered report is, at its core, a filte
 | updated_at            | DATETIME | no   | UTC now  |
 
 **Indexes:**
-- `(matter_id, line_number)` unique — prevents line-number collisions within a matter
-- `(matter_id, confirmed, excluded)` — the most common filter in the Items tab
-- `(matter_id, room_id)` — room grouping in the report
+- `(claim_id, line_number)` unique — prevents line-number collisions within a claim
+- `(claim_id, confirmed, excluded)` — the most common filter in the Items tab
+- `(claim_id, room_id)` — room grouping in the report
 - `category_id` — for depreciation sanity checks and category-level totals
 
 **Validation rules enforced at the ORM layer (not just in the UI):**
@@ -146,31 +146,31 @@ The single most important table. Every delivered report is, at its core, a filte
 2. `acv_override_cents IS NOT NULL` implies `acv_override_reason` is non-empty.
 3. `confirmed = 1` implies the item has a `category_id`, a `description`, and is ready to appear in a report.
 4. `excluded = 1` items are never counted in report totals, but are listed in an "Excluded items" appendix for audit purposes.
-5. `line_number` is assigned only when an item is first confirmed, and never reused within a matter.
+5. `line_number` is assigned only when an item is first confirmed, and never reused within a claim.
 
 **Why `rcv_total_cents` and `acv_total_cents` are stored, not computed at read time:** two reasons. First, every report view lists hundreds of rows, and recomputing on every page load is slow. Second, the stored value is an audit artifact — if the depreciation formula changes later, we need to know what the report said at the time it was delivered. The recompute-on-write model preserves history.
 
 ### `evidence_files`
 
-Every file the specialist uploaded for a matter. Photos, videos, receipts, policy documents, prior inventories.
+Every file the specialist uploaded for a claim. Photos, videos, receipts, policy documents, prior inventories.
 
 | Column         | Type     | Null | Default | Notes |
 |:---------------|:---------|:-----|:--------|:------|
 | id             | TEXT     | no   |         | UUID string |
-| matter_id      | TEXT     | no   |         | FK → matters.id, ON DELETE CASCADE |
+| claim_id      | TEXT     | no   |         | FK → claims.id, ON DELETE CASCADE |
 | filename       | TEXT     | no   |         | Original filename from the upload |
 | stored_path    | TEXT     | no   |         | Relative path under `./data/uploads/` |
 | mime_type      | TEXT     | no   |         | "image/jpeg", "video/mp4", "application/pdf" |
 | size_bytes     | INTEGER  | no   |         | File size |
 | kind           | TEXT     | no   |         | Enum: `photo` / `video` / `receipt` / `statement` / `policy_doc` / `other` |
 | scanned        | BOOLEAN  | no   | 0       | Whether Vision has processed this file |
-| sha256         | TEXT     | yes  |         | For dedup within a matter |
+| sha256         | TEXT     | yes  |         | For dedup within a claim |
 | created_at     | DATETIME | no   | UTC now |
 | updated_at     | DATETIME | no   | UTC now |
 
-**Indexes:** `(matter_id, kind)`, `(matter_id, scanned)`.
+**Indexes:** `(claim_id, kind)`, `(claim_id, scanned)`.
 
-**Storage layout on disk:** files land under `./data/uploads/<matter_id>/<uuid>.<ext>`. The `stored_path` column holds the relative path from the `data/` root so the whole tree is portable (you can tar `./data/` and move it to a new machine without rewriting paths).
+**Storage layout on disk:** files land under `./data/uploads/<claim_id>/<uuid>.<ext>`. The `stored_path` column holds the relative path from the `data/` root so the whole tree is portable (you can tar `./data/` and move it to a new machine without rewriting paths).
 
 **Dedup:** when a specialist uploads the same photo twice, the second upload is detected by SHA-256 and the existing record is returned instead of creating a duplicate. This is enforced at the service layer, not by a database constraint.
 
@@ -181,7 +181,7 @@ Every invocation of the Vision scan. Kept for debugging, cost tracking, and late
 | Column            | Type     | Null | Default | Notes |
 |:------------------|:---------|:-----|:--------|:------|
 | id                | TEXT     | no   |         | UUID string |
-| matter_id         | TEXT     | no   |         | FK → matters.id, ON DELETE CASCADE |
+| claim_id         | TEXT     | no   |         | FK → claims.id, ON DELETE CASCADE |
 | evidence_file_id  | TEXT     | no   |         | FK → evidence_files.id, ON DELETE CASCADE |
 | model             | TEXT     | no   |         | "claude-opus-4-6", etc. |
 | prompt_version    | TEXT     | no   |         | Version string for the prompt used |
@@ -192,18 +192,18 @@ Every invocation of the Vision scan. Kept for debugging, cost tracking, and late
 | ran_at            | DATETIME | no   | UTC now |
 | error             | TEXT     | yes  |         | Non-null if the run failed |
 
-**Indexes:** `matter_id`, `evidence_file_id`, `ran_at DESC`.
+**Indexes:** `claim_id`, `evidence_file_id`, `ran_at DESC`.
 
 **Why we keep the raw response:** when a specialist confirms an item and the carrier later challenges the pricing, we need to be able to show exactly what Vision returned on a given date for a given image. This is part of the audit trail, not optional.
 
 ### `exports`
 
-One row per generated export file (PDF or CSV). Tracks what's been produced for a matter and when.
+One row per generated export file (PDF or CSV). Tracks what's been produced for a claim and when.
 
 | Column        | Type     | Null | Default | Notes |
 |:--------------|:---------|:-----|:--------|:------|
 | id            | TEXT     | no   |         | UUID string |
-| matter_id     | TEXT     | no   |         | FK → matters.id, ON DELETE CASCADE |
+| claim_id     | TEXT     | no   |         | FK → claims.id, ON DELETE CASCADE |
 | format        | TEXT     | no   |         | Enum: `pdf` / `csv_xactimate` |
 | file_path     | TEXT     | no   |         | Absolute path to the generated file |
 | items_count   | INTEGER  | no   |         | Confirmed non-excluded items at time of export |
@@ -211,7 +211,7 @@ One row per generated export file (PDF or CSV). Tracks what's been produced for 
 | acv_total_cents | INTEGER| no   |         | Snapshot of the grand total at export time |
 | generated_at  | DATETIME | no   | UTC now |
 
-**Indexes:** `(matter_id, format, generated_at DESC)` for "show me the latest PDF for this matter."
+**Indexes:** `(claim_id, format, generated_at DESC)` for "show me the latest PDF for this claim."
 
 **Snapshotting totals in the row:** this is intentional. If a specialist exports a PDF, then edits items, the old export row still shows what the report said when it was sent. Historical integrity again.
 
@@ -254,7 +254,7 @@ def set_sqlite_pragmas(dbapi_connection, connection_record):
 
 | Revision | Date | Description |
 |:---------|:-----|:------------|
-| (initial)| [date] | Create `matters`, `rooms`, `categories`, `items`, `evidence_files`, `vision_runs`, `exports` |
+| (initial)| [date] | Create `claims`, `rooms`, `categories`, `items`, `evidence_files`, `vision_runs`, `exports` |
 
 Add a row to this table for every migration. A future operator reading this file in 18 months should be able to understand what changed and why.
 
@@ -263,6 +263,6 @@ Add a row to this table for every migration. A future operator reading this file
 ## Open questions (track here, not in tickets)
 
 - Should `categories` become user-editable in v1? Needed if a firm wants to add a category for "Rare musical instruments" or similar. For now, 42 is the answer.
-- Do we need a `policyholders` table? Right now the policyholder name lives inline on the matter. If one policyholder ever has multiple matters (plausible for a family rebuilding in Palisades after a separate water loss), we might want to normalize. Not for v0.
+- Do we need a `policyholders` table? Right now the policyholder name lives inline on the claim. If one policyholder ever has multiple claims (plausible for a family rebuilding in Palisades after a separate water loss), we might want to normalize. Not for v0.
 - Do we need versioned `items` history (e.g., via a separate `item_revisions` table) for full auditability? Today, `updated_at` and the `exports` snapshot are enough. Revisit if a carrier formally requests a diff.
-- Where do we store the methodology document used for a given matter? Today it's implicit in the report template. If methodology evolves, we need to version it and link a matter to the methodology that was in effect when the report was generated.
+- Where do we store the methodology document used for a given claim? Today it's implicit in the report template. If methodology evolves, we need to version it and link a claim to the methodology that was in effect when the report was generated.

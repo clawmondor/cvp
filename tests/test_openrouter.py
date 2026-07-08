@@ -4,7 +4,7 @@ from unittest.mock import patch
 import httpx
 import pytest
 
-from cvp.services.openrouter import (
+from claimos.services.openrouter import (
     OpenRouterError,
     call_vision,
     fetch_models,

@@ -2,8 +2,8 @@
 
 from unittest.mock import MagicMock
 
-from cvp.auth import create_access_token
-from cvp.dependencies import CurrentUser, _decode_and_build_user, _extract_token
+from claimos.auth import create_access_token
+from claimos.dependencies import CurrentUser, _decode_and_build_user, _extract_token
 
 TEST_SECRET = "testsecret123456789012345678901234"
 
@@ -90,8 +90,8 @@ def test_decode_and_build_user_bad_secret():
 
 
 def test_check_feedback_access_author_allowed():
-    from cvp.dependencies import CurrentUser, _check_feedback_access
-    from cvp.models_feedback import Feedback
+    from claimos.dependencies import CurrentUser, _check_feedback_access
+    from claimos.models_feedback import Feedback
 
     user = CurrentUser(
         id="u1", email="u@x", system_role="internal_user", group_id="g", group_kind="internal"
@@ -101,8 +101,8 @@ def test_check_feedback_access_author_allowed():
 
 
 def test_check_feedback_access_admin_allowed():
-    from cvp.dependencies import CurrentUser, _check_feedback_access
-    from cvp.models_feedback import Feedback
+    from claimos.dependencies import CurrentUser, _check_feedback_access
+    from claimos.models_feedback import Feedback
 
     user = CurrentUser(
         id="admin", email="a@x", system_role="system_admin", group_id="g", group_kind="internal"
@@ -114,8 +114,8 @@ def test_check_feedback_access_admin_allowed():
 
 
 def test_check_feedback_access_other_user_denied():
-    from cvp.dependencies import CurrentUser, _check_feedback_access
-    from cvp.models_feedback import Feedback
+    from claimos.dependencies import CurrentUser, _check_feedback_access
+    from claimos.models_feedback import Feedback
 
     user = CurrentUser(
         id="u2", email="u@x", system_role="internal_admin", group_id="g", group_kind="internal"

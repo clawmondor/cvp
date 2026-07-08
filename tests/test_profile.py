@@ -3,12 +3,12 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from cvp.dependencies import CurrentUser, require_active_user
+from claimos.dependencies import CurrentUser, require_active_user
 
 
 @pytest.fixture
 def auth_client():
-    from cvp.main import app
+    from claimos.main import app
 
     async def mock_user():
         return CurrentUser(

@@ -1,6 +1,6 @@
 # Role-Based Access Control
 
-This document describes the two-tier permission model: system roles (who you are) and matter roles (what you can do to a specific matter).
+This document describes the two-tier permission model: system roles (who you are) and claim roles (what you can do to a specific claim).
 
 ---
 
@@ -10,12 +10,12 @@ Every user has a `system_role` stored on the `users` table. There are six roles.
 
 | Role | Group | Description |
 |---|---|---|
-| `system_admin` | Internal | Full access to everything. Manages all users, groups, matters, and admin panels. |
-| `internal_admin` | Internal | Manages internal users, external organizations, and matter access grants. |
-| `internal_user` | Internal | Works on matters. No admin panel access. |
-| `specialist` | Internal | Works on matters. No admin panel access. Same access level as `internal_user`. |
-| `external_admin` | External | Admin of their own organization. Can invite external users and manage org matter access. |
-| `external_user` | External | Works on matters they have been explicitly granted access to. |
+| `system_admin` | Internal | Full access to everything. Manages all users, groups, claims, and admin panels. |
+| `internal_admin` | Internal | Manages internal users, external organizations, and claim access grants. |
+| `internal_user` | Internal | Works on claims. No admin panel access. |
+| `specialist` | Internal | Works on claims. No admin panel access. Same access level as `internal_user`. |
+| `external_admin` | External | Admin of their own organization. Can invite external users and manage org claim access. |
+| `external_user` | External | Works on claims they have been explicitly granted access to. |
 
 System roles are set at user creation (via invite) and can only be changed by a System Admin.
 
@@ -25,16 +25,16 @@ System roles are set at user creation (via invite) and can only be changed by a 
 
 Users belong to a group. There are two kinds:
 
-- **Internal group** — one per deployment. All `internal_*` and `specialist` roles belong here. Owns matters.
-- **External groups** — one per law firm / client organization. All `external_*` roles belong here. Cannot own matters; they receive shared access.
+- **Internal group** — one per deployment. All `internal_*` and `specialist` roles belong here. Owns claims.
+- **External groups** — one per law firm / client organization. All `external_*` roles belong here. Cannot own claims; they receive shared access.
 
 The `group_kind` field on the `groups` table is either `"internal"` or `"external"`.
 
 ---
 
-## Matter Roles
+## Claim Roles
 
-Access to a specific matter is controlled separately from system roles. The `matter_access` table grants a user one of four roles on a matter:
+Access to a specific claim is controlled separately from system roles. The `claim_access` table grants a user one of four roles on a claim:
 
 | Role | Can do |
 |---|---|
@@ -47,26 +47,26 @@ These roles form a strict hierarchy: `viewer < editor < contributor < manager`. 
 
 ### How access is resolved
 
-The `require_matter_role(minimum_role)` dependency on each route resolves matter access in this order:
+The `require_claim_role(minimum_role)` dependency on each route resolves claim access in this order:
 
 1. **system_admin** → always granted, treated as `manager`.
-2. **internal_admin or external_admin whose group owns the matter** → implicitly granted `manager`. A matter's `owner_group_id` field determines ownership.
-3. **Explicit grant** → look up `matter_access` for the user + matter combination. If found, compare the granted role against the minimum required role using the hierarchy above.
+2. **internal_admin or external_admin whose group owns the claim** → implicitly granted `manager`. A claim's `owner_group_id` field determines ownership.
+3. **Explicit grant** → look up `claim_access` for the user + claim combination. If found, compare the granted role against the minimum required role using the hierarchy above.
 4. **No match** → 403.
 
-The dependency also resolves `matter_id` from path parameters automatically. It walks the resource chain: `matter_id` → `item_id` → `room_id` → `crop_id` → `file_id`.
+The dependency also resolves `claim_id` from path parameters automatically. It walks the resource chain: `claim_id` → `item_id` → `room_id` → `crop_id` → `file_id`.
 
 ```
-GET /api/matters/{matter_id}/items     → matter_id in path, direct
-PATCH /api/items/{item_id}             → item_id → item.matter_id
-POST /api/evidence/{file_id}/recrop   → file_id → evidence_file.matter_id
+GET /api/claims/{claim_id}/items     → claim_id in path, direct
+PATCH /api/items/{item_id}             → item_id → item.claim_id
+POST /api/evidence/{file_id}/recrop   → file_id → evidence_file.claim_id
 ```
 
 ---
 
 ## Admin Panels
 
-Three admin panels are mounted under `/admin/`. Access is guarded by system role, not matter role.
+Three admin panels are mounted under `/admin/`. Access is guarded by system role, not claim role.
 
 ### System Admin — `/admin/system/`
 
@@ -76,7 +76,7 @@ Accessible only to `system_admin`.
 - Deactivate / activate users
 - Reset a user's MFA
 - View all groups, create external groups, deactivate groups
-- View all matters
+- View all claims
 - View, filter, and export the audit log
 
 ### Internal Admin — `/admin/internal/`
@@ -85,7 +85,7 @@ Accessible to `system_admin` and `internal_admin`.
 
 - Manage internal users (invite, deactivate)
 - Manage external groups (create, invite external admins)
-- Manage matter access grants (grant/revoke per-user per-matter roles)
+- Manage claim access grants (grant/revoke per-user per-claim roles)
 
 ### Org Admin — `/admin/org/`
 
@@ -98,8 +98,8 @@ Accessible to `system_admin`, `internal_admin`, and `external_admin`.
 
 Within scope:
 - View and invite external users
-- View matters shared with the org
-- Manage per-user access to those matters for org members
+- View claims shared with the org
+- Manage per-user access to those claims for org members
 - Update the organization profile
 
 ---
@@ -109,7 +109,7 @@ Within scope:
 Comments on items have a `visibility` field:
 
 - `"internal"` — visible only to users with an internal group (`group_kind == "internal"`). External users never see these comments.
-- `"shared"` — visible to all users with matter access.
+- `"shared"` — visible to all users with claim access.
 
 Internal users see a visibility selector when posting. External users always post as `"shared"`.
 
@@ -146,7 +146,7 @@ Before running scenarios, create these users from the System Admin panel at `/ad
 
 Create two external groups: **Acme Corp** and **Other Firm** (from `/admin/internal/groups`).
 
-Create two matters: **Matter A** (owned by Internal group) and **Matter B** (owned by Internal group).
+Create two claims: **Claim A** (owned by Internal group) and **Claim B** (owned by Internal group).
 
 ---
 
@@ -156,8 +156,8 @@ Create two matters: **Matter A** (owned by Internal group) and **Matter B** (own
 2. Navigate to `/admin/system/` — expect: System Admin panel loads.
 3. Navigate to `/admin/internal/` — expect: Internal Admin panel loads.
 4. Navigate to `/admin/org/?group_id=<acme_id>` — expect: Org panel for Acme Corp loads.
-5. Navigate to Matter A — expect: full access, all edit controls visible.
-6. Navigate to Matter B — expect: full access.
+5. Navigate to Claim A — expect: full access, all edit controls visible.
+6. Navigate to Claim B — expect: full access.
 
 ---
 
@@ -167,7 +167,7 @@ Create two matters: **Matter A** (owned by Internal group) and **Matter B** (own
 2. Navigate to `/admin/system/` — expect: **403**.
 3. Navigate to `/admin/internal/` — expect: Internal Admin panel loads.
 4. Navigate to `/admin/org/?group_id=<acme_id>` — expect: Org panel for Acme Corp loads.
-5. Navigate to Matter A — expect: full access (internal admin implicitly has manager on internal-owned matters).
+5. Navigate to Claim A — expect: full access (internal admin implicitly has manager on internal-owned claims).
 
 ---
 
@@ -181,43 +181,43 @@ Create two matters: **Matter A** (owned by Internal group) and **Matter B** (own
 
 ---
 
-### Scenario 4: Matter role — explicit grants required for external users
+### Scenario 4: Claim role — explicit grants required for external users
 
 1. Log in as `extuser@test.local`.
-2. Navigate to Matter A — expect: **403** (no grant yet).
-3. Log in as `intadmin@test.local`. Go to `/admin/internal/matters/<matter_a_id>/access`. Grant `extuser@test.local` the `viewer` role on Matter A.
-4. Log back in as `extuser@test.local`. Navigate to Matter A — expect: loads, read-only. Edit controls not present.
-5. Attempt `PATCH /api/items/<item_id>` on an item in Matter A — expect: **403** (viewer cannot edit).
-6. Log in as `intadmin@test.local`. Upgrade `extuser@test.local` to `editor` on Matter A.
+2. Navigate to Claim A — expect: **403** (no grant yet).
+3. Log in as `intadmin@test.local`. Go to `/admin/internal/claims/<claim_a_id>/access`. Grant `extuser@test.local` the `viewer` role on Claim A.
+4. Log back in as `extuser@test.local`. Navigate to Claim A — expect: loads, read-only. Edit controls not present.
+5. Attempt `PATCH /api/items/<item_id>` on an item in Claim A — expect: **403** (viewer cannot edit).
+6. Log in as `intadmin@test.local`. Upgrade `extuser@test.local` to `editor` on Claim A.
 7. Log back in as `extuser@test.local`. Attempt to edit an item — expect: succeeds.
 
 ---
 
 ### Scenario 5: External user cannot see another org's data
 
-1. Grant `extuser@test.local` (Acme Corp) viewer access to Matter A.
+1. Grant `extuser@test.local` (Acme Corp) viewer access to Claim A.
 2. Log in as `extuser2@test.local` (Other Firm).
-3. Navigate to Matter A — expect: **403**.
+3. Navigate to Claim A — expect: **403**.
 4. Log in as `extadmin@test.local` (Acme Corp). Navigate to `/admin/org/users` — expect: only Acme Corp users listed (not Other Firm users).
 
 ---
 
 ### Scenario 6: Comments visibility
 
-1. Grant `extuser@test.local` viewer access to Matter A. Grant `intuser@test.local` viewer access to Matter A.
-2. Log in as `intuser@test.local`. Open an item in Matter A. Post a comment with visibility **Internal**.
+1. Grant `extuser@test.local` viewer access to Claim A. Grant `intuser@test.local` viewer access to Claim A.
+2. Log in as `intuser@test.local`. Open an item in Claim A. Post a comment with visibility **Internal**.
 3. Log in as `extuser@test.local`. Open the same item — expect: the internal comment is **not visible**.
 4. Log in as `intuser@test.local`. Post another comment with visibility **Shared**.
 5. Log in as `extuser@test.local`. Open the item — expect: the shared comment **is visible**. The internal comment is still not visible.
 
 ---
 
-### Scenario 7: Internal admin manages matter access
+### Scenario 7: Internal admin manages claim access
 
-1. Log in as `intadmin@test.local`. Navigate to `/admin/internal/matters/<matter_a_id>/access`.
+1. Log in as `intadmin@test.local`. Navigate to `/admin/internal/claims/<claim_a_id>/access`.
 2. Grant `extuser@test.local` the `contributor` role.
 3. Revoke the grant.
-4. Verify `extuser@test.local` can no longer access Matter A (403).
+4. Verify `extuser@test.local` can no longer access Claim A (403).
 
 ---
 

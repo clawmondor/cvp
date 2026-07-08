@@ -7,9 +7,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from cvp.models import Base
-from cvp.models_app_setting import AppSetting
-from cvp.services import runtime_config
+from claimos.models import Base
+from claimos.models_app_setting import AppSetting
+from claimos.services import runtime_config
 
 
 @pytest.fixture

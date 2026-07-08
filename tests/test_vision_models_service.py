@@ -1,5 +1,5 @@
 # tests/test_vision_models_service.py
-from cvp.services.vision_models import (
+from claimos.services.vision_models import (
     is_recommended,
     suggest_adapter,
 )

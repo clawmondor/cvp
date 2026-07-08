@@ -1,6 +1,6 @@
 # QA Testing
 
-Automated browser-based QA testing for the Contents Valuation Platform. Tests run against the local development server using Playwright to drive a real browser.
+Automated browser-based QA testing for ClaimOS. Tests run against the local development server using Playwright to drive a real browser.
 
 ---
 

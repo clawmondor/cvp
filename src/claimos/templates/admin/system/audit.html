@@ -1,0 +1,99 @@
+{% extends "admin/base.html" %}
+{% block title %}Audit Log{% endblock %}
+
+{% block sidebar %}
+<a href="/admin/system/" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
+<a href="/admin/system/users" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
+<a href="/admin/system/groups" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Groups</a>
+<a href="/admin/system/claims" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
+<a href="/admin/system/feedback" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">
+  Feedback{% if unread_count %} <span class="ml-1 inline-flex items-center rounded-full bg-red-500 px-1.5 py-0.5 text-xs">{{ unread_count }}</span>{% endif %}
+</a>
+<a href="/admin/system/audit" class="block px-3 py-2 rounded text-sm bg-slate-700 text-white">Audit Log</a>
+<a href="/admin/vision-models" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Vision Models</a>
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">Audit Log</h1>
+  <a href="/admin/system/audit/export?action={{ filters.action }}&user_filter={{ filters.user_filter }}&claim_id={{ filters.claim_id }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}"
+     class="text-sm text-indigo-600 hover:text-indigo-500">Export CSV</a>
+</div>
+
+<!-- Filter form -->
+<form method="GET" action="/admin/system/audit" class="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-4">
+  <div>
+    <label class="block text-xs text-gray-500 mb-1">Action prefix</label>
+    <input name="action" value="{{ filters.action }}" placeholder="e.g. item." class="border rounded px-2 py-1 text-sm w-40" />
+  </div>
+  <div>
+    <label class="block text-xs text-gray-500 mb-1">User ID</label>
+    <input name="user_filter" value="{{ filters.user_filter }}" placeholder="User ID" class="border rounded px-2 py-1 text-sm w-48" />
+  </div>
+  <div>
+    <label class="block text-xs text-gray-500 mb-1">Claim ID</label>
+    <input name="claim_id" value="{{ filters.claim_id }}" placeholder="Claim ID" class="border rounded px-2 py-1 text-sm w-48" />
+  </div>
+  <div>
+    <label class="block text-xs text-gray-500 mb-1">From</label>
+    <input type="date" name="date_from" value="{{ filters.date_from }}" class="border rounded px-2 py-1 text-sm" />
+  </div>
+  <div>
+    <label class="block text-xs text-gray-500 mb-1">To</label>
+    <input type="date" name="date_to" value="{{ filters.date_to }}" class="border rounded px-2 py-1 text-sm" />
+  </div>
+  <div class="flex items-end">
+    <button type="submit" class="bg-slate-700 text-white px-4 py-1 rounded text-sm hover:bg-slate-800">Filter</button>
+  </div>
+</form>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+  <div class="px-4 py-3 border-b text-sm text-gray-500">{{ total }} events</div>
+  <table class="min-w-full divide-y divide-gray-200 text-sm">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-4 py-2 text-left font-medium text-gray-500">When</th>
+        <th class="px-4 py-2 text-left font-medium text-gray-500">User</th>
+        <th class="px-4 py-2 text-left font-medium text-gray-500">Action</th>
+        <th class="px-4 py-2 text-left font-medium text-gray-500">Resource</th>
+        <th class="px-4 py-2 text-left font-medium text-gray-500">IP</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      {% for log in logs %}
+      <tr>
+        <td class="px-4 py-2 text-gray-500 whitespace-nowrap">{{ log.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td class="px-4 py-2">
+          {% if log.user_id and log.user_id in users_map %}
+            <span class="font-medium">{{ users_map[log.user_id].email }}</span>
+          {% elif log.user_id %}
+            <span class="text-gray-400 text-xs">{{ log.user_id[:8] }}…</span>
+          {% else %}
+            <span class="text-gray-300">—</span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-2 font-mono text-xs">{{ log.action }}</td>
+        <td class="px-4 py-2 text-gray-500">
+          {% if log.resource_type %}{{ log.resource_type }}{% endif %}
+          {% if log.resource_id %}<span class="text-xs text-gray-400 ml-1">{{ log.resource_id[:8] }}…</span>{% endif %}
+        </td>
+        <td class="px-4 py-2 text-gray-400 text-xs">{{ log.ip_address }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">No events found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if pages > 1 %}
+  <div class="px-4 py-3 border-t flex gap-2 text-sm">
+    {% if page > 1 %}
+    <a href="?page={{ page - 1 }}&action={{ filters.action }}&user_filter={{ filters.user_filter }}&claim_id={{ filters.claim_id }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}" class="text-indigo-600 hover:text-indigo-500">← Prev</a>
+    {% endif %}
+    <span class="text-gray-500">Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}
+    <a href="?page={{ page + 1 }}&action={{ filters.action }}&user_filter={{ filters.user_filter }}&claim_id={{ filters.claim_id }}&date_from={{ filters.date_from }}&date_to={{ filters.date_to }}" class="text-indigo-600 hover:text-indigo-500">Next →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

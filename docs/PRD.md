@@ -1,4 +1,4 @@
-# Product Requirements Document — Contents Valuation Prototype (v0)
+# Product Requirements Document — ClaimOS (v0)
 
 **Status:** Draft for Claude Code implementation
 **Owner:** Founding team
@@ -50,15 +50,15 @@ Expected weekly usage in the first 6 months: 5–15 reports in progress, 1–3 s
 
 ## 5. User flow (the happy path)
 
-1. **Create matter.** Specialist creates a new "matter" (one claim = one matter) and enters basic metadata: firm name, attorney, policyholder, loss location, loss date, loss type, carrier, policy number, claim number, Coverage C limit, target delivery date.
-2. **Upload evidence.** Specialist drags photos, videos, PDFs, and spreadsheets into the matter's intake area. Files are stored locally and listed in the matter view.
+1. **Create claim.** Specialist creates a new claim and enters basic metadata: firm name, attorney, policyholder, loss location, loss date, loss type, carrier, policy number, claim number, Coverage C limit, target delivery date.
+2. **Upload evidence.** Specialist drags photos, videos, PDFs, and spreadsheets into the claim's intake area. Files are stored locally and listed in the claim view.
 3. **Scan evidence with AI.** Specialist clicks "Scan photos with Vision" on an uploaded image batch. The app sends each image to Claude Vision via the Anthropic API and receives structured item suggestions back (item name, category guess, quantity, condition, room). Suggestions appear as unconfirmed draft line items.
 4. **Review and confirm line items.** Specialist walks through the draft line items in a table view, correcting descriptions, assigning rooms, adjusting quantities, entering ages, and confirming or rejecting each item. Confirmed items become part of the inventory.
 5. **Price each item.** For each confirmed item, the specialist looks up current retail pricing manually (a helper panel opens search links to the top retailers) and enters: unit RCV, retailer, source URL, match type (exact/comparable/category avg), and date of capture. The app auto-captures a screenshot of the URL via a headless browser if possible, otherwise the specialist pastes in a screenshot file.
 6. **Depreciation auto-computes.** Once an item has an RCV and an age, ACV computes automatically using the item's category useful-life table and condition multiplier. The specialist can override the computed ACV with a reason note.
 7. **Review report preview.** Specialist opens the "Report preview" view, which renders the full Contents Inventory and Valuation Report using the v0 template. The specialist reviews room summaries, the executive summary, and spot-checks the itemized section.
-8. **Export.** Specialist clicks "Export PDF" and "Export Xactimate CSV." Both files are generated to `./data/exports/<matter>/` and the paths are shown.
-9. **Archive.** After the report is delivered to the attorney, the specialist marks the matter "Delivered" and adds internal notes on turnaround time and invoiced amount for later analytics.
+8. **Export.** Specialist clicks "Export PDF" and "Export Xactimate CSV." Both files are generated to `./data/exports/<claim>/` and the paths are shown.
+9. **Archive.** After the report is delivered to the attorney, the specialist marks the claim "Delivered" and adds internal notes on turnaround time and invoiced amount for later analytics.
 
 ## 6. Tech stack
 
@@ -71,7 +71,7 @@ Expected weekly usage in the first 6 months: 5–15 reports in progress, 1–3 s
 | CSS | Tailwind via CDN (not a build step) | Fast styling without a toolchain |
 | Database | SQLite via SQLAlchemy 2.x | Zero-config, file-based, sufficient for single-user prototype |
 | Migrations | Alembic | Future-proof schema changes |
-| File storage | Local filesystem under `./data/uploads/<matter_id>/` | No S3 |
+| File storage | Local filesystem under `./data/uploads/<claim_id>/` | No S3 |
 | AI API | Anthropic Python SDK (`anthropic>=0.40`) | Claude Vision for photo → item extraction |
 | PDF rendering | WeasyPrint | Renders HTML/CSS to PDF; uses the same Jinja templates as the preview |
 | CSV export | Python csv module + pandas | Xactimate ESX format is CSV-compatible |
@@ -85,7 +85,7 @@ Expected weekly usage in the first 6 months: 5–15 reports in progress, 1–3 s
 
 SQLite schema. Represent with SQLAlchemy 2.x declarative models. All tables include `id` (UUID string), `created_at`, and `updated_at`.
 
-### `matters`
+### `claims`
 
 | Column | Type | Notes |
 |---|---|---|
@@ -114,7 +114,7 @@ SQLite schema. Represent with SQLAlchemy 2.x declarative models. All tables incl
 | Column | Type | Notes |
 |---|---|---|
 | id | str (UUID) | |
-| matter_id | FK → matters.id | |
+| claim_id | FK → claims.id | |
 | name | str | "Primary bedroom", "Kitchen", etc. |
 | sort_order | int | |
 
@@ -123,9 +123,9 @@ SQLite schema. Represent with SQLAlchemy 2.x declarative models. All tables incl
 | Column | Type | Notes |
 |---|---|---|
 | id | str (UUID) | |
-| matter_id | FK → matters.id | |
+| claim_id | FK → claims.id | |
 | room_id | FK → rooms.id, nullable | |
-| line_number | int | Per-matter sequential |
+| line_number | int | Per-claim sequential |
 | description | str | Human-readable |
 | brand | str, nullable | |
 | model | str, nullable | |
@@ -166,7 +166,7 @@ SQLite schema. Represent with SQLAlchemy 2.x declarative models. All tables incl
 | Column | Type | Notes |
 |---|---|---|
 | id | str (UUID) | |
-| matter_id | FK → matters.id | |
+| claim_id | FK → claims.id | |
 | filename | str | Original |
 | stored_path | str | Relative to `./data/uploads/` |
 | mime_type | str | |
@@ -179,7 +179,7 @@ SQLite schema. Represent with SQLAlchemy 2.x declarative models. All tables incl
 | Column | Type | Notes |
 |---|---|---|
 | id | str (UUID) | |
-| matter_id | FK | |
+| claim_id | FK | |
 | evidence_file_id | FK → evidence_files.id | |
 | model | str | e.g., `claude-opus-4-6` |
 | prompt_version | str | For tracking prompt iterations |
@@ -215,46 +215,46 @@ acv_total_cents = acv_unit_cents * quantity
 
 All routes are prefixed with `/api` except HTML page routes. JSON request and response bodies use `snake_case`.
 
-### Matter management
+### Claim management
 
-- `GET /` — Dashboard HTML (list of matters)
-- `GET /matters/new` — New matter form
-- `POST /matters` — Create matter
-- `GET /matters/{matter_id}` — Matter detail page
-- `PATCH /api/matters/{matter_id}` — Update matter fields
-- `POST /api/matters/{matter_id}/status` — Update status
+- `GET /` — Dashboard HTML (list of claims)
+- `GET /claims/new` — New claim form
+- `POST /claims` — Create claim
+- `GET /claims/{claim_id}` — Claim detail page
+- `PATCH /api/claims/{claim_id}` — Update claim fields
+- `POST /api/claims/{claim_id}/status` — Update status
 
 ### Evidence files
 
-- `POST /api/matters/{matter_id}/evidence` — Multipart upload, supports multiple files at once
-- `GET /api/matters/{matter_id}/evidence` — List evidence files
+- `POST /api/claims/{claim_id}/evidence` — Multipart upload, supports multiple files at once
+- `GET /api/claims/{claim_id}/evidence` — List evidence files
 - `DELETE /api/evidence/{file_id}` — Delete a file (and its record)
 - `GET /files/{stored_path:path}` — Serve a stored file (photo preview, etc.)
 
 ### Vision scan
 
-- `POST /api/matters/{matter_id}/vision-scan` — Body: `{ "evidence_file_ids": [...] }`. Runs Claude Vision on each listed image, creates draft items, returns a summary
+- `POST /api/claims/{claim_id}/vision-scan` — Body: `{ "evidence_file_ids": [...] }`. Runs Claude Vision on each listed image, creates draft items, returns a summary
 
 ### Items
 
-- `GET /api/matters/{matter_id}/items` — List items for a matter, optionally filtered by room, confirmed, excluded
-- `POST /api/matters/{matter_id}/items` — Create item (manual, not from Vision)
+- `GET /api/claims/{claim_id}/items` — List items for a claim, optionally filtered by room, confirmed, excluded
+- `POST /api/claims/{claim_id}/items` — Create item (manual, not from Vision)
 - `PATCH /api/items/{item_id}` — Update item fields (including confirm/exclude/override)
 - `DELETE /api/items/{item_id}` — Hard delete
 - `POST /api/items/{item_id}/recompute-acv` — Force ACV recomputation
 
 ### Rooms
 
-- `GET /api/matters/{matter_id}/rooms` — List rooms
-- `POST /api/matters/{matter_id}/rooms` — Create room
+- `GET /api/claims/{claim_id}/rooms` — List rooms
+- `POST /api/claims/{claim_id}/rooms` — Create room
 - `PATCH /api/rooms/{room_id}` — Rename or reorder
 - `DELETE /api/rooms/{room_id}` — Delete (items in the room become unassigned)
 
 ### Reports and export
 
-- `GET /matters/{matter_id}/preview` — HTML preview of the full report (rendered with Jinja using the same template WeasyPrint consumes)
-- `POST /api/matters/{matter_id}/exports/pdf` — Generate PDF to `./data/exports/<matter_id>/report.pdf`, return the path
-- `POST /api/matters/{matter_id}/exports/csv` — Generate Xactimate-compatible CSV to same folder, return the path
+- `GET /claims/{claim_id}/preview` — HTML preview of the full report (rendered with Jinja using the same template WeasyPrint consumes)
+- `POST /api/claims/{claim_id}/exports/pdf` — Generate PDF to `./data/exports/<claim_id>/report.pdf`, return the path
+- `POST /api/claims/{claim_id}/exports/csv` — Generate Xactimate-compatible CSV to same folder, return the path
 
 ### Categories
 
@@ -266,29 +266,29 @@ The UI is minimal, functional, and keyboard-friendly. No custom design system; T
 
 ### Dashboard (`/`)
 
-- Table of all matters sorted by status then target delivery date
+- Table of all claims sorted by status then target delivery date
 - Columns: firm, policyholder, loss event, status, items count, target delivery date, days remaining
-- "New matter" button in the header
+- "New claim" button in the header
 - Color-coded status chips
 
-### New matter form (`/matters/new`)
+### New claim form (`/claims/new`)
 
-- Single-column form with all the fields from the `matters` table
+- Single-column form with all the fields from the `claims` table
 - Defaults: loss event dropdown pre-populated with "Palisades Fire", "Eaton Fire", and "Other"
-- On submit, redirects to the matter detail page
+- On submit, redirects to the claim detail page
 
-### Matter detail (`/matters/{matter_id}`)
+### Claim detail (`/claims/{claim_id}`)
 
 Tabbed interface with these tabs, navigable via the URL hash (`#evidence`, `#items`, etc.):
 
-1. **Overview** — matter metadata, editable in place. Key metrics: total items, total RCV, total ACV, blended depreciation, count of unconfirmed drafts, count of items missing pricing.
+1. **Overview** — claim metadata, editable in place. Key metrics: total items, total RCV, total ACV, blended depreciation, count of unconfirmed drafts, count of items missing pricing.
 2. **Evidence** — drag-and-drop upload zone, grid of uploaded files with thumbnails for images, "Scan selected with Vision" action button
-3. **Items** — the main working view. A large table of all items for the matter with inline editing. Filters: room, category, confirmed/unconfirmed, has price/missing price, excluded. Bulk actions: assign room, assign category, confirm, exclude. Keyboard shortcuts for fast data entry.
+3. **Items** — the main working view. A large table of all items for the claim with inline editing. Filters: room, category, confirmed/unconfirmed, has price/missing price, excluded. Bulk actions: assign room, assign category, confirm, exclude. Keyboard shortcuts for fast data entry.
 4. **Rooms** — room list with add/rename/reorder
-5. **Preview** — button that opens `/matters/{matter_id}/preview` in a new tab
+5. **Preview** — button that opens `/claims/{claim_id}/preview` in a new tab
 6. **Export** — two buttons (PDF, CSV) that trigger exports and show the resulting file paths, plus a "reveal in Finder" link
 
-### Report preview (`/matters/{matter_id}/preview`)
+### Report preview (`/claims/{claim_id}/preview`)
 
 Renders a full-fidelity HTML version of the Contents Inventory and Valuation Report matching the structure of `04_Report_Template_v0.docx`:
 
@@ -298,7 +298,7 @@ Renders a full-fidelity HTML version of the Contents Inventory and Valuation Rep
 4. Scope of engagement
 5. Methodology
 6. Data sources and inputs
-7. Depreciation methodology (table of categories used in this matter)
+7. Depreciation methodology (table of categories used in this claim)
 8. Summary of findings (by room)
 9. Itemized inventory (every confirmed, non-excluded item)
 10. Pricing audit trail (every row with its source)
@@ -310,7 +310,7 @@ Renders a full-fidelity HTML version of the Contents Inventory and Valuation Rep
 - **Endpoint:** Anthropic Messages API, `POST /v1/messages`
 - **Model:** `claude-opus-4-6` for quality, `claude-sonnet-4-6` for cost-sensitive iteration. Configurable via `.env`.
 - **Input:** each image is base64-encoded and sent as an `image` content block alongside a text prompt
-- **Prompt:** stored in `src/cvp/services/vision_prompts.py` as versioned string constants. The prompt instructs Claude to return a JSON array of items, each with: `description`, `category_hint`, `quantity`, `brand` (if visible), `model` (if visible), `condition` (if inferable), `room_hint` (if inferable), `confidence` (low/medium/high). The prompt must explicitly say "return ONLY a JSON array, no preamble, no markdown fences."
+- **Prompt:** stored in `src/claimos/services/vision_prompts.py` as versioned string constants. The prompt instructs Claude to return a JSON array of items, each with: `description`, `category_hint`, `quantity`, `brand` (if visible), `model` (if visible), `condition` (if inferable), `room_hint` (if inferable), `confidence` (low/medium/high). The prompt must explicitly say "return ONLY a JSON array, no preamble, no markdown fences."
 - **Parsing:** extract the JSON array from the response, tolerant of accidental markdown fences. Log and skip malformed entries without failing the whole run.
 - **Draft item creation:** each returned item becomes a row in `items` with `confirmed=false` and enough metadata to be reviewed. The raw response is stored in `vision_runs.raw_response` for debugging.
 - **Rate limits:** sequential calls with a 500ms pause between images. Do not parallelize in v0.
@@ -322,7 +322,7 @@ Renders a full-fidelity HTML version of the Contents Inventory and Valuation Rep
 - WeasyPrint CSS controls page size (US Letter), margins (1 inch), headers/footers (company name, "Confidential — Attorney Work Product," page numbers)
 - Tables in the itemized inventory section must not break individual rows across pages
 - Fonts: Arial (or Liberation Sans as a Linux-friendly fallback)
-- Output path: `./data/exports/<matter_id>/contents_report_<YYYYMMDD>.pdf`
+- Output path: `./data/exports/<claim_id>/contents_report_<YYYYMMDD>.pdf`
 
 ## 13. Xactimate CSV export
 
@@ -332,7 +332,7 @@ Xactimate imports a CSV where each row is one line item with these columns (exac
 LineItem, Description, Qty, Unit, UnitPrice, Total, Depreciation, ACV, Category, Room, Age, Condition, Notes
 ```
 
-- `LineItem` = sequential per-matter
+- `LineItem` = sequential per-claim
 - `UnitPrice` = RCV unit in dollars (not cents), 2 decimal places
 - `Total` = RCV total in dollars
 - `Depreciation` = dollar amount of accumulated depreciation (RCV - ACV)
@@ -343,7 +343,7 @@ LineItem, Description, Qty, Unit, UnitPrice, Total, Depreciation, ACV, Category,
 - `Condition` = enum value from items table
 - `Notes` = includes the source retailer + URL + match type concatenated
 
-Output path: `./data/exports/<matter_id>/contents_xactimate_<YYYYMMDD>.csv`
+Output path: `./data/exports/<claim_id>/contents_xactimate_<YYYYMMDD>.csv`
 
 ## 14. Configuration
 
@@ -353,7 +353,7 @@ Output path: `./data/exports/<matter_id>/contents_xactimate_<YYYYMMDD>.csv`
 ANTHROPIC_API_KEY=sk-ant-...
 VISION_MODEL=claude-opus-4-6
 VISION_MODEL_FALLBACK=claude-sonnet-4-6
-DATABASE_URL=sqlite:///./data/cvp.db
+DATABASE_URL=sqlite:///./data/claimos.db
 UPLOAD_DIR=./data/uploads
 EXPORT_DIR=./data/exports
 COMPANY_NAME=Acme Contents Valuation LLC
@@ -368,24 +368,24 @@ Build in these phases in strict order. Do not start phase N+1 until phase N pass
 
 ### Phase 1 — Skeleton and data model
 
-- FastAPI app boots on `localhost:8000` with a dashboard page showing "No matters yet"
+- FastAPI app boots on `localhost:8000` with a dashboard page showing "No claims yet"
 - SQLite database created with migrations for all tables in section 7
 - Seed script populates the 42 categories from `docs/depreciation-schedule.md`
 - `uv run pytest` passes with a single test that confirms category seed
 - **Acceptance:** run `uv run dev` and see the dashboard in a browser
 
-### Phase 2 — Matter CRUD
+### Phase 2 — Claim CRUD
 
-- Create, view, update a matter through the UI
-- Matter detail page shows all metadata and has the 6 tabs (even if most are empty)
-- **Acceptance:** manually create a matter, reload the dashboard, see it listed; click through, see every field
+- Create, view, update a claim through the UI
+- Claim detail page shows all metadata and has the 6 tabs (even if most are empty)
+- **Acceptance:** manually create a claim, reload the dashboard, see it listed; click through, see every field
 
 ### Phase 3 — Evidence upload
 
 - Drag-and-drop upload works on the Evidence tab
 - Files are stored on disk and listed with thumbnails for images
 - Can delete a file
-- **Acceptance:** upload 10 photos to a test matter, see them in the grid, delete one, confirm it's gone from disk and DB
+- **Acceptance:** upload 10 photos to a test claim, see them in the grid, delete one, confirm it's gone from disk and DB
 
 ### Phase 4 — Manual items and depreciation
 
@@ -404,19 +404,19 @@ Build in these phases in strict order. Do not start phase N+1 until phase N pass
 
 ### Phase 6 — Report preview
 
-- `/matters/{id}/preview` renders the full report as HTML
+- `/claims/{id}/preview` renders the full report as HTML
 - Every section from the v0 report template is present
 - Summary of findings by room has correct totals
 - Itemized inventory lists every confirmed non-excluded item
 - Audit trail section lists every source
-- **Acceptance:** open the preview for a test matter with 200 items and visually confirm every section renders correctly
+- **Acceptance:** open the preview for a test claim with 200 items and visually confirm every section renders correctly
 
 ### Phase 7 — PDF and CSV export
 
 - "Export PDF" button produces a file matching the preview, paginated cleanly
 - "Export CSV" button produces a file with the exact Xactimate column headers in section 13
-- Files land in `./data/exports/<matter_id>/` and the paths are shown in the UI
-- **Acceptance:** export both formats for the 200-item test matter, open the PDF in Preview.app, open the CSV in Excel, confirm both are readable
+- Files land in `./data/exports/<claim_id>/` and the paths are shown in the UI
+- **Acceptance:** export both formats for the 200-item test claim, open the PDF in Preview.app, open the CSV in Excel, confirm both are readable
 
 ### Phase 8 — Polish
 
@@ -430,14 +430,14 @@ Build in these phases in strict order. Do not start phase N+1 until phase N pass
 
 - Unit tests for the depreciation formula covering: normal case, zero age, age > useful life, floor enforcement, condition multipliers, override precedence, null useful life
 - Unit tests for the CSV exporter: verify headers, currency formatting, row count matches confirmed non-excluded items
-- A single end-to-end test that creates a matter, adds 10 items via the API, generates both exports, and asserts the files exist and are non-empty
+- A single end-to-end test that creates a claim, adds 10 items via the API, generates both exports, and asserts the files exist and are non-empty
 - **No** tests for: UI rendering, Vision API responses (mock it), PDF pixel fidelity
 - Run tests with `uv run pytest`
 
 ## 17. Directory layout (target)
 
 ```
-contents-valuation-prototype/
+claimos/
 ├── CLAUDE.md
 ├── README.md
 ├── pyproject.toml
@@ -449,7 +449,7 @@ contents-valuation-prototype/
 │   ├── data-model.md
 │   └── depreciation-schedule.md
 ├── src/
-│   └── cvp/
+│   └── claimos/
 │       ├── __init__.py
 │       ├── main.py
 │       ├── config.py
@@ -459,7 +459,7 @@ contents-valuation-prototype/
 │       ├── seed.py
 │       ├── routers/
 │       │   ├── __init__.py
-│       │   ├── matters.py
+│       │   ├── claims.py
 │       │   ├── evidence.py
 │       │   ├── items.py
 │       │   ├── rooms.py
@@ -474,8 +474,8 @@ contents-valuation-prototype/
 │       ├── templates/
 │       │   ├── base.html
 │       │   ├── dashboard.html
-│       │   ├── matter_new.html
-│       │   ├── matter_detail.html
+│       │   ├── claim_new.html
+│       │   ├── claim_detail.html
 │       │   ├── _tab_overview.html
 │       │   ├── _tab_evidence.html
 │       │   ├── _tab_items.html
@@ -500,7 +500,7 @@ contents-valuation-prototype/
 │   ├── test_csv_export.py
 │   └── test_e2e.py
 └── data/              # gitignored
-    ├── cvp.db
+    ├── claimos.db
     ├── uploads/
     └── exports/
 ```
@@ -515,7 +515,7 @@ contents-valuation-prototype/
 
 ## 19. What "done" looks like for v0
 
-- Founder can onboard a new wildfire case in under 15 minutes (matter creation + evidence upload)
+- Founder can onboard a new wildfire case in under 15 minutes (claim creation + evidence upload)
 - Producing a 1,000-item total-loss report takes under 20 hours of specialist time
 - Every line item in the PDF traces to a retailer URL and a capture date
 - CSV imports cleanly into Xactimate (verified on one real attorney's workflow)

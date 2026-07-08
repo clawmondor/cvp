@@ -19,7 +19,7 @@ def _make_jpeg_bytes(w: int, h: int, size_hint_mb: float = 0) -> bytes:
 
 
 def test_downscale_large_image_resizes():
-    from cvp.services.vision import _downscale
+    from claimos.services.vision import _downscale
 
     big_bytes = _make_jpeg_bytes(3000, 2000, size_hint_mb=1.1)
     result_bytes, mime = _downscale(big_bytes)
@@ -31,7 +31,7 @@ def test_downscale_large_image_resizes():
 
 
 def test_downscale_small_image_preserves_dimensions():
-    from cvp.services.vision import _downscale
+    from claimos.services.vision import _downscale
 
     small_bytes = _make_jpeg_bytes(800, 600)
     result_bytes, mime = _downscale(small_bytes)
@@ -42,7 +42,7 @@ def test_downscale_small_image_preserves_dimensions():
 
 
 def test_downscale_portrait_respects_long_edge():
-    from cvp.services.vision import _downscale
+    from claimos.services.vision import _downscale
 
     tall_bytes = _make_jpeg_bytes(400, 3000, size_hint_mb=1.1)
     result_bytes, _ = _downscale(tall_bytes)

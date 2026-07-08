@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="csrf-token" content="{{ request.cookies.get('cvp_csrf', '') }}" />
+  <title>{% block title %}ClaimOS{% endblock %} — ClaimOS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/app.js" defer></script>
+  <script src="/static/crop-editor.js" defer></script>
+</head>
+<body class="h-full">
+  <nav class="bg-white border-b border-gray-200">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex h-14 items-center justify-between">
+        <a href="/dashboard" class="text-base font-semibold text-gray-900">ClaimOS</a>
+        <div class="flex items-center gap-4">
+          <a href="/claims/new"
+             class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
+            New claim
+          </a>
+          {% if user %}
+          <a href="/profile" class="text-sm text-gray-600 hover:text-gray-900">{{ user.display_name or user.email }}</a>
+          {% if user.system_role == "system_admin" %}
+          <a href="/admin/system/" class="text-sm text-gray-500 hover:text-gray-700">Admin</a>
+          {% elif user.system_role == "internal_admin" %}
+          <a href="/admin/internal/" class="text-sm text-gray-500 hover:text-gray-700">Admin</a>
+          {% elif user.system_role == "external_admin" %}
+          <a href="/admin/org/" class="text-sm text-gray-500 hover:text-gray-700">Admin</a>
+          {% endif %}
+          <form method="POST" action="/api/auth/logout" class="inline">
+            <button type="submit" class="text-sm text-gray-500 hover:text-gray-700">Sign out</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </nav>
+  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    {% block content %}{% endblock %}
+  </main>
+  {% if user and request.url.path not in ("/", "/login", "/register", "/splash") %}
+  {% include "_feedback_widget.html" %}
+  {% endif %}
+  <div id="crop-editor-modal-root"></div>
+</body>
+</html>

@@ -1,6 +1,6 @@
 """Unit tests for the depreciation formula."""
 
-from cvp.depreciation import compute_acv
+from claimos.depreciation import compute_acv
 
 
 def test_normal_case():

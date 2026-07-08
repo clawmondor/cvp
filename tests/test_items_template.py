@@ -6,7 +6,7 @@ from urllib.parse import quote_plus
 import pytest
 from jinja2 import Environment, FileSystemLoader
 
-TEMPLATE_DIR = Path(__file__).parent.parent / "src" / "cvp" / "templates"
+TEMPLATE_DIR = Path(__file__).parent.parent / "src" / "claimos" / "templates"
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ class FakeCrop:
 class FakeItem:
     def __init__(self):
         self.id = "item-1"
-        self.matter_id = "matter-1"
+        self.claim_id = "claim-1"
         self.line_number = 1
         self.description = "Lamp"
         self.brand = None

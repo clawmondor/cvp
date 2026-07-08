@@ -6,9 +6,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_auth  # noqa: F401 — register models with Base
-from cvp.models import Base
-from cvp.models_auth import Group
+import claimos.models_auth  # noqa: F401 — register models with Base
+from claimos.models import Base
+from claimos.models_auth import Group
 
 
 @pytest.fixture
@@ -26,9 +26,9 @@ def db_session():
 
 @pytest.fixture
 def org_client(db_session):
-    from cvp.db import get_db
-    from cvp.main import app
-    from cvp.routers.admin.org import _require_org_admin_or_above
+    from claimos.db import get_db
+    from claimos.main import app
+    from claimos.routers.admin.org import _require_org_admin_or_above
 
     eg = Group(id="eg", name="Acme Law", kind="external")
     db_session.add(eg)
@@ -38,7 +38,7 @@ def org_client(db_session):
         yield db_session
 
     async def mock_external_admin():
-        from cvp.dependencies import CurrentUser
+        from claimos.dependencies import CurrentUser
 
         return CurrentUser(
             id="ea",

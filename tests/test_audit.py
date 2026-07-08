@@ -7,10 +7,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_audit  # noqa: F401
-from cvp.models import Base
-from cvp.models_audit import AuditLog
-from cvp.services.audit import should_debounce_view
+import claimos.models_audit  # noqa: F401
+from claimos.models import Base
+from claimos.models_audit import AuditLog
+from claimos.services.audit import should_debounce_view
 
 
 def test_audit_log_model():
@@ -20,7 +20,7 @@ def test_audit_log_model():
         action="item.update",
         resource_type="item",
         resource_id="i1",
-        matter_id="m1",
+        claim_id="m1",
         detail={"old": {"price": 100}, "new": {"price": 200}},
         ip_address="127.0.0.1",
     )
@@ -43,7 +43,7 @@ def audit_db():
 
 def test_should_debounce_view_no_prior_event(audit_db):
     """No prior event — should not debounce."""
-    result = should_debounce_view(audit_db, "u1", "matter.view", "m1")
+    result = should_debounce_view(audit_db, "u1", "claim.view", "m1")
     assert result is False
 
 
@@ -51,14 +51,14 @@ def test_should_debounce_view_recent_event(audit_db):
     """Recent event exists — should debounce."""
     log = AuditLog(
         user_id="u1",
-        action="matter.view",
+        action="claim.view",
         resource_id="m1",
         created_at=datetime.utcnow() - timedelta(minutes=1),
     )
     audit_db.add(log)
     audit_db.commit()
 
-    result = should_debounce_view(audit_db, "u1", "matter.view", "m1")
+    result = should_debounce_view(audit_db, "u1", "claim.view", "m1")
     assert result is True
 
 
@@ -66,19 +66,19 @@ def test_should_debounce_view_old_event(audit_db):
     """Old event (>5 min) — should not debounce."""
     log = AuditLog(
         user_id="u1",
-        action="matter.view",
+        action="claim.view",
         resource_id="m1",
         created_at=datetime.utcnow() - timedelta(minutes=10),
     )
     audit_db.add(log)
     audit_db.commit()
 
-    result = should_debounce_view(audit_db, "u1", "matter.view", "m1")
+    result = should_debounce_view(audit_db, "u1", "claim.view", "m1")
     assert result is False
 
 
 def test_get_client_ip_forwarded():
-    from cvp.services.audit import get_client_ip
+    from claimos.services.audit import get_client_ip
 
     class FakeRequest:
         headers = {"x-forwarded-for": "1.2.3.4, 5.6.7.8"}
@@ -88,7 +88,7 @@ def test_get_client_ip_forwarded():
 
 
 def test_get_client_ip_direct():
-    from cvp.services.audit import get_client_ip
+    from claimos.services.audit import get_client_ip
 
     class FakeClient:
         host = "9.9.9.9"

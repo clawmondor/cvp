@@ -1,12 +1,12 @@
 """The full-scan progress fragment must expose a completion contract for app.js."""
 
-from cvp.routers.vision import templates
+from claimos.routers.vision import templates
 
 
 def _render(**kw):
     base = dict(
         job_id="job-1",
-        matter_id="m-1",
+        claim_id="m-1",
         status="done",
         progress=3,
         total=3,
@@ -21,7 +21,7 @@ def test_done_state_exposes_completion_data_attrs():
     html = _render(status="done")
     assert 'data-scan-state="done"' in html
     assert 'data-job-id="job-1"' in html
-    assert 'data-matter-id="m-1"' in html
+    assert 'data-claim-id="m-1"' in html
     assert 'data-items-created="5"' in html
 
 

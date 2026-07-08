@@ -5,8 +5,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from cvp.models import Base, EvidenceFile, Matter
-from cvp.services.pagination import paginate_by_cursor
+from claimos.models import Base, Claim, EvidenceFile
+from claimos.services.pagination import paginate_by_cursor
 
 
 @pytest.fixture
@@ -19,13 +19,13 @@ def db():
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     s = Session()
-    s.add(Matter(id="m", policyholder_name="P", loss_type="total_loss"))
+    s.add(Claim(id="m", policyholder_name="P", loss_type="total_loss"))
     s.commit()
     # 7 evidence rows; we'll paginate by id (stable, ascending insertion order)
     for i in range(7):
         s.add(
             EvidenceFile(
-                matter_id="m",
+                claim_id="m",
                 filename=f"f{i}.jpg",
                 stored_path=f"m/f{i}.jpg",
                 mime_type="image/jpeg",
@@ -40,7 +40,7 @@ def db():
 
 def test_first_page_returns_limit_rows_and_next_cursor(db):
     rows, next_cursor = paginate_by_cursor(
-        db.query(EvidenceFile).filter_by(matter_id="m"),
+        db.query(EvidenceFile).filter_by(claim_id="m"),
         cursor_col=EvidenceFile.id,
         cursor_value=None,
         limit=3,
@@ -52,7 +52,7 @@ def test_first_page_returns_limit_rows_and_next_cursor(db):
 
 def test_middle_page_skips_consumed_rows(db):
     rows, _ = paginate_by_cursor(
-        db.query(EvidenceFile).filter_by(matter_id="m"),
+        db.query(EvidenceFile).filter_by(claim_id="m"),
         cursor_col=EvidenceFile.id,
         cursor_value=None,
         limit=3,
@@ -61,7 +61,7 @@ def test_middle_page_skips_consumed_rows(db):
     last_id = rows[-1].id
 
     page2, next_cursor2 = paginate_by_cursor(
-        db.query(EvidenceFile).filter_by(matter_id="m"),
+        db.query(EvidenceFile).filter_by(claim_id="m"),
         cursor_col=EvidenceFile.id,
         cursor_value=last_id,
         limit=3,
@@ -78,7 +78,7 @@ def test_last_page_returns_no_cursor(db):
     pages = []
     for _ in range(3):
         rows, cursor = paginate_by_cursor(
-            db.query(EvidenceFile).filter_by(matter_id="m"),
+            db.query(EvidenceFile).filter_by(claim_id="m"),
             cursor_col=EvidenceFile.id,
             cursor_value=cursor,
             limit=3,
@@ -91,7 +91,7 @@ def test_last_page_returns_no_cursor(db):
 
 def test_descending_order_works(db):
     rows, _ = paginate_by_cursor(
-        db.query(EvidenceFile).filter_by(matter_id="m"),
+        db.query(EvidenceFile).filter_by(claim_id="m"),
         cursor_col=EvidenceFile.id,
         cursor_value=None,
         limit=10,

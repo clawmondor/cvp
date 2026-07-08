@@ -1,0 +1,115 @@
+<div class="space-y-4">
+
+  {% set claim_id = claim.id %}
+
+  <!-- New-items banner: shown by app.js when a scan/region rescan adds items -->
+  <div id="items-new-banner" data-claim-id="{{ claim.id }}"
+       class="hidden flex items-center justify-between gap-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-800">
+    <span><span aria-hidden="true">✦</span> <span data-new-items-label>New items added</span></span>
+    <button type="button" data-view-new-items
+            class="rounded-md bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-500">
+      View them →
+    </button>
+  </div>
+
+  <!-- Add item form -->
+  <details id="add-item-details" class="rounded-lg border border-gray-200 bg-white shadow-sm">
+    <summary class="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 select-none">
+      <span>+ Add item</span>
+    </summary>
+    <div class="border-t border-gray-100 px-4 py-4">
+      <form hx-post="/api/claims/{{ claim.id }}/items"
+            hx-target="#items-tbody"
+            hx-swap="beforeend"
+            hx-on::after-request="if(event.detail.successful){ this.reset(); document.getElementById('add-item-details').removeAttribute('open'); }"
+            class="space-y-3">
+        <div class="grid grid-cols-12 gap-3 items-end">
+          <div class="col-span-4">
+            <label class="text-xs font-medium text-gray-600">Description <span class="text-red-400">*</span></label>
+            <input name="description" required maxlength="255" placeholder="e.g. 65″ Samsung QLED TV"
+                   class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+          </div>
+          <div class="col-span-2">
+            <label class="text-xs font-medium text-gray-600">Category <span class="text-red-400">*</span></label>
+            <select name="category_id" required
+                    class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+              {% for cat in categories %}
+              <option value="{{ cat.id }}">{{ cat.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-span-2">
+            <label class="text-xs font-medium text-gray-600">Room</label>
+            <select name="room_id"
+                    class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+              <option value="">— unassigned —</option>
+              {% for room in rooms %}
+              <option value="{{ room.id }}">{{ room.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-span-1">
+            <label class="text-xs font-medium text-gray-600">Qty</label>
+            <input name="quantity" type="number" min="1" value="1"
+                   class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+          </div>
+          <div class="col-span-1">
+            <label class="text-xs font-medium text-gray-600">Age (yr)</label>
+            <input name="age_years" type="number" min="0" step="0.5" value="0"
+                   class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+          </div>
+          <div class="col-span-1">
+            <label class="text-xs font-medium text-gray-600">Condition</label>
+            <select name="condition"
+                    class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+              <option value="excellent">Excellent</option>
+              <option value="above_average">Above avg</option>
+              <option value="average" selected>Average</option>
+              <option value="below_average">Below avg</option>
+            </select>
+          </div>
+          <div class="col-span-1">
+            <label class="text-xs font-medium text-gray-600">RCV/unit ($)</label>
+            <input name="rcv_unit_dollars" type="number" min="0" step="0.01" value="0"
+                   class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm font-mono focus:border-indigo-500 focus:outline-none">
+          </div>
+        </div>
+        <div class="flex justify-end">
+          <button type="submit"
+                  class="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">
+            Add item
+          </button>
+        </div>
+      </form>
+    </div>
+  </details>
+
+  <!-- Items table -->
+  <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">#</th>
+          <th class="px-3 py-2 text-left text-xs font-medium text-gray-500" style="width:100px;min-width:100px;">Photo</th>
+          <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Description</th>
+          <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Room</th>
+          <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Category</th>
+          <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Qty</th>
+          <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Age</th>
+          <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Cond</th>
+          <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">RCV/unit</th>
+          <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">RCV total</th>
+          <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">ACV total</th>
+          <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Status</th>
+          <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="items-tbody" class="divide-y divide-gray-100 bg-white">
+        {% include "_items_tbody.html" %}
+      </tbody>
+    </table>
+  </div>
+
+  {% include "_items_summary.html" %}
+
+</div>

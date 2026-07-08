@@ -3,7 +3,7 @@
 import pytest
 from fastapi import HTTPException
 
-from cvp.text_validation import assert_plain_text
+from claimos.text_validation import assert_plain_text
 
 
 def test_accepts_plain_ascii():
@@ -75,8 +75,8 @@ def test_rejects_escape_byte():
 
 def test_error_message_uses_field_name():
     with pytest.raises(HTTPException) as exc:
-        assert_plain_text("<", field_name="Matter description")
-    assert "Matter description" in exc.value.detail
+        assert_plain_text("<", field_name="Claim description")
+    assert "Claim description" in exc.value.detail
 
 
 def test_default_field_name_is_input():

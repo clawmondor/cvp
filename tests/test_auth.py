@@ -1,6 +1,6 @@
 """Tests for auth config, JWT, and password utilities."""
 
-from cvp.auth import (
+from claimos.auth import (
     create_access_token,
     create_refresh_token_value,
     decode_access_token,
@@ -11,8 +11,8 @@ from cvp.auth import (
     validate_password_strength,
     verify_password,
 )
-from cvp.config import Settings
-from cvp.models_auth import Group, RefreshToken, User
+from claimos.config import Settings
+from claimos.models_auth import Group, RefreshToken, User
 
 
 def test_default_settings_have_auth_fields():

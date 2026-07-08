@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}New claim{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <div class="mb-6">
+    <h1 class="text-2xl font-semibold text-gray-900">New claim</h1>
+    <p class="mt-1 text-sm text-gray-500">Enter the claim and policy details to create a new claim.</p>
+  </div>
+
+  <form method="post" action="/claims" class="space-y-8">
+
+    <fieldset class="space-y-4">
+      <legend class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-1 w-full">Firm and attorney</legend>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label for="firm_name" class="block text-sm font-medium text-gray-700">Firm name</label>
+          <input type="text" name="firm_name" id="firm_name"
+                 class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label for="firm_file_number" class="block text-sm font-medium text-gray-700">Firm file number</label>
+          <input type="text" name="firm_file_number" id="firm_file_number"
+                 class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label for="attorney_name" class="block text-sm font-medium text-gray-700">Attorney name</label>
+          <input type="text" name="attorney_name" id="attorney_name"
+                 class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label for="attorney_email" class="block text-sm font-medium text-gray-700">Attorney email</label>
+          <input type="email" name="attorney_email" id="attorney_email"
+                 class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="space-y-4">
+      <legend class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-1 w-full">Policyholder and loss</legend>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label for="policyholder_name" class="block text-sm font-medium text-gray-700">Policyholder name</label>
+          <input type="text" name="policyholder_name" id="policyholder_name"
+                 class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </div>
+        <div class="sm:col-span-2">
+          <label for="loss_location" class="block text-sm font-medium text-gray-700">Loss location (full address)</label>
+          <input type="text" name="loss_location" id="loss_location"
+                 class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label for="loss_event" class="block text-sm font-medium text-gray-700">Loss event</label>
+          <select name="loss_event" id="loss_event"
+                  class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            {% for event in loss_events %}
+            <option value="{{ event }}">{{ event }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="loss_type" class="block text-sm font-medium text-gray-700">Loss type</label>
+          <select name="loss_type" id="loss_type"
+                  class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            {% for lt in loss_types %}
+            <option value="{{ lt }}">{{ lt | replace('_', ' ') | title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="loss_date" class="block text-sm font-medium text-gray-700">Loss date</label>
+          <input type="date" name="loss_date" id="loss_date"
+                 class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label for="target_delivery_date" class="block text-sm font-medium text-gray-700">Target delivery date</label>
+          <input type="date" name="target_delivery_date" id="target_delivery_date"
+                 class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="space-y-4">
+      <legend class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-1 w-full">Policy and carrier</legend>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label for="carrier" class="block text-sm font-medium text-gray-700">Carrier</label>
+          <input type="text" name="carrier" id="carrier"
+                 class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label for="policy_number" class="block text-sm font-medium text-gray-700">Policy number</label>
+          <input type="text" name="policy_number" id="policy_number"
+                 class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label for="claim_number" class="block text-sm font-medium text-gray-700">Claim number</label>
+          <input type="text" name="claim_number" id="claim_number"
+                 class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label for="coverage_c_limit_dollars" class="block text-sm font-medium text-gray-700">Coverage C limit ($)</label>
+          <input type="number" name="coverage_c_limit_dollars" id="coverage_c_limit_dollars"
+                 min="0" step="0.01" placeholder="0.00"
+                 class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="flex items-center gap-3 pt-2">
+      <button type="submit"
+              class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+        Create claim
+      </button>
+      <a href="/" class="text-sm text-gray-500 hover:text-gray-700">Cancel</a>
+    </div>
+
+  </form>
+</div>
+{% endblock %}

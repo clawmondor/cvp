@@ -8,13 +8,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_vision  # noqa: F401
-from cvp.db import get_db
-from cvp.dependencies import CurrentUser, require_system_admin
-from cvp.main import app
-from cvp.models import Base
-from cvp.models_app_setting import AppSetting
-from cvp.services import runtime_config
+import claimos.models_vision  # noqa: F401
+from claimos.db import get_db
+from claimos.dependencies import CurrentUser, require_system_admin
+from claimos.main import app
+from claimos.models import Base
+from claimos.models_app_setting import AppSetting
+from claimos.services import runtime_config
 
 
 @pytest.fixture(autouse=True)

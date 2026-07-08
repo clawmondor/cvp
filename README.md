@@ -1,4 +1,4 @@
-# Contents Valuation Prototype
+# ClaimOS
 
 Internal ops tool for producing **Contents Inventory and Valuation Reports** for first-party property insurance claims. Built for Los Angeles attorneys handling Palisades and Eaton fire cases.
 
@@ -10,7 +10,7 @@ This is **not a customer-facing application.** Attorneys never log in. Specialis
 
 A specialist receives a folder of photos, video walkthroughs, and a partial inventory spreadsheet from an attorney. The tool helps them:
 
-1. Create a **matter** (one claim = one matter) with all policy and policyholder metadata
+1. Create a **claim** with all policy and policyholder metadata
 2. **Upload evidence** — photos, receipts, policy documents — stored locally
 3. **Scan photos with Claude Vision** to generate draft line items from images
 4. **Review and confirm items** — correct descriptions, assign rooms, enter ages and quantities
@@ -93,7 +93,7 @@ See [Configuration reference](#configuration-reference) for all variables.
 uv run alembic upgrade head
 ```
 
-Creates `./data/cvp.db` and applies all schema migrations. The `./data/uploads/`, `./data/exports/`, and `./data/crops/` directories are created automatically on first run.
+Creates `./data/claimos.db` and applies all schema migrations. The `./data/uploads/`, `./data/exports/`, and `./data/crops/` directories are created automatically on first run.
 
 ### 5. Seed the category table
 
@@ -109,9 +109,9 @@ There is no default admin account. You must bootstrap one manually on a fresh da
 
 ```bash
 uv run python - <<'EOF'
-from cvp.db import SessionLocal
-from cvp.auth import hash_password
-from cvp.models_auth import Group, User
+from claimos.db import SessionLocal
+from claimos.auth import hash_password
+from claimos.models_auth import Group, User
 
 EMAIL = "admin@example.com"   # change this
 PASSWORD = "replace-me-now"   # change this — min 12 chars
@@ -176,28 +176,46 @@ Quick summary:
 
 ---
 
+## Legacy CVP / coexistence
+
+This codebase was renamed from **CVP** (Contents Valuation Platform) to **ClaimOS**: the Python package moved from `src/cvp/` to `src/claimos/`, and the core domain object was renamed from `matter` to `claim` (table `matters` → `claims`, column `matter_id` → `claim_id`, etc.).
+
+The pre-rename code is preserved on the frozen `cvp-legacy` branch, which continues to serve the existing internal deployment until data is migrated. To cut a legacy deployment over to ClaimOS:
+
+1. Point `LEGACY_DATABASE_URL` at the existing (pre-rename) database and `DATABASE_URL` at the new (empty) ClaimOS database.
+2. Create the ClaimOS **schema only** on the target: `uv run alembic upgrade head`. **Do not run `seed` or `bootstrap-admin` yet** — `migrate-db` requires an empty target. It copies `categories` and the `users` table (including admins) from the legacy DB, and it verifies per-table row-count parity; a pre-seeded `categories` table or a pre-bootstrapped admin would either fail that parity check or collide on the unique `users.email`.
+3. Run `uv run migrate-db` — a one-shot, read-only-on-the-source copy that maps legacy tables/columns (`matters`/`matter_id`, `matter_access`, etc.) onto the ClaimOS schema (`claims`/`claim_id`, `claim_access`, etc.), FK-safe ordering, with a built-in parity check that fails loudly on mismatch. See `src/claimos/migrate_db.py` for the exact table/column mapping.
+4. **After** the copy passes parity, run `uv run seed` (idempotent) and then `uv run bootstrap-admin` (idempotent — it no-ops if a `system_admin` was migrated over, otherwise creates one). Then deploy ClaimOS in place of `cvp-legacy`.
+
+> **Order matters.** `bootstrap-admin`/`seed` run *after* `migrate-db`, never before. This is a one-time legacy-import sequence; a normal greenfield deploy with no legacy data uses the usual `alembic upgrade head` → `seed` → `bootstrap-admin` order.
+
+No new development happens on `cvp-legacy` — it exists only to keep the current deployment running during migration.
+
+---
+
 ## Project layout
 
 ```
-src/cvp/
+src/claimos/
 ├── main.py            # FastAPI app entry point, router mounting
 ├── config.py          # pydantic-settings — reads from .env
 ├── db.py              # SQLAlchemy engine, WAL mode, session factory
 ├── auth.py            # Password hashing, JWT creation/validation, invite code helpers
-├── dependencies.py    # FastAPI auth dependencies: require_active_user, require_matter_role, etc.
-├── models.py          # ORM models: matters, rooms, items, categories, evidence_files, vision_runs
+├── dependencies.py    # FastAPI auth dependencies: require_active_user, require_claim_role, etc.
+├── models.py          # ORM models: claims, rooms, items, categories, evidence_files, vision_runs
 ├── models_auth.py     # Auth models: Group, User, RefreshToken
-├── models_access.py   # MatterAccess (per-user, per-matter permission grants)
+├── models_access.py   # ClaimAccess (per-user, per-claim permission grants)
 ├── models_comments.py # Comment model (item-level, visibility: internal/shared)
 ├── models_audit.py    # AuditLog model
+├── migrate_db.py      # One-shot legacy-CVP-db -> ClaimOS-db migration (`uv run migrate-db`)
 ├── seed.py            # 42-category seed data (idempotent)
 ├── depreciation.py    # Depreciation formula — pure functions, unit-tested
 ├── routers/
 │   ├── auth.py        # Login, logout, register, token refresh, MFA verify
 │   ├── profile.py     # Password change, MFA setup/disable
-│   ├── sharing.py     # Matter access grant/revoke API
+│   ├── sharing.py     # Claim access grant/revoke API
 │   ├── comments.py    # Item comment CRUD
-│   ├── matters.py     # Matter CRUD
+│   ├── claims.py      # Claim CRUD
 │   ├── evidence.py    # Evidence file upload/delete
 │   ├── items.py       # Item CRUD, confirm/exclude toggles
 │   ├── rooms.py       # Room CRUD
@@ -227,10 +245,10 @@ docs/
 ├── data-model.md               # Schema rationale and migration history
 ├── depreciation-schedule.md    # The 42-category useful-life table (source of truth)
 ├── AUTH.md                     # Authentication: sessions, MFA, invites, dev bypass
-├── RBAC.md                     # Role-based access control: system roles, matter roles, admin panels
+├── RBAC.md                     # Role-based access control: system roles, claim roles, admin panels
 └── QA.md                       # Automated QA testing with Playwright
 data/                  # gitignored — created at runtime
-├── cvp.db             # SQLite database
+├── claimos.db         # SQLite database
 ├── uploads/           # Evidence files (photos, PDFs, etc.)
 ├── crops/             # Cropped evidence thumbnails
 └── exports/           # Generated PDFs and CSVs
@@ -247,6 +265,9 @@ data/                  # gitignored — created at runtime
 | `uv run alembic upgrade head` | Apply all pending migrations |
 | `uv run alembic revision --autogenerate -m "description"` | Generate a new migration from model changes |
 | `uv run seed` | Populate the 42 depreciation categories (idempotent) |
+| `uv run seed-auth` | Seed initial auth data (groups, roles) |
+| `uv run bootstrap-admin` | Idempotent first-deploy System Admin bootstrap (see `docs/RUNBOOK.md`) |
+| `uv run migrate-db` | One-shot data copy from a legacy CVP database into the ClaimOS schema (see [Legacy CVP / coexistence](#legacy-cvp--coexistence) below) |
 | `uv run pytest` | Run the full test suite |
 | `uv run ruff check .` | Lint |
 | `uv run ruff format .` | Format |
@@ -282,7 +303,7 @@ uv run pytest tests/test_seed.py -v
 | Routers | Happy path | One integration test per route |
 | Vision service | Mocked | API response parsing, draft item creation |
 
-> Tests use an in-memory SQLite database. They never touch `./data/cvp.db`.
+> Tests use an in-memory SQLite database. They never touch `./data/claimos.db`.
 
 ---
 
@@ -290,8 +311,8 @@ uv run pytest tests/test_seed.py -v
 
 **Core tables:**
 
-- **matters** — one row per insurance claim; holds all policy metadata, status, and delivery tracking
-- **rooms** — named spaces within the insured property (bedroom, kitchen, etc.), linked to a matter
+- **claims** — one row per insurance claim; holds all policy metadata, status, and delivery tracking
+- **rooms** — named spaces within the insured property (bedroom, kitchen, etc.), linked to a claim
 - **items** — the core inventory: one row per line item with RCV, ACV, source citation, and confirmation state
 - **categories** — 42 rows from `docs/depreciation-schedule.md`; drives the depreciation formula; read-only in v0
 - **evidence_files** — uploaded photos, PDFs, and other files; tracks scan status
@@ -302,7 +323,7 @@ uv run pytest tests/test_seed.py -v
 - **groups** — organizations: one `internal` group (the company) plus one `external` group per law firm / client
 - **users** — authenticated users with a `system_role`, `group_id`, optional MFA secret, and invite state
 - **refresh_tokens** — server-side refresh token records (hashed); supports revocation
-- **matter_access** — per-user, per-matter permission grants (`viewer` / `editor` / `contributor` / `manager`)
+- **claim_access** — per-user, per-claim permission grants (`viewer` / `editor` / `contributor` / `manager`)
 - **comments** — item-level comments with `visibility` (`internal` or `shared`)
 - **audit_logs** — append-only event log for auth and data mutations
 
@@ -347,7 +368,8 @@ All settings are read from `.env` at startup via pydantic-settings. Every variab
 | `VISION_MODEL` | `claude-opus-4-6` | Model used for Vision scans |
 | `VISION_MODEL_FALLBACK` | `claude-sonnet-4-6` | Fallback model |
 | `PORT` | `8000` | Port the dev server listens on |
-| `DATABASE_URL` | `sqlite:///./data/cvp.db` | SQLite database path |
+| `DATABASE_URL` | `sqlite:///./data/claimos.db` | ClaimOS database connection string (SQLite locally; Postgres in production) |
+| `LEGACY_DATABASE_URL` | *(unset)* | Only used by `uv run migrate-db` — connection string for the source (legacy CVP) database to copy from. See [Legacy CVP / coexistence](#legacy-cvp--coexistence). |
 | `UPLOAD_DIR` | `./data/uploads` | Where evidence files are stored |
 | `EXPORT_DIR` | `./data/exports` | Where PDFs and CSVs are written |
 | `COMPANY_NAME` | `Contents Valuation LLC` | Appears in report headers and footers |

@@ -1,4 +1,4 @@
-"""Tests for the paginated GET /api/matters/{matter_id}/evidence-grid endpoint."""
+"""Tests for the paginated GET /api/claims/{claim_id}/evidence-grid endpoint."""
 
 import os
 from datetime import datetime, timedelta
@@ -10,15 +10,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_vision  # noqa: F401
-from cvp.db import get_db
-from cvp.dependencies import CurrentUser
-from cvp.main import app
-from cvp.models import Base, EvidenceFile, Matter
-from cvp.services import access_cache
+import claimos.models_vision  # noqa: F401
+from claimos.db import get_db
+from claimos.dependencies import CurrentUser
+from claimos.main import app
+from claimos.models import Base, Claim, EvidenceFile
+from claimos.services import access_cache
 
 VIEWER_ID = "v1"
-MATTER_ID = "m-grid"
+CLAIM_ID = "m-grid"
 
 
 @pytest.fixture(autouse=True)
@@ -38,10 +38,10 @@ def db_session():
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     s = Session()
-    from cvp.models_auth import User
+    from claimos.models_auth import User
 
     s.add(User(id=VIEWER_ID, email="v@test.com", display_name="V", system_role="internal_user"))
-    s.add(Matter(id=MATTER_ID, policyholder_name="P", loss_type="total_loss"))
+    s.add(Claim(id=CLAIM_ID, policyholder_name="P", loss_type="total_loss"))
     s.commit()
     yield s
     s.close()
@@ -51,7 +51,7 @@ def db_session():
 def client(db_session, monkeypatch, tmp_path):
     import inspect
 
-    import cvp.routers.evidence as ev_router
+    import claimos.routers.evidence as ev_router
 
     async def mock_viewer():
         return CurrentUser(
@@ -68,7 +68,7 @@ def client(db_session, monkeypatch, tmp_path):
     dep = inspect.signature(ev_router.get_evidence_grid).parameters["user"].default.dependency
     app.dependency_overrides[dep] = mock_viewer
     app.dependency_overrides[get_db] = override_get_db
-    monkeypatch.setattr("cvp.routers.evidence.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.routers.evidence.SessionLocal", lambda: db_session)
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -86,9 +86,9 @@ def _seed_images(db, count: int, tmp_path) -> list[EvidenceFile]:
         path = tmp_path / f"img_{i:03d}.jpg"
         PILImage.new("RGB", (10, 10), "white").save(path, "JPEG")
         ef = EvidenceFile(
-            matter_id=MATTER_ID,
+            claim_id=CLAIM_ID,
             filename=path.name,
-            stored_path=f"{MATTER_ID}/{path.name}",
+            stored_path=f"{CLAIM_ID}/{path.name}",
             mime_type="image/jpeg",
             size_bytes=os.path.getsize(path),
             kind="image",
@@ -103,7 +103,7 @@ def _seed_images(db, count: int, tmp_path) -> list[EvidenceFile]:
 
 def test_first_page_returns_24_tiles_and_sentinel(client, db_session, tmp_path):
     _seed_images(db_session, 30, tmp_path)
-    resp = client.get(f"/api/matters/{MATTER_ID}/evidence-grid")
+    resp = client.get(f"/api/claims/{CLAIM_ID}/evidence-grid")
     assert resp.status_code == 200
     body = resp.text
     assert body.count("data-file-card") == 24
@@ -116,15 +116,15 @@ def test_second_page_returns_remainder_and_no_sentinel(client, db_session, tmp_p
     # Newest-first ordering by created_at desc; oldest of the first page is rows[6]
     # (rows[29], rows[28], ..., rows[6] = 24 newest). Cursor = rows[6].created_at.
     cursor = rows[6].created_at.isoformat()
-    resp = client.get(f"/api/matters/{MATTER_ID}/evidence-grid?cursor={cursor}")
+    resp = client.get(f"/api/claims/{CLAIM_ID}/evidence-grid?cursor={cursor}")
     assert resp.status_code == 200
     body = resp.text
     assert body.count("data-file-card") == 6
     assert 'hx-trigger="revealed"' not in body
 
 
-def test_empty_matter_returns_no_tiles_no_sentinel(client):
-    resp = client.get(f"/api/matters/{MATTER_ID}/evidence-grid")
+def test_empty_claim_returns_no_tiles_no_sentinel(client):
+    resp = client.get(f"/api/claims/{CLAIM_ID}/evidence-grid")
     assert resp.status_code == 200
     assert "data-file-card" not in resp.text
     assert 'hx-trigger="revealed"' not in resp.text

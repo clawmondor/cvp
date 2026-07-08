@@ -1,9 +1,9 @@
 # Depreciation Schedule
 
-**Status:** Source of truth for `src/cvp/seed.py` and `src/cvp/depreciation.py`
+**Status:** Source of truth for `src/claimos/seed.py` and `src/claimos/depreciation.py`
 **Last reviewed:** [date]
 
-This file is the canonical reference for the personal-property depreciation methodology used in every Contents Inventory and Valuation Report. The seed script reads this table and populates the `categories` table. The depreciation formula in `src/cvp/depreciation.py` uses these values at runtime. **If you edit this file, regenerate the seed and re-run migrations.**
+This file is the canonical reference for the personal-property depreciation methodology used in every Contents Inventory and Valuation Report. The seed script reads this table and populates the `categories` table. The depreciation formula in `src/claimos/depreciation.py` uses these values at runtime. **If you edit this file, regenerate the seed and re-run migrations.**
 
 ---
 
@@ -109,7 +109,7 @@ The seed script reads this file and populates the `categories` table. The JSON r
 }
 ```
 
-Store the full list as a Python constant in `src/cvp/seed.py`. The seed script is idempotent: running it twice should not create duplicate rows. Use `INSERT OR IGNORE` or an upsert keyed on `id`.
+Store the full list as a Python constant in `src/claimos/seed.py`. The seed script is idempotent: running it twice should not create duplicate rows. Use `INSERT OR IGNORE` or an upsert keyed on `id`.
 
 ---
 
@@ -133,6 +133,6 @@ These are the cases the unit tests in `tests/test_depreciation.py` must cover:
 ## Revision policy
 
 - Useful-life values are reviewed annually, or sooner if a carrier or appraisal panel formally rejects one of them in a real claim. When that happens, document the rejection in this file with the date, the carrier, and the panel's reasoning.
-- New categories are added only when a real matter has more than 10 items that don't fit any existing category. Expanding the category list dilutes the usefulness of each category and makes bulk-editing harder.
+- New categories are added only when a real claim has more than 10 items that don't fit any existing category. Expanding the category list dilutes the usefulness of each category and makes bulk-editing harder.
 - Condition multipliers and floor percentages are more stable than useful lives. Do not change them without a team discussion and a note in the PR.
 - Any change to this file requires a corresponding test update in `tests/test_depreciation.py`.

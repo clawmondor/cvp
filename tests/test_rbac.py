@@ -4,26 +4,26 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from cvp.dependencies import (
+from claimos.dependencies import (
     ROLE_HIERARCHY,
     CurrentUser,
-    _check_matter_access,
+    _check_claim_access,
 )
-from cvp.models import Base, Matter
-from cvp.models_access import MatterAccess
-from cvp.models_auth import Group, User
+from claimos.models import Base, Claim
+from claimos.models_access import ClaimAccess
+from claimos.models_auth import Group, User
 
 
-def test_matter_access_model_fields():
-    ma = MatterAccess(
+def test_claim_access_model_fields():
+    ma = ClaimAccess(
         id="ma1",
         user_id="u1",
-        matter_id="m1",
+        claim_id="m1",
         role="editor",
         granted_by_id="u2",
     )
     assert ma.user_id == "u1"
-    assert ma.matter_id == "m1"
+    assert ma.claim_id == "m1"
     assert ma.role == "editor"
     assert ma.granted_by_id == "u2"
 
@@ -40,7 +40,7 @@ def db_session():
 
 @pytest.fixture
 def seeded_rbac_db(db_session):
-    """Seed with groups, users, a matter, and access grants."""
+    """Seed with groups, users, a claim, and access grants."""
     int_group = Group(id="ig", name="Internal", kind="internal")
     ext_group = Group(id="eg", name="External", kind="external")
     db_session.add_all([int_group, ext_group])
@@ -87,11 +87,11 @@ def seeded_rbac_db(db_session):
     )
     db_session.add_all([sys_admin, int_admin, int_user, ext_admin, ext_user])
 
-    matter = Matter(id="m1", owner_group_id="ig", created_by_id="ia")
-    db_session.add(matter)
+    claim = Claim(id="m1", owner_group_id="ig", created_by_id="ia")
+    db_session.add(claim)
 
     # Grant ext_user viewer access
-    access = MatterAccess(id="a1", user_id="eu", matter_id="m1", role="viewer", granted_by_id="ia")
+    access = ClaimAccess(id="a1", user_id="eu", claim_id="m1", role="viewer", granted_by_id="ia")
     db_session.add(access)
     db_session.commit()
     return db_session
@@ -111,11 +111,11 @@ def test_system_admin_has_implicit_manager(seeded_rbac_db):
         group_id="ig",
         group_kind="internal",
     )
-    result = _check_matter_access(seeded_rbac_db, user, "m1", "manager")
+    result = _check_claim_access(seeded_rbac_db, user, "m1", "manager")
     assert result is True
 
 
-def test_internal_admin_manager_on_own_group_matter(seeded_rbac_db):
+def test_internal_admin_manager_on_own_group_claim(seeded_rbac_db):
     user = CurrentUser(
         id="ia",
         email="ia@test.com",
@@ -123,7 +123,7 @@ def test_internal_admin_manager_on_own_group_matter(seeded_rbac_db):
         group_id="ig",
         group_kind="internal",
     )
-    result = _check_matter_access(seeded_rbac_db, user, "m1", "manager")
+    result = _check_claim_access(seeded_rbac_db, user, "m1", "manager")
     assert result is True
 
 
@@ -135,7 +135,7 @@ def test_ext_user_has_viewer_access(seeded_rbac_db):
         group_id="eg",
         group_kind="external",
     )
-    result = _check_matter_access(seeded_rbac_db, user, "m1", "viewer")
+    result = _check_claim_access(seeded_rbac_db, user, "m1", "viewer")
     assert result is True
 
 
@@ -147,7 +147,7 @@ def test_ext_user_denied_editor_access(seeded_rbac_db):
         group_id="eg",
         group_kind="external",
     )
-    result = _check_matter_access(seeded_rbac_db, user, "m1", "editor")
+    result = _check_claim_access(seeded_rbac_db, user, "m1", "editor")
     assert result is False
 
 
@@ -159,6 +159,6 @@ def test_no_access_for_ungranted_user(seeded_rbac_db):
         group_id="eg",
         group_kind="external",
     )
-    # ext_admin has no matter_access row and matter is owned by internal group
-    result = _check_matter_access(seeded_rbac_db, user, "m1", "viewer")
+    # ext_admin has no claim_access row and claim is owned by internal group
+    result = _check_claim_access(seeded_rbac_db, user, "m1", "viewer")
     assert result is False

@@ -1,4 +1,4 @@
-from cvp.config import get_settings
+from claimos.config import get_settings
 
 
 def test_default_database_url_is_sqlite(monkeypatch):
@@ -19,20 +19,20 @@ def test_database_url_from_env(monkeypatch):
 
 def test_settings_has_openrouter_fields(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-v1-test")
-    monkeypatch.setenv("OPENROUTER_REFERER", "https://cvp.example")
+    monkeypatch.setenv("OPENROUTER_REFERER", "https://claimos.example")
     monkeypatch.setenv("OPENROUTER_APP_TITLE", "CVP-test")
-    from cvp.config import Settings
+    from claimos.config import Settings
 
     s = Settings()
     assert s.openrouter_api_key == "sk-or-v1-test"
-    assert s.openrouter_referer == "https://cvp.example"
+    assert s.openrouter_referer == "https://claimos.example"
     assert s.openrouter_app_title == "CVP-test"
 
 
 def test_settings_openrouter_defaults():
-    from cvp.config import Settings
+    from claimos.config import Settings
 
     s = Settings(_env_file=None)
     assert s.openrouter_api_key == ""
     assert s.openrouter_referer == ""
-    assert s.openrouter_app_title == "CVP"
+    assert s.openrouter_app_title == "ClaimOS"

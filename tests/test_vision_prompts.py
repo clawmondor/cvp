@@ -1,6 +1,6 @@
 """Tests for vision prompt v4."""
 
-from cvp.services.vision_prompts import SCAN_PROMPT_VERSION, build_scan_prompt
+from claimos.services.vision_prompts import SCAN_PROMPT_VERSION, build_scan_prompt
 
 
 def test_version_is_v4():

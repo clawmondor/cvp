@@ -6,8 +6,8 @@ import pytest
 from PIL import Image
 from sqlalchemy.orm import configure_mappers
 
-from cvp.models import EvidenceFile, ItemCrop
-from cvp.services.crop import recrop_item_crop
+from claimos.models import EvidenceFile, ItemCrop
+from claimos.services.crop import recrop_item_crop
 
 configure_mappers()
 

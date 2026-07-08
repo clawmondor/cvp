@@ -5,12 +5,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_vision  # noqa: F401 — register table
-from cvp.db import get_db
-from cvp.dependencies import CurrentUser, require_system_admin
-from cvp.main import app
-from cvp.models import Base
-from cvp.models_vision import VisionModel
+import claimos.models_vision  # noqa: F401 — register table
+from claimos.db import get_db
+from claimos.dependencies import CurrentUser, require_system_admin
+from claimos.main import app
+from claimos.models import Base
+from claimos.models_vision import VisionModel
 
 
 @pytest.fixture
@@ -72,7 +72,7 @@ def test_admin_vision_models_index_lists_seeded_default(client_admin):
 
 def test_admin_vision_models_index_requires_admin(monkeypatch):
     # Disable dev auto-login so the auth guard is actually tested.
-    from cvp import config
+    from claimos import config
 
     monkeypatch.setattr(config.settings, "auto_login_user_id", "")
     with TestClient(app) as c:
@@ -80,7 +80,7 @@ def test_admin_vision_models_index_requires_admin(monkeypatch):
     assert resp.status_code in (302, 303, 401, 403)
 
 
-import cvp.routers.admin.vision_models as vm_router  # noqa: E402
+import claimos.routers.admin.vision_models as vm_router  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -103,7 +103,7 @@ def test_admin_vision_models_add_modal_shows_catalog(client_admin, monkeypatch):
         }
     ]
     monkeypatch.setattr(
-        "cvp.routers.admin.vision_models.openrouter.fetch_models",
+        "claimos.routers.admin.vision_models.openrouter.fetch_models",
         lambda: fake_catalog,
     )
     resp = client_admin.get("/admin/vision-models/add")
@@ -124,7 +124,7 @@ def test_admin_vision_models_add_inserts_row(client_admin, db_session, monkeypat
         }
     ]
     monkeypatch.setattr(
-        "cvp.routers.admin.vision_models.openrouter.fetch_models",
+        "claimos.routers.admin.vision_models.openrouter.fetch_models",
         lambda: fake_catalog,
     )
     resp = client_admin.post(
@@ -140,7 +140,7 @@ def test_admin_vision_models_add_inserts_row(client_admin, db_session, monkeypat
 
 def test_admin_vision_models_add_rejects_duplicate(client_admin, monkeypatch):
     monkeypatch.setattr(
-        "cvp.routers.admin.vision_models.openrouter.fetch_models",
+        "claimos.routers.admin.vision_models.openrouter.fetch_models",
         lambda: [],
     )
     resp = client_admin.post(
@@ -201,7 +201,7 @@ def test_disable_non_default_works(client_admin, db_session):
     assert db_session.query(VisionModel).filter_by(id=nd_id).one().is_enabled is False
 
 
-from cvp.models_audit import AuditLog  # noqa: E402
+from claimos.models_audit import AuditLog  # noqa: E402
 
 
 def test_add_model_writes_audit_log(client_admin, db_session, monkeypatch):
@@ -216,14 +216,14 @@ def test_add_model_writes_audit_log(client_admin, db_session, monkeypatch):
         }
     ]
     monkeypatch.setattr(
-        "cvp.routers.admin.vision_models.openrouter.fetch_models", lambda: fake_catalog
+        "claimos.routers.admin.vision_models.openrouter.fetch_models", lambda: fake_catalog
     )
     vm_router._catalog_cache = None
 
     client_admin.post("/admin/vision-models", data={"slug": "x/audit-test", "adapter": "none"})
 
     # Check the shared real DB for the audit log (write_audit_log uses SessionLocal directly)
-    from cvp.db import SessionLocal as RealSession
+    from claimos.db import SessionLocal as RealSession
 
     real_db = RealSession()
     try:
@@ -253,7 +253,7 @@ def test_set_default_writes_audit_log(client_admin, db_session):
     )
     assert resp.status_code == 303
 
-    from cvp.db import SessionLocal as RealSession
+    from claimos.db import SessionLocal as RealSession
 
     real_db = RealSession()
     try:
