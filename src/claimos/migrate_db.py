@@ -13,30 +13,39 @@ import sqlalchemy as sa
 
 # (target_table, source_table, {source_col: target_col})
 # Identity rows have source==target and no column renames. Only the claim rename
-# differs. Ordered so parents are inserted before children (FK-safe).
+# differs. Ordered so parents are inserted before children (FK-safe). The order
+# below matches `claimos.models.Base.metadata.sorted_tables` (a topological sort
+# of the target ClaimOS FK graph) — do not reorder by hand; regenerate from
+# `sorted_tables` if the schema changes. Source-side names are legacy CVP names
+# (`matters`, `matter_access`) but ordering is governed by the TARGET graph.
 TABLE_PLAN: list[tuple[str, str, dict[str, str]]] = [
+    ("categories", "categories", {}),
     ("groups", "groups", {}),
     ("users", "users", {}),
     ("app_setting", "app_setting", {}),
-    ("categories", "categories", {}),
-    ("vision_models", "vision_models", {}),
-    ("claims", "matters", {}),
-    ("claim_access", "matter_access", {"matter_id": "claim_id"}),
-    ("rooms", "rooms", {"matter_id": "claim_id"}),
-    ("item_groups", "item_groups", {"matter_id": "claim_id"}),
-    ("items", "items", {"matter_id": "claim_id"}),
-    ("item_crops", "item_crops", {}),
-    ("evidence_files", "evidence_files", {"matter_id": "claim_id"}),
-    ("vision_runs", "vision_runs", {"matter_id": "claim_id"}),
-    ("vision_jobs", "vision_jobs", {"matter_id": "claim_id"}),
-    ("vision_job_images", "vision_job_images", {}),
-    ("serp_searches", "serp_searches", {}),
-    ("comments", "comments", {}),
-    ("feedback", "feedback", {}),
-    ("feedback_comments", "feedback_comments", {}),
     ("audit_logs", "audit_logs", {"matter_id": "claim_id"}),
+    ("claims", "matters", {}),
+    ("feedback", "feedback", {}),
     ("refresh_tokens", "refresh_tokens", {}),
+    ("vision_models", "vision_models", {}),
+    ("claim_access", "matter_access", {"matter_id": "claim_id"}),
+    ("feedback_comments", "feedback_comments", {}),
+    ("item_groups", "item_groups", {"matter_id": "claim_id"}),
+    ("rooms", "rooms", {"matter_id": "claim_id"}),
+    ("vision_jobs", "vision_jobs", {"matter_id": "claim_id"}),
+    ("evidence_files", "evidence_files", {"matter_id": "claim_id"}),
+    ("items", "items", {"matter_id": "claim_id"}),
+    ("comments", "comments", {}),
+    ("item_crops", "item_crops", {}),
+    ("vision_job_images", "vision_job_images", {}),
+    ("vision_runs", "vision_runs", {"matter_id": "claim_id"}),
+    ("serp_searches", "serp_searches", {}),
 ]
+
+# Primary-key column overrides for the Postgres ON CONFLICT target. Every table
+# uses `id` except `app_setting`, whose PK is `key` (see models_app_setting.py).
+# Verified by checking every model's `primary_key=True` column.
+PK_OVERRIDES: dict[str, str] = {"app_setting": "key"}
 
 
 def _copy_table(
@@ -56,12 +65,16 @@ def _copy_table(
     cols = list(out[0].keys())
     collist = ", ".join(cols)
     params = ", ".join(f":{c}" for c in cols)
-    # upsert-by-PK so a failed run is re-runnable
+    # SQLite: upsert-by-PK so a failed run is re-runnable. Postgres: insert-only
+    # (DO NOTHING on conflict) — not a true upsert, but re-runnable since existing
+    # rows are simply skipped. Conflict target is the table's actual PK column.
+    pk = PK_OVERRIDES.get(target_table, "id")
     tgt.execute(
         sa.text(f"INSERT OR REPLACE INTO {target_table} ({collist}) VALUES ({params})")
         if tgt.dialect.name == "sqlite"
         else sa.text(
-            f"INSERT INTO {target_table} ({collist}) VALUES ({params}) ON CONFLICT (id) DO NOTHING"
+            f"INSERT INTO {target_table} ({collist}) VALUES ({params}) "
+            f"ON CONFLICT ({pk}) DO NOTHING"
         ),
         out,
     )

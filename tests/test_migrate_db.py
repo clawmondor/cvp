@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 
-from claimos.migrate_db import migrate
+from claimos.migrate_db import TABLE_PLAN, migrate
+from claimos.models import Base
 
 
 def _make_legacy_db(url: str) -> None:
@@ -56,3 +57,32 @@ def test_migrate_copies_and_remaps(tmp_path):
         room = c.exec_driver_sql("SELECT id, claim_id, name FROM rooms").one()
     assert claim == ("m1", "Jane Doe")
     assert room == ("r1", "m1", "Kitchen")  # matter_id -> claim_id preserved value
+
+
+def test_table_plan_is_fk_safe_topological_order():
+    """TABLE_PLAN must never copy a child table before a parent it has an FK to.
+
+    On Postgres, FKs are enforced (unlike SQLite in these tests), so an
+    out-of-order plan silently passes here but hard-fails in production. Guard
+    against that by checking TABLE_PLAN's order against the authoritative FK
+    graph in the ORM metadata.
+    """
+    plan_tables = [target for target, _source, _renames in TABLE_PLAN]
+    index = {table: pos for pos, table in enumerate(plan_tables)}
+
+    sorted_tables = Base.metadata.sorted_tables
+    assert set(plan_tables) == {t.name for t in sorted_tables}, (
+        "TABLE_PLAN must cover exactly the tables in the ORM metadata"
+    )
+    assert len(plan_tables) == 21
+
+    for table in sorted_tables:
+        for fk in table.foreign_keys:
+            parent = fk.column.table.name
+            if parent == table.name:
+                continue  # self-referential FK, not relevant to ordering
+            assert index[table.name] >= index[parent], (
+                f"TABLE_PLAN places child table '{table.name}' (position "
+                f"{index[table.name]}) before its FK-parent '{parent}' "
+                f"(position {index[parent]})"
+            )
