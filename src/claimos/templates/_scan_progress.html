@@ -1,14 +1,14 @@
 {% set pct = ((progress / total * 100) | int) if total else 0 %}
 <div id="scan-status"
   {% if status == "running" %}
-  hx-get="/api/matters/{{ matter_id }}/vision-scan/{{ job_id }}"
+  hx-get="/api/claims/{{ claim_id }}/vision-scan/{{ job_id }}"
   hx-trigger="every 2s"
   hx-target="#scan-status"
   hx-swap="outerHTML"
   {% else %}
   data-scan-state="{{ status }}"
   data-job-id="{{ job_id }}"
-  data-matter-id="{{ matter_id }}"
+  data-claim-id="{{ claim_id }}"
   data-items-created="{{ items_created }}"
   {% endif %}
   class="rounded-lg border {% if status == 'error' %}border-red-200 bg-red-50{% elif status == 'done' %}border-green-200 bg-green-50{% else %}border-indigo-200 bg-indigo-50{% endif %} p-4 space-y-2">

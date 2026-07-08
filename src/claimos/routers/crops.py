@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from claimos.config import settings
 from claimos.db import SessionLocal
-from claimos.dependencies import CurrentUser, require_matter_role
+from claimos.dependencies import CurrentUser, require_claim_role
 from claimos.models import EvidenceFile, Item, ItemCrop
 from claimos.services.audit import get_client_ip, write_audit_log
 from claimos.services.crop import recrop_item_crop
@@ -37,7 +37,7 @@ def adjust_bbox(
     crop_id: str,
     body: BboxBody,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor")),
 ) -> JSONResponse:
     db = SessionLocal()
     try:
@@ -72,7 +72,7 @@ def adjust_bbox(
         crop.adjusted_bbox_lower = body.lower
         db.commit()
         item = db.get(Item, crop.item_id)
-        matter_id = item.matter_id if item else None
+        claim_id = item.claim_id if item else None
     finally:
         db.close()
     background_tasks.add_task(
@@ -81,7 +81,7 @@ def adjust_bbox(
         action="crop.update",
         resource_type="crop",
         resource_id=crop_id,
-        matter_id=matter_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
     )
     return JSONResponse({"ok": True})
@@ -92,7 +92,7 @@ def clear_bbox(
     request: Request,
     crop_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor")),
 ) -> JSONResponse:
     db = SessionLocal()
     try:
@@ -105,7 +105,7 @@ def clear_bbox(
         crop.adjusted_bbox_lower = None
         db.commit()
         item = db.get(Item, crop.item_id)
-        matter_id = item.matter_id if item else None
+        claim_id = item.claim_id if item else None
     finally:
         db.close()
     background_tasks.add_task(
@@ -114,7 +114,7 @@ def clear_bbox(
         action="crop.update",
         resource_type="crop",
         resource_id=crop_id,
-        matter_id=matter_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
     )
     return JSONResponse({"ok": True})
@@ -122,7 +122,7 @@ def clear_bbox(
 
 @router.get("/api/evidence/{file_id}/crop-editor", response_class=HTMLResponse)
 def crop_editor(
-    request: Request, file_id: str, user: CurrentUser = Depends(require_matter_role("contributor"))
+    request: Request, file_id: str, user: CurrentUser = Depends(require_claim_role("contributor"))
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -182,7 +182,7 @@ def recrop_evidence(
     request: Request,
     file_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor")),
 ) -> JSONResponse:
     db = SessionLocal()
     try:
@@ -214,7 +214,7 @@ def recrop_evidence(
             crop.crop_updated_at = now
             recropped_ids.append(crop.id)
 
-        matter_id = ef.matter_id
+        claim_id = ef.claim_id
         db.commit()
     finally:
         db.close()
@@ -225,7 +225,7 @@ def recrop_evidence(
         action="crop.update",
         resource_type="crop",
         resource_id=file_id,
-        matter_id=matter_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
     )
     return JSONResponse({"recropped": recropped_ids})

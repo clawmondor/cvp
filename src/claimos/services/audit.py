@@ -16,7 +16,7 @@ def write_audit_log(
     action: str,
     resource_type: str = "",
     resource_id: str | None = None,
-    matter_id: str | None = None,
+    claim_id: str | None = None,
     detail: dict | None = None,
     ip_address: str = "",
 ) -> None:
@@ -28,7 +28,7 @@ def write_audit_log(
             action=action,
             resource_type=resource_type,
             resource_id=resource_id,
-            matter_id=matter_id,
+            claim_id=claim_id,
             detail=detail,
             ip_address=ip_address,
         )

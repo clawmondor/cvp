@@ -14,8 +14,8 @@ from sqlalchemy.orm import Session
 from claimos.auth import generate_invite_code, hash_token
 from claimos.db import get_db
 from claimos.dependencies import CurrentUser, require_active_user
-from claimos.models import Matter
-from claimos.models_access import MatterAccess
+from claimos.models import Claim
+from claimos.models_access import ClaimAccess
 from claimos.models_auth import Group, User
 from claimos.services.audit import get_client_ip, write_audit_log
 
@@ -48,7 +48,7 @@ def internal_dashboard(
 ) -> HTMLResponse:
     internal_user_count = db.query(User).filter(User.group_id == user.group_id).count()
     external_group_count = db.query(Group).filter(Group.kind == "external").count()
-    matter_count = db.query(Matter).filter(Matter.owner_group_id == user.group_id).count()
+    claim_count = db.query(Claim).filter(Claim.owner_group_id == user.group_id).count()
     return templates.TemplateResponse(
         request=request,
         name="admin/internal/dashboard.html",
@@ -56,7 +56,7 @@ def internal_dashboard(
             user,
             internal_user_count=internal_user_count,
             external_group_count=external_group_count,
-            matter_count=matter_count,
+            claim_count=claim_count,
             breadcrumbs=[{"label": "Internal Admin", "url": "/admin/internal/"}],
         ),
     )
@@ -232,71 +232,71 @@ def internal_invite_user(
     )
 
 
-@router.get("/matters", response_class=HTMLResponse)
-def internal_matters(
+@router.get("/claims", response_class=HTMLResponse)
+def internal_claims(
     request: Request,
     user: CurrentUser = Depends(_require_internal_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    matters = (
-        db.query(Matter)
-        .filter(Matter.owner_group_id == user.group_id)
-        .order_by(Matter.status, Matter.target_delivery_date)
+    claims = (
+        db.query(Claim)
+        .filter(Claim.owner_group_id == user.group_id)
+        .order_by(Claim.status, Claim.target_delivery_date)
         .all()
     )
     return templates.TemplateResponse(
         request=request,
-        name="admin/internal/matters.html",
+        name="admin/internal/claims.html",
         context=_ctx(
             user,
-            matters=matters,
+            claims=claims,
             breadcrumbs=[
                 {"label": "Internal Admin", "url": "/admin/internal/"},
-                {"label": "Matters", "url": "/admin/internal/matters"},
+                {"label": "Claims", "url": "/admin/internal/claims"},
             ],
         ),
     )
 
 
-@router.get("/matters/{matter_id}/access", response_class=HTMLResponse)
-def internal_matter_access(
-    matter_id: str,
+@router.get("/claims/{claim_id}/access", response_class=HTMLResponse)
+def internal_claim_access(
+    claim_id: str,
     request: Request,
     user: CurrentUser = Depends(_require_internal_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    matter = db.get(Matter, matter_id)
-    if matter is None:
-        raise HTTPException(status_code=404, detail="Matter not found")
+    claim = db.get(Claim, claim_id)
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
 
     rows = db.execute(
-        select(MatterAccess, User)
-        .join(User, MatterAccess.user_id == User.id)
-        .where(MatterAccess.matter_id == matter_id)
+        select(ClaimAccess, User)
+        .join(User, ClaimAccess.user_id == User.id)
+        .where(ClaimAccess.claim_id == claim_id)
     ).all()
     grants = [{"user": u, "role": g.role} for g, u in rows]
 
     all_users = db.query(User).order_by(User.email).all()
     return templates.TemplateResponse(
         request=request,
-        name="admin/internal/matter_access.html",
+        name="admin/internal/claim_access.html",
         context=_ctx(
             user,
-            matter=matter,
+            claim=claim,
             grants=grants,
             all_users=all_users,
             breadcrumbs=[
                 {"label": "Internal Admin", "url": "/admin/internal/"},
-                {"label": "Matters", "url": "/admin/internal/matters"},
-                {"label": matter_id, "url": f"/admin/internal/matters/{matter_id}/access"},
+                {"label": "Claims", "url": "/admin/internal/claims"},
+                {"label": claim_id, "url": f"/admin/internal/claims/{claim_id}/access"},
             ],
         ),
     )
 
 
-@router.post("/matters/{matter_id}/access", response_class=HTMLResponse)
-def internal_grant_matter_access(
-    matter_id: str,
+@router.post("/claims/{claim_id}/access", response_class=HTMLResponse)
+def internal_grant_claim_access(
+    claim_id: str,
     request: Request,
     user_id: str = Form(...),
     role: str = Form(...),
@@ -307,17 +307,17 @@ def internal_grant_matter_access(
     if role not in valid_roles:
         raise HTTPException(status_code=400, detail="Invalid role")
 
-    matter = db.get(Matter, matter_id)
-    if matter is None:
-        raise HTTPException(status_code=404, detail="Matter not found")
+    claim = db.get(Claim, claim_id)
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
 
     target = db.get(User, user_id)
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
 
     existing = (
-        db.query(MatterAccess)
-        .filter(MatterAccess.user_id == user_id, MatterAccess.matter_id == matter_id)
+        db.query(ClaimAccess)
+        .filter(ClaimAccess.user_id == user_id, ClaimAccess.claim_id == claim_id)
         .first()
     )
     if existing:
@@ -325,15 +325,15 @@ def internal_grant_matter_access(
         existing.granted_by_id = user.id
     else:
         db.add(
-            MatterAccess(
+            ClaimAccess(
                 user_id=user_id,
-                matter_id=matter_id,
+                claim_id=claim_id,
                 role=role,
                 granted_by_id=user.id,
             )
         )
     db.commit()
-    return internal_matter_access(matter_id, request, user, db)
+    return internal_claim_access(claim_id, request, user, db)
 
 
 @router.get("/groups", response_class=HTMLResponse)

@@ -3,7 +3,7 @@
   <!-- Upload zone (queue-driven; no hx-post here — JS handles requests) -->
   <div id="evidence-form">
     <div id="drop-zone"
-         data-matter-id="{{ matter.id }}"
+         data-claim-id="{{ claim.id }}"
          data-csrf-token="{{ request.cookies.get('cvp_csrf', '') }}"
          data-evidence-upload-concurrency="{{ evidence_upload_concurrency }}"
          data-evidence-upload-max-file-mb="{{ evidence_upload_max_file_mb }}"
@@ -46,7 +46,7 @@
   {% if image_count > 0 %}
   <div class="flex flex-wrap items-center gap-3">
     {% if unscanned_count > 0 %}
-    <form hx-post="/api/matters/{{ matter.id }}/vision-scan-all"
+    <form hx-post="/api/claims/{{ claim.id }}/vision-scan-all"
           hx-target="#scan-all-progress"
           hx-swap="innerHTML"
           hx-include="#model_slug">
@@ -62,7 +62,7 @@
       Remove all images ({{ image_count }})
     </button>
     <form id="remove-all-form"
-          hx-post="/api/matters/{{ matter.id }}/evidence/remove-all-images"
+          hx-post="/api/claims/{{ claim.id }}/evidence/remove-all-images"
           hx-target="#evidence-grid"
           hx-swap="outerHTML">
       <input type="hidden" name="confirm_count" id="remove-all-confirm-count" value="0">
@@ -74,6 +74,6 @@
   <div id="scan-all-progress"></div>
 
   <!-- File grid -->
-  {% set matter_id = matter.id %}
+  {% set claim_id = claim.id %}
   {% include "_evidence_grid.html" %}
 </div>

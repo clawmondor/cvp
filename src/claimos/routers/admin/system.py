@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from claimos.auth import generate_invite_code, hash_token
 from claimos.db import get_db
 from claimos.dependencies import CurrentUser, require_system_admin
-from claimos.models import Matter
+from claimos.models import Claim
 from claimos.models_audit import AuditLog
 from claimos.models_auth import Group, User
 from claimos.routers.feedback import count_admin_unread
@@ -41,7 +41,7 @@ def system_dashboard(
 ) -> HTMLResponse:
     user_count = db.query(User).count()
     group_count = db.query(Group).count()
-    matter_count = db.query(Matter).count()
+    claim_count = db.query(Claim).count()
     return templates.TemplateResponse(
         request=request,
         name="admin/system/dashboard.html",
@@ -49,7 +49,7 @@ def system_dashboard(
             user,
             user_count=user_count,
             group_count=group_count,
-            matter_count=matter_count,
+            claim_count=claim_count,
             unread_count=count_admin_unread(db),
             breadcrumbs=[{"label": "System Admin", "url": "/admin/system/"}],
         ),
@@ -358,23 +358,23 @@ def system_deactivate_group(
     return system_group_detail(group_id, request, user, db)
 
 
-@router.get("/matters", response_class=HTMLResponse)
-def system_matters(
+@router.get("/claims", response_class=HTMLResponse)
+def system_claims(
     request: Request,
     user: CurrentUser = Depends(require_system_admin),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    matters = db.query(Matter).order_by(Matter.status, Matter.target_delivery_date).all()
+    claims = db.query(Claim).order_by(Claim.status, Claim.target_delivery_date).all()
     return templates.TemplateResponse(
         request=request,
-        name="admin/system/matters.html",
+        name="admin/system/claims.html",
         context=_ctx(
             user,
-            matters=matters,
+            claims=claims,
             unread_count=count_admin_unread(db),
             breadcrumbs=[
                 {"label": "System Admin", "url": "/admin/system/"},
-                {"label": "Matters", "url": "/admin/system/matters"},
+                {"label": "Claims", "url": "/admin/system/claims"},
             ],
         ),
     )
@@ -384,7 +384,7 @@ def _build_audit_query(
     db: Session,
     action: str,
     user_filter: str,
-    matter_id: str,
+    claim_id: str,
     date_from: str,
     date_to: str,
 ):
@@ -393,8 +393,8 @@ def _build_audit_query(
         query = query.filter(AuditLog.action.like(f"{action}%"))
     if user_filter:
         query = query.filter(AuditLog.user_id == user_filter)
-    if matter_id:
-        query = query.filter(AuditLog.matter_id == matter_id)
+    if claim_id:
+        query = query.filter(AuditLog.claim_id == claim_id)
     if date_from:
         try:
             dt_from = datetime.datetime.strptime(date_from, "%Y-%m-%d")
@@ -417,13 +417,13 @@ def audit_log_viewer(
     db: Session = Depends(get_db),
     action: str = "",
     user_filter: str = "",
-    matter_id: str = "",
+    claim_id: str = "",
     date_from: str = "",
     date_to: str = "",
     page: int = 1,
 ) -> HTMLResponse:
     """Filterable audit log viewer with pagination."""
-    query = _build_audit_query(db, action, user_filter, matter_id, date_from, date_to)
+    query = _build_audit_query(db, action, user_filter, claim_id, date_from, date_to)
     per_page = 50
     total = query.count()
     pages = (total + per_page - 1) // per_page
@@ -446,7 +446,7 @@ def audit_log_viewer(
             filters={
                 "action": action,
                 "user_filter": user_filter,
-                "matter_id": matter_id,
+                "claim_id": claim_id,
                 "date_from": date_from,
                 "date_to": date_to,
             },
@@ -464,12 +464,12 @@ def export_audit_csv(
     db: Session = Depends(get_db),
     action: str = "",
     user_filter: str = "",
-    matter_id: str = "",
+    claim_id: str = "",
     date_from: str = "",
     date_to: str = "",
 ) -> StreamingResponse:
     """Export filtered audit logs as CSV."""
-    query = _build_audit_query(db, action, user_filter, matter_id, date_from, date_to)
+    query = _build_audit_query(db, action, user_filter, claim_id, date_from, date_to)
     logs = query.all()
     output = io.StringIO()
     writer = csv.writer(output)
@@ -480,7 +480,7 @@ def export_audit_csv(
             "action",
             "resource_type",
             "resource_id",
-            "matter_id",
+            "claim_id",
             "detail",
             "ip_address",
             "created_at",
@@ -494,7 +494,7 @@ def export_audit_csv(
                 log.action,
                 log.resource_type,
                 log.resource_id or "",
-                log.matter_id or "",
+                log.claim_id or "",
                 log.detail or "",
                 log.ip_address,
                 log.created_at.isoformat(),

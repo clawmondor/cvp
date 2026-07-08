@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from claimos.models import Base, Category, Item, Matter, Room
+from claimos.models import Base, Category, Claim, Item, Room
 from claimos.services.csv_export import CSV_HEADERS, _dollars, generate_csv
 
 
@@ -21,8 +21,8 @@ def db_session(tmp_path):
 
 
 @pytest.fixture()
-def matter_with_items(db_session, tmp_path, monkeypatch):
-    """Seed one matter, one room, one category, and a mix of items."""
+def claim_with_items(db_session, tmp_path, monkeypatch):
+    """Seed one claim, one room, one category, and a mix of items."""
     monkeypatch.setattr("claimos.config.settings.export_dir", str(tmp_path / "exports"))
     monkeypatch.setattr("claimos.services.csv_export.SessionLocal", lambda: db_session)
 
@@ -31,16 +31,16 @@ def matter_with_items(db_session, tmp_path, monkeypatch):
     )
     db_session.add(cat)
 
-    matter = Matter(id=str(uuid.uuid4()), policyholder_name="Test Person")
-    db_session.add(matter)
+    claim = Claim(id=str(uuid.uuid4()), policyholder_name="Test Person")
+    db_session.add(claim)
 
-    room = Room(id=str(uuid.uuid4()), matter_id=matter.id, name="Living Room", sort_order=0)
+    room = Room(id=str(uuid.uuid4()), claim_id=claim.id, name="Living Room", sort_order=0)
     db_session.add(room)
 
     # Confirmed item
     item_a = Item(
         id=str(uuid.uuid4()),
-        matter_id=matter.id,
+        claim_id=claim.id,
         room_id=room.id,
         category_id=21,
         line_number=1,
@@ -61,7 +61,7 @@ def matter_with_items(db_session, tmp_path, monkeypatch):
     # Unconfirmed — must be excluded from CSV
     item_b = Item(
         id=str(uuid.uuid4()),
-        matter_id=matter.id,
+        claim_id=claim.id,
         category_id=21,
         line_number=2,
         description="Unknown TV",
@@ -77,7 +77,7 @@ def matter_with_items(db_session, tmp_path, monkeypatch):
     # Excluded — must be excluded from CSV
     item_c = Item(
         id=str(uuid.uuid4()),
-        matter_id=matter.id,
+        claim_id=claim.id,
         category_id=21,
         line_number=3,
         description="Broken TV",
@@ -92,7 +92,7 @@ def matter_with_items(db_session, tmp_path, monkeypatch):
     )
     db_session.add_all([item_a, item_b, item_c])
     db_session.commit()
-    return matter, [item_a]
+    return claim, [item_a]
 
 
 def _read_csv(path) -> tuple[list[str], list[dict]]:
@@ -104,23 +104,23 @@ def _read_csv(path) -> tuple[list[str], list[dict]]:
     return reader.fieldnames or [], list(reader)
 
 
-def test_csv_headers(matter_with_items, tmp_path):
-    matter, _ = matter_with_items
-    path = generate_csv(matter.id)
+def test_csv_headers(claim_with_items, tmp_path):
+    claim, _ = claim_with_items
+    path = generate_csv(claim.id)
     headers, _ = _read_csv(path)
     assert headers == CSV_HEADERS
 
 
-def test_csv_row_count_confirmed_only(matter_with_items, tmp_path):
-    matter, confirmed = matter_with_items
-    path = generate_csv(matter.id)
+def test_csv_row_count_confirmed_only(claim_with_items, tmp_path):
+    claim, confirmed = claim_with_items
+    path = generate_csv(claim.id)
     _, rows = _read_csv(path)
     assert len(rows) == len(confirmed)
 
 
-def test_csv_currency_formatting(matter_with_items, tmp_path):
-    matter, _ = matter_with_items
-    path = generate_csv(matter.id)
+def test_csv_currency_formatting(claim_with_items, tmp_path):
+    claim, _ = claim_with_items
+    path = generate_csv(claim.id)
     _, rows = _read_csv(path)
     row = rows[0]
     assert row["UnitPrice"] == "1200.00"
@@ -129,18 +129,18 @@ def test_csv_currency_formatting(matter_with_items, tmp_path):
     assert row["Depreciation"] == "360.00"
 
 
-def test_csv_room_and_category(matter_with_items, tmp_path):
-    matter, _ = matter_with_items
-    path = generate_csv(matter.id)
+def test_csv_room_and_category(claim_with_items, tmp_path):
+    claim, _ = claim_with_items
+    path = generate_csv(claim.id)
     _, rows = _read_csv(path)
     row = rows[0]
     assert row["Room"] == "Living Room"
     assert row["Category"] == "Electronics, TVs and displays"
 
 
-def test_csv_notes_concat(matter_with_items, tmp_path):
-    matter, _ = matter_with_items
-    path = generate_csv(matter.id)
+def test_csv_notes_concat(claim_with_items, tmp_path):
+    claim, _ = claim_with_items
+    path = generate_csv(claim.id)
     _, rows = _read_csv(path)
     row = rows[0]
     assert "Best Buy" in row["Notes"]

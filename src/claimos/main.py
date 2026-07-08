@@ -12,10 +12,11 @@ from claimos.config import settings
 from claimos.db import get_db
 from claimos.dependencies import CurrentUser, require_active_user
 from claimos.middleware import SecurityHeadersMiddleware
-from claimos.models import Matter
-from claimos.models_access import MatterAccess
+from claimos.models import Claim
+from claimos.models_access import ClaimAccess
 from claimos.routers import (
     auth,
+    claims,
     comments,
     crops,
     evidence,
@@ -24,7 +25,6 @@ from claimos.routers import (
     health,
     item_groups,
     items,
-    matters,
     profile,
     rooms,
     serp,
@@ -67,7 +67,7 @@ app.include_router(health.router)
 app.include_router(auth.router)
 
 # Protected routers
-app.include_router(matters.router)
+app.include_router(claims.router)
 app.include_router(evidence.router)
 app.include_router(rooms.router)
 app.include_router(item_groups.router)
@@ -97,31 +97,31 @@ def dashboard(
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     if user.system_role == "system_admin":
-        all_matters = (
-            db.query(Matter)
-            .options(selectinload(Matter.items))
-            .order_by(Matter.status, Matter.target_delivery_date)
+        all_claims = (
+            db.query(Claim)
+            .options(selectinload(Claim.items))
+            .order_by(Claim.status, Claim.target_delivery_date)
             .all()
         )
     else:
-        all_matters = (
-            db.query(Matter)
-            .options(selectinload(Matter.items))
+        all_claims = (
+            db.query(Claim)
+            .options(selectinload(Claim.items))
             .filter(
                 or_(
-                    Matter.owner_group_id == user.group_id,
-                    Matter.id.in_(
-                        db.query(MatterAccess.matter_id).filter(MatterAccess.user_id == user.id)
+                    Claim.owner_group_id == user.group_id,
+                    Claim.id.in_(
+                        db.query(ClaimAccess.claim_id).filter(ClaimAccess.user_id == user.id)
                     ),
                 )
             )
-            .order_by(Matter.status, Matter.target_delivery_date)
+            .order_by(Claim.status, Claim.target_delivery_date)
             .all()
         )
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
-        context={"matters": all_matters, "user": user},
+        context={"claims": all_claims, "user": user},
     )
 
 

@@ -14,8 +14,8 @@ from sqlalchemy.orm import Session
 from claimos.auth import generate_invite_code, hash_token
 from claimos.db import get_db
 from claimos.dependencies import CurrentUser, require_active_user
-from claimos.models import Matter
-from claimos.models_access import MatterAccess
+from claimos.models import Claim
+from claimos.models_access import ClaimAccess
 from claimos.models_auth import Group, User
 
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -70,7 +70,7 @@ def org_dashboard(
     if group is None:
         raise HTTPException(status_code=404, detail="Group not found")
     user_count = db.query(User).filter(User.group_id == resolved).count()
-    matter_count = db.query(Matter).filter(Matter.owner_group_id == resolved).count()
+    claim_count = db.query(Claim).filter(Claim.owner_group_id == resolved).count()
     return templates.TemplateResponse(
         request=request,
         name="admin/org/dashboard.html",
@@ -78,7 +78,7 @@ def org_dashboard(
             user,
             group=group,
             user_count=user_count,
-            matter_count=matter_count,
+            claim_count=claim_count,
             breadcrumbs=[{"label": group.name, "url": f"/admin/org/?group_id={resolved}"}],
         ),
     )
@@ -240,8 +240,8 @@ def org_activate_user(
     return org_user_detail(user_id, request, group_id, user, db)
 
 
-@router.get("/matters", response_class=HTMLResponse)
-def org_matters(
+@router.get("/claims", response_class=HTMLResponse)
+def org_claims(
     request: Request,
     group_id: str | None = Query(None),
     user: CurrentUser = Depends(_require_org_admin_or_above),
@@ -253,47 +253,47 @@ def org_matters(
     group = db.get(Group, resolved)
     if group is None:
         raise HTTPException(status_code=404, detail="Group not found")
-    matters = (
-        db.query(Matter)
-        .filter(Matter.owner_group_id == resolved)
-        .order_by(Matter.status, Matter.target_delivery_date)
+    claims = (
+        db.query(Claim)
+        .filter(Claim.owner_group_id == resolved)
+        .order_by(Claim.status, Claim.target_delivery_date)
         .all()
     )
     return templates.TemplateResponse(
         request=request,
-        name="admin/org/matters.html",
+        name="admin/org/claims.html",
         context=_ctx(
             user,
             group=group,
-            matters=matters,
+            claims=claims,
             breadcrumbs=[
                 {"label": group.name, "url": f"/admin/org/?group_id={resolved}"},
-                {"label": "Matters", "url": f"/admin/org/matters?group_id={resolved}"},
+                {"label": "Claims", "url": f"/admin/org/claims?group_id={resolved}"},
             ],
         ),
     )
 
 
-@router.get("/matters/{matter_id}/access", response_class=HTMLResponse)
-def org_matter_access(
-    matter_id: str,
+@router.get("/claims/{claim_id}/access", response_class=HTMLResponse)
+def org_claim_access(
+    claim_id: str,
     request: Request,
     group_id: str | None = Query(None),
     user: CurrentUser = Depends(_require_org_admin_or_above),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     resolved = _resolve_group_id(user, group_id)
-    matter = db.get(Matter, matter_id)
-    if matter is None:
-        raise HTTPException(status_code=404, detail="Matter not found")
+    claim = db.get(Claim, claim_id)
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
     # Tenant isolation
-    if resolved and matter.owner_group_id != resolved:
+    if resolved and claim.owner_group_id != resolved:
         raise HTTPException(status_code=403, detail="Access denied")
 
     rows = db.execute(
-        select(MatterAccess, User)
-        .join(User, MatterAccess.user_id == User.id)
-        .where(MatterAccess.matter_id == matter_id)
+        select(ClaimAccess, User)
+        .join(User, ClaimAccess.user_id == User.id)
+        .where(ClaimAccess.claim_id == claim_id)
     ).all()
     grants = [{"user": u, "role": g.role} for g, u in rows]
 
@@ -306,29 +306,29 @@ def org_matter_access(
     group = db.get(Group, resolved) if resolved else None
     group_label = group.name if group else "Org"
     group_url = f"/admin/org/?group_id={resolved}"
-    matters_url = f"/admin/org/matters?group_id={resolved}"
-    matter_url = f"/admin/org/matters/{matter_id}/access?group_id={resolved}"
+    claims_url = f"/admin/org/claims?group_id={resolved}"
+    claim_url = f"/admin/org/claims/{claim_id}/access?group_id={resolved}"
     return templates.TemplateResponse(
         request=request,
-        name="admin/org/matter_access.html",
+        name="admin/org/claim_access.html",
         context=_ctx(
             user,
-            matter=matter,
+            claim=claim,
             grants=grants,
             group_users=group_users,
             group=group,
             breadcrumbs=[
                 {"label": group_label, "url": group_url},
-                {"label": "Matters", "url": matters_url},
-                {"label": matter_id, "url": matter_url},
+                {"label": "Claims", "url": claims_url},
+                {"label": claim_id, "url": claim_url},
             ],
         ),
     )
 
 
-@router.post("/matters/{matter_id}/access", response_class=HTMLResponse)
-def org_grant_matter_access(
-    matter_id: str,
+@router.post("/claims/{claim_id}/access", response_class=HTMLResponse)
+def org_grant_claim_access(
+    claim_id: str,
     request: Request,
     user_id: str = Form(...),
     role: str = Form(...),
@@ -341,10 +341,10 @@ def org_grant_matter_access(
         raise HTTPException(status_code=400, detail="Invalid role")
 
     resolved = _resolve_group_id(user, group_id)
-    matter = db.get(Matter, matter_id)
-    if matter is None:
-        raise HTTPException(status_code=404, detail="Matter not found")
-    if resolved and matter.owner_group_id != resolved:
+    claim = db.get(Claim, claim_id)
+    if claim is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    if resolved and claim.owner_group_id != resolved:
         raise HTTPException(status_code=403, detail="Access denied")
 
     target = db.get(User, user_id)
@@ -352,8 +352,8 @@ def org_grant_matter_access(
         raise HTTPException(status_code=404, detail="User not found")
 
     existing = (
-        db.query(MatterAccess)
-        .filter(MatterAccess.user_id == user_id, MatterAccess.matter_id == matter_id)
+        db.query(ClaimAccess)
+        .filter(ClaimAccess.user_id == user_id, ClaimAccess.claim_id == claim_id)
         .first()
     )
     if existing:
@@ -361,15 +361,15 @@ def org_grant_matter_access(
         existing.granted_by_id = user.id
     else:
         db.add(
-            MatterAccess(
+            ClaimAccess(
                 user_id=user_id,
-                matter_id=matter_id,
+                claim_id=claim_id,
                 role=role,
                 granted_by_id=user.id,
             )
         )
     db.commit()
-    return org_matter_access(matter_id, request, group_id, user, db)
+    return org_claim_access(claim_id, request, group_id, user, db)
 
 
 @router.get("/profile", response_class=HTMLResponse)

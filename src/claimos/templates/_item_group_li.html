@@ -7,12 +7,12 @@
   <div class="flex items-center gap-2">
     <button
       data-rename-item-group-id="{{ group.id }}"
-      data-rename-item-group-matter="{{ matter_id }}"
+      data-rename-item-group-claim="{{ claim_id }}"
       class="hidden rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100 group-hover:inline-flex">
       Rename
     </button>
     <button
-      hx-delete="/api/matters/{{ matter_id }}/item-groups/{{ group.id }}"
+      hx-delete="/api/claims/{{ claim_id }}/item-groups/{{ group.id }}"
       hx-target="#item-group-{{ group.id }}"
       hx-swap="outerHTML"
       hx-confirm="Delete group '{{ group.name }}'? Items in this group will become ungrouped."

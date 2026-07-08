@@ -168,7 +168,7 @@ def test_audit_log_export_returns_csv(admin_client):
     assert "text/csv" in resp.headers["content-type"]
     lines = resp.text.splitlines()
     expected_header = (
-        "id,user_id,action,resource_type,resource_id,matter_id,detail,ip_address,created_at"
+        "id,user_id,action,resource_type,resource_id,claim_id,detail,ip_address,created_at"
     )
     assert lines[0] == expected_header
 

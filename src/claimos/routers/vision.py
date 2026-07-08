@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from claimos.config import settings
 from claimos.db import SessionLocal
-from claimos.dependencies import CurrentUser, require_matter_role
+from claimos.dependencies import CurrentUser, require_claim_role
 from claimos.models import EvidenceFile, VisionJob, VisionJobImage
 from claimos.models_auth import User
 from claimos.models_vision import VisionModel
@@ -26,12 +26,12 @@ router = APIRouter()
 _SCAN_ALL_CAP = 250
 
 
-@router.post("/api/matters/{matter_id}/vision-scan", response_class=HTMLResponse)
+@router.post("/api/claims/{claim_id}/vision-scan", response_class=HTMLResponse)
 async def start_scan(
     request: Request,
-    matter_id: str,
+    claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor")),
     evidence_file_ids: list[str] = Form(default=[]),
     model_slug: str = Form(...),
 ) -> HTMLResponse:
@@ -50,7 +50,7 @@ async def start_scan(
             db.query(EvidenceFile)
             .filter(
                 EvidenceFile.id.in_(evidence_file_ids),
-                EvidenceFile.matter_id == matter_id,
+                EvidenceFile.claim_id == claim_id,
                 EvidenceFile.kind == "image",
             )
             .all()
@@ -63,7 +63,7 @@ async def start_scan(
             u.last_vision_model_slug = model_slug
 
         job = VisionJob(
-            matter_id=matter_id,
+            claim_id=claim_id,
             model_slug=model_slug,
             status="running",
             created_by_user_id=user.id,
@@ -82,26 +82,26 @@ async def start_scan(
         write_audit_log,
         user_id=user.id,
         action="vision.run",
-        resource_type="matter",
-        resource_id=matter_id,
-        matter_id=matter_id,
+        resource_type="claim",
+        resource_id=claim_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
         detail={"model": model_slug},
     )
     job_data = vision_svc.get_job_data(job_id)
     return HTMLResponse(
         templates.get_template("_scan_progress.html").render(
-            job_id=job_id, matter_id=matter_id, **job_data
+            job_id=job_id, claim_id=claim_id, **job_data
         )
     )
 
 
-@router.post("/api/matters/{matter_id}/vision-scan-all", response_class=HTMLResponse)
+@router.post("/api/claims/{claim_id}/vision-scan-all", response_class=HTMLResponse)
 async def start_scan_all(
     request: Request,
-    matter_id: str,
+    claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor")),
     model_slug: str = Form(...),
 ) -> HTMLResponse:
     db = SessionLocal()
@@ -112,7 +112,7 @@ async def start_scan_all(
 
         files = (
             db.query(EvidenceFile)
-            .filter_by(matter_id=matter_id, kind="image", scanned=False)
+            .filter_by(claim_id=claim_id, kind="image", scanned=False)
             .order_by(EvidenceFile.created_at)
             .all()
         )
@@ -129,7 +129,7 @@ async def start_scan_all(
             u.last_vision_model_slug = model_slug
 
         job = VisionJob(
-            matter_id=matter_id,
+            claim_id=claim_id,
             model_slug=model_slug,
             status="running",
             created_by_user_id=user.id,
@@ -149,42 +149,42 @@ async def start_scan_all(
         write_audit_log,
         user_id=user.id,
         action="vision.run_all",
-        resource_type="matter",
-        resource_id=matter_id,
-        matter_id=matter_id,
+        resource_type="claim",
+        resource_id=claim_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
         detail={"model": model_slug, "count": n_files},
     )
     job_data = vision_svc.get_job_data(job_id)
     return HTMLResponse(
         templates.get_template("_scan_progress.html").render(
-            job_id=job_id, matter_id=matter_id, **job_data
+            job_id=job_id, claim_id=claim_id, **job_data
         )
     )
 
 
-@router.get("/api/matters/{matter_id}/vision-scan/{job_id}", response_class=HTMLResponse)
+@router.get("/api/claims/{claim_id}/vision-scan/{job_id}", response_class=HTMLResponse)
 def poll_scan(
-    matter_id: str,
+    claim_id: str,
     job_id: str,
-    user: CurrentUser = Depends(require_matter_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor")),
 ) -> HTMLResponse:
     job_data = vision_svc.get_job_data(job_id)
     if job_data["status"] == "error" and job_data["total"] == 0:
         return HTMLResponse('<p class="text-sm text-red-600">Scan job not found.</p>')
     return HTMLResponse(
         templates.get_template("_scan_progress.html").render(
-            job_id=job_id, matter_id=matter_id, **job_data
+            job_id=job_id, claim_id=claim_id, **job_data
         )
     )
 
 
-@router.get("/api/matters/{matter_id}/vision-scan-estimate", response_class=HTMLResponse)
+@router.get("/api/claims/{claim_id}/vision-scan-estimate", response_class=HTMLResponse)
 def estimate(
-    matter_id: str,
+    claim_id: str,
     count: int,
     model_slug: str,
-    user: CurrentUser = Depends(require_matter_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor")),
 ) -> HTMLResponse:
     label = vision_svc.estimate_cost(count, model_slug)
     return HTMLResponse(f'<span id="cost-estimate" class="text-xs text-gray-500">{label}</span>')
@@ -203,7 +203,7 @@ async def region_scan(
     file_id: str,
     body: RegionScanBody,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor")),
 ) -> JSONResponse:
     db = SessionLocal()
     try:
@@ -240,9 +240,9 @@ async def region_scan(
         if not (0 <= body.upper <= img_h and 0 <= body.lower <= img_h):
             return JSONResponse({"error": f"y out of range [0, {img_h}]"}, status_code=422)
 
-        matter_id = ef.matter_id
+        claim_id = ef.claim_id
         job = VisionJob(
-            matter_id=matter_id,
+            claim_id=claim_id,
             model_slug=model_slug,
             status="running",
             created_by_user_id=user.id,
@@ -271,23 +271,23 @@ async def region_scan(
         action="vision.region",
         resource_type="evidence_file",
         resource_id=file_id,
-        matter_id=matter_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
         detail={"model": model_slug, "region": [body.left, body.upper, body.right, body.lower]},
     )
-    return JSONResponse({"job_id": job_id, "matter_id": matter_id})
+    return JSONResponse({"job_id": job_id, "claim_id": claim_id})
 
 
-@router.get("/api/matters/{matter_id}/vision-scan/{job_id}/status")
+@router.get("/api/claims/{claim_id}/vision-scan/{job_id}/status")
 def poll_scan_status(
-    matter_id: str,
+    claim_id: str,
     job_id: str,
-    user: CurrentUser = Depends(require_matter_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor")),
 ) -> JSONResponse:
     db = SessionLocal()
     try:
         job = db.get(VisionJob, job_id)
-        if job is None or job.matter_id != matter_id:
+        if job is None or job.claim_id != claim_id:
             return JSONResponse({"error": "not found"}, status_code=404)
     finally:
         db.close()

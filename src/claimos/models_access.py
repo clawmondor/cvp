@@ -1,4 +1,4 @@
-"""Matter access control ORM model."""
+"""Claim access control ORM model."""
 
 from datetime import datetime
 
@@ -9,16 +9,16 @@ from sqlalchemy.sql import func
 from claimos.models import Base, _new_uuid
 
 
-class MatterAccess(Base):
-    """Per-user, per-matter permission grant."""
+class ClaimAccess(Base):
+    """Per-user, per-claim permission grant."""
 
-    __tablename__ = "matter_access"
-    __table_args__ = (UniqueConstraint("user_id", "matter_id", name="uq_user_matter"),)
+    __tablename__ = "claim_access"
+    __table_args__ = (UniqueConstraint("user_id", "claim_id", name="uq_user_claim"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False, index=True)
-    matter_id: Mapped[str] = mapped_column(
-        String, ForeignKey("matters.id"), nullable=False, index=True
+    claim_id: Mapped[str] = mapped_column(
+        String, ForeignKey("claims.id"), nullable=False, index=True
     )
     role: Mapped[str] = mapped_column(String, nullable=False)  # viewer|editor|contributor|manager
     granted_by_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)

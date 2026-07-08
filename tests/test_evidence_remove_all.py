@@ -1,4 +1,4 @@
-"""Tests for POST /api/matters/{matter_id}/evidence/remove-all-images."""
+"""Tests for POST /api/claims/{claim_id}/evidence/remove-all-images."""
 
 import os
 
@@ -13,10 +13,10 @@ import claimos.models_vision  # noqa: F401
 from claimos.db import get_db
 from claimos.dependencies import CurrentUser
 from claimos.main import app
-from claimos.models import Base, EvidenceFile, Matter
+from claimos.models import Base, Claim, EvidenceFile
 
 MANAGER_ID = "mgr-1"
-MATTER_ID = "matter-rem"
+CLAIM_ID = "claim-rem"
 
 
 @pytest.fixture
@@ -34,7 +34,7 @@ def db_session():
     db.add(
         User(id=MANAGER_ID, email="mgr@test.com", display_name="Mgr", system_role="internal_user")
     )
-    db.add(Matter(id=MATTER_ID, policyholder_name="Owner", loss_type="total_loss"))
+    db.add(Claim(id=CLAIM_ID, policyholder_name="Owner", loss_type="total_loss"))
     db.commit()
     yield db
     db.close()
@@ -66,11 +66,11 @@ def client_manager(db_session):
     app.dependency_overrides.clear()
 
 
-def _add_image(db, matter_id, path):
+def _add_image(db, claim_id, path):
     PILImage.new("RGB", (10, 10), "white").save(path, "JPEG")
     filename = os.path.basename(path)
     ef = EvidenceFile(
-        matter_id=matter_id,
+        claim_id=claim_id,
         filename=filename,
         stored_path=filename,  # relative path — matches production convention
         mime_type="image/jpeg",
@@ -93,12 +93,12 @@ def test_remove_all_images_deletes_images_leaves_pdfs(
 
     img1 = str(tmp_path / "a.jpg")
     img2 = str(tmp_path / "b.jpg")
-    _add_image(db_session, MATTER_ID, img1)
-    _add_image(db_session, MATTER_ID, img2)
+    _add_image(db_session, CLAIM_ID, img1)
+    _add_image(db_session, CLAIM_ID, img2)
 
     # Add a PDF (should survive)
     pdf = EvidenceFile(
-        matter_id=MATTER_ID,
+        claim_id=CLAIM_ID,
         filename="doc.pdf",
         stored_path="doc.pdf",
         mime_type="application/pdf",
@@ -109,13 +109,13 @@ def test_remove_all_images_deletes_images_leaves_pdfs(
     db_session.commit()
 
     resp = client_manager.post(
-        f"/api/matters/{MATTER_ID}/evidence/remove-all-images",
+        f"/api/claims/{CLAIM_ID}/evidence/remove-all-images",
         data={"confirm_count": "2"},
     )
     assert resp.status_code == 200
 
     db_session.expire_all()
-    remaining = db_session.query(EvidenceFile).filter_by(matter_id=MATTER_ID).all()
+    remaining = db_session.query(EvidenceFile).filter_by(claim_id=CLAIM_ID).all()
     assert len(remaining) == 1
     assert remaining[0].kind == "pdf"
 
@@ -130,10 +130,10 @@ def test_remove_all_images_rejects_mismatched_count(
     monkeypatch.setattr("claimos.routers.evidence.SessionLocal", lambda: db_session)
 
     img1 = str(tmp_path / "c.jpg")
-    _add_image(db_session, MATTER_ID, img1)
+    _add_image(db_session, CLAIM_ID, img1)
 
     resp = client_manager.post(
-        f"/api/matters/{MATTER_ID}/evidence/remove-all-images",
+        f"/api/claims/{CLAIM_ID}/evidence/remove-all-images",
         data={"confirm_count": "99"},
     )
     assert resp.status_code == 409

@@ -1,5 +1,5 @@
 <div id="items-summary"
-     hx-get="/api/matters/{{ matter_id }}/items-summary"
+     hx-get="/api/claims/{{ claim_id }}/items-summary"
      hx-trigger="item-created from:body"
      hx-swap="outerHTML">
   {% if items_total_count and items_total_count > 0 %}

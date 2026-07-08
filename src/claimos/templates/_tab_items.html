@@ -1,9 +1,9 @@
 <div class="space-y-4">
 
-  {% set matter_id = matter.id %}
+  {% set claim_id = claim.id %}
 
   <!-- New-items banner: shown by app.js when a scan/region rescan adds items -->
-  <div id="items-new-banner" data-matter-id="{{ matter.id }}"
+  <div id="items-new-banner" data-claim-id="{{ claim.id }}"
        class="hidden flex items-center justify-between gap-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-800">
     <span><span aria-hidden="true">✦</span> <span data-new-items-label>New items added</span></span>
     <button type="button" data-view-new-items
@@ -18,7 +18,7 @@
       <span>+ Add item</span>
     </summary>
     <div class="border-t border-gray-100 px-4 py-4">
-      <form hx-post="/api/matters/{{ matter.id }}/items"
+      <form hx-post="/api/claims/{{ claim.id }}/items"
             hx-target="#items-tbody"
             hx-swap="beforeend"
             hx-on::after-request="if(event.detail.successful){ this.reset(); document.getElementById('add-item-details').removeAttribute('open'); }"

@@ -164,8 +164,8 @@ async def require_system_admin(
 from sqlalchemy.orm import Session  # noqa: E402
 
 from claimos.db import get_db  # noqa: E402
-from claimos.models import Matter  # noqa: E402
-from claimos.models_access import MatterAccess  # noqa: E402
+from claimos.models import Claim  # noqa: E402
+from claimos.models_access import ClaimAccess  # noqa: E402
 from claimos.models_feedback import Feedback  # noqa: E402
 
 ROLE_HIERARCHY: dict[str, int] = {
@@ -176,13 +176,13 @@ ROLE_HIERARCHY: dict[str, int] = {
 }
 
 
-def _check_matter_access(
+def _check_claim_access(
     db: Session,
     user: CurrentUser,
-    matter_id: str,
+    claim_id: str,
     minimum_role: str,
 ) -> bool:
-    """Check if user has at least minimum_role on a matter.
+    """Check if user has at least minimum_role on a claim.
 
     Returns True if access is granted, False otherwise.
     """
@@ -190,22 +190,22 @@ def _check_matter_access(
     if user.system_role == "system_admin":
         return True
 
-    # Check if user's group owns the matter
-    matter = db.get(Matter, matter_id)
-    if matter is None:
+    # Check if user's group owns the claim
+    claim = db.get(Claim, claim_id)
+    if claim is None:
         return False
 
-    if matter.owner_group_id == user.group_id:
-        # Admins get implicit manager on their group's matters
+    if claim.owner_group_id == user.group_id:
+        # Admins get implicit manager on their group's claims
         if user.system_role in ("internal_admin", "external_admin"):
             return True
 
-    # Check explicit matter_access grant
+    # Check explicit claim_access grant
     access = (
-        db.query(MatterAccess)
+        db.query(ClaimAccess)
         .filter(
-            MatterAccess.user_id == user.id,
-            MatterAccess.matter_id == matter_id,
+            ClaimAccess.user_id == user.id,
+            ClaimAccess.claim_id == claim_id,
         )
         .first()
     )
@@ -215,10 +215,10 @@ def _check_matter_access(
     return ROLE_HIERARCHY.get(access.role, -1) >= ROLE_HIERARCHY.get(minimum_role, 999)
 
 
-def require_matter_role(minimum_role: str):
-    """Factory that returns a FastAPI dependency requiring a minimum matter role.
+def require_claim_role(minimum_role: str):
+    """Factory that returns a FastAPI dependency requiring a minimum claim role.
 
-    Usage: Depends(require_matter_role("editor"))
+    Usage: Depends(require_claim_role("editor"))
     """
 
     async def dependency(
@@ -226,51 +226,51 @@ def require_matter_role(minimum_role: str):
         user: CurrentUser = Depends(require_active_user),
         db: Session = Depends(get_db),
     ) -> CurrentUser:
-        # Extract matter_id from path params
-        matter_id = request.path_params.get("matter_id")
+        # Extract claim_id from path params
+        claim_id = request.path_params.get("claim_id")
 
-        if matter_id is None:
-            # Look up matter via related resource
+        if claim_id is None:
+            # Look up claim via related resource
             item_id = request.path_params.get("item_id")
             if item_id:
                 from claimos.models import Item
 
                 item = db.get(Item, item_id)
                 if item:
-                    matter_id = item.matter_id
+                    claim_id = item.claim_id
 
             room_id = request.path_params.get("room_id")
-            if room_id and not matter_id:
+            if room_id and not claim_id:
                 from claimos.models import Room
 
                 room = db.get(Room, room_id)
                 if room:
-                    matter_id = room.matter_id
+                    claim_id = room.claim_id
 
             crop_id = request.path_params.get("crop_id")
-            if crop_id and not matter_id:
+            if crop_id and not claim_id:
                 from claimos.models import Item, ItemCrop
 
                 crop = db.get(ItemCrop, crop_id)
                 if crop:
                     item = db.get(Item, crop.item_id)
                     if item:
-                        matter_id = item.matter_id
+                        claim_id = item.claim_id
 
             file_id = request.path_params.get("file_id")
-            if file_id and not matter_id:
+            if file_id and not claim_id:
                 from claimos.models import EvidenceFile
 
                 ef = db.get(EvidenceFile, file_id)
                 if ef:
-                    matter_id = ef.matter_id
+                    claim_id = ef.claim_id
 
-        if matter_id is None:
+        if claim_id is None:
             raise HTTPException(status_code=404, detail="Resource not found")
 
-        from claimos.services.access_cache import check_matter_access_cached
+        from claimos.services.access_cache import check_claim_access_cached
 
-        if not check_matter_access_cached(db, user, matter_id, minimum_role):
+        if not check_claim_access_cached(db, user, claim_id, minimum_role):
             raise HTTPException(status_code=403, detail="Insufficient permissions")
 
         return user

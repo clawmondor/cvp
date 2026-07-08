@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import claimos.models_vision  # noqa: F401
-from claimos.models import Base, Category, EvidenceFile, Item, ItemCrop, Matter
+from claimos.models import Base, Category, Claim, EvidenceFile, Item, ItemCrop
 
 
 @pytest.fixture
@@ -29,8 +29,8 @@ def db(tmp_path):
 
 
 @pytest.fixture
-def matter(db):
-    m = Matter(policyholder_name="Test", loss_type="total_loss")
+def claim(db):
+    m = Claim(policyholder_name="Test", loss_type="total_loss")
     db.add(m)
     db.commit()
     return m
@@ -40,13 +40,13 @@ def _make_jpeg(path):
     Image.new("RGB", (10, 10), "white").save(path, "JPEG")
 
 
-def test_delete_removes_evidence_file_from_disk(db, matter, tmp_path):
+def test_delete_removes_evidence_file_from_disk(db, claim, tmp_path):
     from claimos.services.evidence_cleanup import delete_evidence_file
 
     img = tmp_path / "photo.jpg"
     _make_jpeg(img)
     ef = EvidenceFile(
-        matter_id=matter.id,
+        claim_id=claim.id,
         filename="photo.jpg",
         stored_path=img.name,
         mime_type="image/jpeg",
@@ -62,13 +62,13 @@ def test_delete_removes_evidence_file_from_disk(db, matter, tmp_path):
     assert db.get(EvidenceFile, ef.id) is None
 
 
-def test_delete_cascades_to_orphan_item_and_crop(db, matter, tmp_path):
+def test_delete_cascades_to_orphan_item_and_crop(db, claim, tmp_path):
     from claimos.services.evidence_cleanup import delete_evidence_file
 
     img = tmp_path / "photo2.jpg"
     _make_jpeg(img)
     ef = EvidenceFile(
-        matter_id=matter.id,
+        claim_id=claim.id,
         filename="photo2.jpg",
         stored_path=img.name,
         mime_type="image/jpeg",
@@ -79,7 +79,7 @@ def test_delete_cascades_to_orphan_item_and_crop(db, matter, tmp_path):
     db.flush()
 
     item = Item(
-        matter_id=matter.id,
+        claim_id=claim.id,
         category_id=1,
         line_number=1,
         description="TV",
@@ -118,7 +118,7 @@ def test_delete_cascades_to_orphan_item_and_crop(db, matter, tmp_path):
     assert not crop_file.exists()
 
 
-def test_delete_keeps_item_with_crop_from_other_file(db, matter, tmp_path):
+def test_delete_keeps_item_with_crop_from_other_file(db, claim, tmp_path):
 
     from claimos.services.evidence_cleanup import delete_evidence_file
 
@@ -128,7 +128,7 @@ def test_delete_keeps_item_with_crop_from_other_file(db, matter, tmp_path):
     _make_jpeg(img2)
 
     ef1 = EvidenceFile(
-        matter_id=matter.id,
+        claim_id=claim.id,
         filename="photo_a.jpg",
         stored_path=img1.name,
         mime_type="image/jpeg",
@@ -136,7 +136,7 @@ def test_delete_keeps_item_with_crop_from_other_file(db, matter, tmp_path):
         size_bytes=1,
     )
     ef2 = EvidenceFile(
-        matter_id=matter.id,
+        claim_id=claim.id,
         filename="photo_b.jpg",
         stored_path=img2.name,
         mime_type="image/jpeg",
@@ -147,7 +147,7 @@ def test_delete_keeps_item_with_crop_from_other_file(db, matter, tmp_path):
     db.flush()
 
     item = Item(
-        matter_id=matter.id,
+        claim_id=claim.id,
         category_id=1,
         line_number=1,
         description="Sofa",

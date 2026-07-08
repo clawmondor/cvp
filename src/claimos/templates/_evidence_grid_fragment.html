@@ -2,7 +2,7 @@
 {% include "_evidence_tile.html" %}
 {% endfor %}
 {% if evidence_next_cursor %}
-<div hx-get="/api/matters/{{ matter_id }}/evidence-grid?cursor={{ evidence_next_cursor }}"
+<div hx-get="/api/claims/{{ claim_id }}/evidence-grid?cursor={{ evidence_next_cursor }}"
      hx-trigger="revealed"
      hx-swap="outerHTML"
      class="col-span-full h-4 text-center text-xs text-gray-400">

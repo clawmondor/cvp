@@ -12,12 +12,12 @@ import claimos.models_vision  # noqa: F401
 from claimos.db import get_db
 from claimos.dependencies import CurrentUser
 from claimos.main import app
-from claimos.models import Base, Category, Item, Matter
+from claimos.models import Base, Category, Claim, Item
 from claimos.models_auth import User
 from claimos.routers.items import compute_items_totals
 from claimos.services import access_cache
 
-MATTER_ID = "m-totals"
+CLAIM_ID = "m-totals"
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ def db_session():
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     s = Session()
-    s.add(Matter(id=MATTER_ID, policyholder_name="P", loss_type="total_loss"))
+    s.add(Claim(id=CLAIM_ID, policyholder_name="P", loss_type="total_loss"))
     s.add(Category(id=1, name="C", useful_life_years=5, acv_floor_pct=0.2))
     s.commit()
     yield s
@@ -40,7 +40,7 @@ def db_session():
 def _add_item(db, *, line, confirmed, excluded, rcv_total, acv_total, rcv_unit):
     db.add(
         Item(
-            matter_id=MATTER_ID,
+            claim_id=CLAIM_ID,
             category_id=1,
             line_number=line,
             description=f"item {line}",
@@ -89,7 +89,7 @@ def test_totals_count_only_confirmed_not_excluded(db_session):
     )
     db_session.commit()
 
-    totals = compute_items_totals(MATTER_ID, db_session)
+    totals = compute_items_totals(CLAIM_ID, db_session)
 
     assert totals["items_total_count"] == 3
     assert totals["items_confirmed_count"] == 1
@@ -104,12 +104,12 @@ def test_missing_price_counts_confirmed_zero_rcv(db_session):
         db_session, line=1, confirmed=True, excluded=False, rcv_total=0, acv_total=0, rcv_unit=0
     )
     db_session.commit()
-    totals = compute_items_totals(MATTER_ID, db_session)
+    totals = compute_items_totals(CLAIM_ID, db_session)
     assert totals["missing_price_count"] == 1
 
 
 # ---------------------------------------------------------------------------
-# Endpoint tests — GET /api/matters/{matter_id}/items-summary
+# Endpoint tests — GET /api/claims/{claim_id}/items-summary
 # ---------------------------------------------------------------------------
 
 VIEWER_ID = "v-totals"
@@ -163,7 +163,7 @@ def test_items_summary_renders_totals(client, db_session):
         rcv_unit=10000,
     )
     db_session.commit()
-    resp = client.get(f"/api/matters/{MATTER_ID}/items-summary")
+    resp = client.get(f"/api/claims/{CLAIM_ID}/items-summary")
     assert resp.status_code == 200
     body = resp.text
     assert 'id="items-summary"' in body
@@ -172,8 +172,8 @@ def test_items_summary_renders_totals(client, db_session):
     assert 'hx-trigger="item-created from:body"' in body
 
 
-def test_items_summary_empty_matter_renders_no_totals_row(client):
-    resp = client.get(f"/api/matters/{MATTER_ID}/items-summary")
+def test_items_summary_empty_claim_renders_no_totals_row(client):
+    resp = client.get(f"/api/claims/{CLAIM_ID}/items-summary")
     assert resp.status_code == 200
     assert 'id="items-summary"' in resp.text
     assert "RCV total" not in resp.text

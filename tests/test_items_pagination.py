@@ -1,4 +1,4 @@
-"""Tests for the paginated GET /api/matters/{matter_id}/items-rows endpoint."""
+"""Tests for the paginated GET /api/claims/{claim_id}/items-rows endpoint."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,11 +10,11 @@ import claimos.models_vision  # noqa: F401
 from claimos.db import get_db
 from claimos.dependencies import CurrentUser
 from claimos.main import app
-from claimos.models import Base, Category, Item, Matter
+from claimos.models import Base, Category, Claim, Item
 from claimos.services import access_cache
 
 VIEWER_ID = "v1"
-MATTER_ID = "m-items"
+CLAIM_ID = "m-items"
 
 
 @pytest.fixture(autouse=True)
@@ -37,7 +37,7 @@ def db_session():
     from claimos.models_auth import User
 
     s.add(User(id=VIEWER_ID, email="v@test.com", display_name="V", system_role="internal_user"))
-    s.add(Matter(id=MATTER_ID, policyholder_name="P", loss_type="total_loss"))
+    s.add(Claim(id=CLAIM_ID, policyholder_name="P", loss_type="total_loss"))
     s.add(Category(id=1, name="C", useful_life_years=5, acv_floor_pct=0.2))
     s.commit()
     yield s
@@ -75,7 +75,7 @@ def _seed_items(db, count: int) -> list[Item]:
     rows = []
     for i in range(count):
         it = Item(
-            matter_id=MATTER_ID,
+            claim_id=CLAIM_ID,
             category_id=1,
             line_number=i + 1,
             description=f"item {i + 1}",
@@ -95,39 +95,39 @@ def _seed_items(db, count: int) -> list[Item]:
 
 def test_first_page_returns_50_rows_and_sentinel(client, db_session):
     _seed_items(db_session, 60)
-    resp = client.get(f"/api/matters/{MATTER_ID}/items-rows")
+    resp = client.get(f"/api/claims/{CLAIM_ID}/items-rows")
     assert resp.status_code == 200
     body = resp.text
     assert body.count('<tr id="item-row-') == 50
     assert 'hx-trigger="revealed"' in body
 
 
-def test_sentinel_row_contains_matter_id_in_url(client, db_session):
-    """Regression: the sentinel hx-get URL must include the actual matter_id, not an
-    empty string. An empty matter_id produces a malformed URL like
-    `/api/matters//items-rows` that 404s.
+def test_sentinel_row_contains_claim_id_in_url(client, db_session):
+    """Regression: the sentinel hx-get URL must include the actual claim_id, not an
+    empty string. An empty claim_id produces a malformed URL like
+    `/api/claims//items-rows` that 404s.
     """
     # ITEMS_PAGE_SIZE = 50; need >50 items to trigger a sentinel row
     _seed_items(db_session, 51)
-    resp = client.get(f"/api/matters/{MATTER_ID}/items-rows")
+    resp = client.get(f"/api/claims/{CLAIM_ID}/items-rows")
     assert resp.status_code == 200
-    # The sentinel URL must contain the actual matter_id value
-    assert f"/api/matters/{MATTER_ID}/items-rows" in resp.text
-    # Must NOT contain a double-slash with empty matter_id
-    assert "/api/matters//items-rows" not in resp.text
+    # The sentinel URL must contain the actual claim_id value
+    assert f"/api/claims/{CLAIM_ID}/items-rows" in resp.text
+    # Must NOT contain a double-slash with empty claim_id
+    assert "/api/claims//items-rows" not in resp.text
 
 
 def test_second_page_returns_remainder_and_no_sentinel(client, db_session):
     _seed_items(db_session, 60)
-    resp = client.get(f"/api/matters/{MATTER_ID}/items-rows?cursor=50")
+    resp = client.get(f"/api/claims/{CLAIM_ID}/items-rows?cursor=50")
     assert resp.status_code == 200
     body = resp.text
     assert body.count('<tr id="item-row-') == 10
     assert 'hx-trigger="revealed"' not in body
 
 
-def test_empty_matter_returns_no_rows_no_sentinel(client):
-    resp = client.get(f"/api/matters/{MATTER_ID}/items-rows")
+def test_empty_claim_returns_no_rows_no_sentinel(client):
+    resp = client.get(f"/api/claims/{CLAIM_ID}/items-rows")
     assert resp.status_code == 200
     assert '<tr id="item-row-' not in resp.text
     assert 'hx-trigger="revealed"' not in resp.text
@@ -136,8 +136,8 @@ def test_empty_matter_returns_no_rows_no_sentinel(client):
 @pytest.fixture
 def client_contrib(db_session, monkeypatch):
     """TestClient that authenticates as a system_admin (implicit manager on
-    every matter), bypassing the need to seed MatterAccess to exercise
-    contributor-gated POST /api/matters/{matter_id}/items.
+    every claim), bypassing the need to seed ClaimAccess to exercise
+    contributor-gated POST /api/claims/{claim_id}/items.
     """
     import inspect
 
@@ -168,7 +168,7 @@ def client_contrib(db_session, monkeypatch):
 
 def test_create_item_emits_oob_delete_for_empty_state(client_contrib, db_session):
     resp = client_contrib.post(
-        f"/api/matters/{MATTER_ID}/items",
+        f"/api/claims/{CLAIM_ID}/items",
         data={
             "category_id": "1",
             "quantity": "1",

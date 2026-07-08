@@ -3,14 +3,14 @@
 import pytest
 
 from claimos.db import SessionLocal
-from claimos.models import Category, EvidenceFile, Item, ItemGroup, Matter
+from claimos.models import Category, Claim, EvidenceFile, Item, ItemGroup
 
 
 @pytest.fixture
-def matter_id() -> str:
+def claim_id() -> str:
     db = SessionLocal()
     try:
-        m = Matter(firm_name="Test")
+        m = Claim(firm_name="Test")
         db.add(m)
         # Make sure at least one category exists for Item creation.
         if db.query(Category).count() == 0:
@@ -22,15 +22,15 @@ def matter_id() -> str:
         db.close()
 
 
-def test_item_can_reference_item_group(matter_id: str) -> None:
+def test_item_can_reference_item_group(claim_id: str) -> None:
     db = SessionLocal()
     try:
-        g = ItemGroup(matter_id=matter_id, name="12", name_normalized="12")
+        g = ItemGroup(claim_id=claim_id, name="12", name_normalized="12")
         db.add(g)
         db.commit()
         db.refresh(g)
         cat = db.query(Category).first()
-        item = Item(matter_id=matter_id, category_id=cat.id, item_group_id=g.id)
+        item = Item(claim_id=claim_id, category_id=cat.id, item_group_id=g.id)
         db.add(item)
         db.commit()
         db.refresh(item)
@@ -39,11 +39,11 @@ def test_item_can_reference_item_group(matter_id: str) -> None:
         db.close()
 
 
-def test_item_group_id_nullable(matter_id: str) -> None:
+def test_item_group_id_nullable(claim_id: str) -> None:
     db = SessionLocal()
     try:
         cat = db.query(Category).first()
-        item = Item(matter_id=matter_id, category_id=cat.id)
+        item = Item(claim_id=claim_id, category_id=cat.id)
         db.add(item)
         db.commit()
         db.refresh(item)
@@ -52,14 +52,14 @@ def test_item_group_id_nullable(matter_id: str) -> None:
         db.close()
 
 
-def test_evidence_file_pinned_item_group_id(matter_id: str) -> None:
+def test_evidence_file_pinned_item_group_id(claim_id: str) -> None:
     db = SessionLocal()
     try:
-        g = ItemGroup(matter_id=matter_id, name="A", name_normalized="a")
+        g = ItemGroup(claim_id=claim_id, name="A", name_normalized="a")
         db.add(g)
         db.commit()
         ef = EvidenceFile(
-            matter_id=matter_id,
+            claim_id=claim_id,
             filename="x.jpg",
             stored_path="x.jpg",
             pinned_item_group_id=g.id,

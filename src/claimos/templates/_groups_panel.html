@@ -2,7 +2,7 @@
   <div class="flex items-center justify-between">
     <h3 class="text-sm font-semibold text-gray-700">Groups ({{ item_groups | length }})</h3>
     <form id="add-item-group-form"
-          hx-post="/api/matters/{{ matter.id }}/item-groups"
+          hx-post="/api/claims/{{ claim.id }}/item-groups"
           hx-target="#item-groups-list"
           hx-swap="beforeend"
           class="flex items-center gap-2">
@@ -15,7 +15,7 @@
     </form>
   </div>
 
-  {% set matter_id = matter.id %}
+  {% set claim_id = claim.id %}
   <ul id="item-groups-list" class="space-y-2">
     {% for group, item_count in item_groups %}
       {% include "_item_group_li.html" %}

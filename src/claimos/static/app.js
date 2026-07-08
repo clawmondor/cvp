@@ -161,7 +161,7 @@ function initEvidenceUpload() {
     var grid = document.getElementById('evidence-grid');
     if (!zone || !input) return;
 
-    var matterId = zone.dataset.matterId;
+    var claimId = zone.dataset.claimId;
     var csrf = zone.dataset.csrfToken || '';
     var concurrency = Math.max(1, parseInt(zone.dataset.evidenceUploadConcurrency, 10) || 4);
     var maxFileBytes = (parseInt(zone.dataset.evidenceUploadMaxFileMb, 10) || 10) * 1024 * 1024;
@@ -233,7 +233,7 @@ function initEvidenceUpload() {
         }
         if (inFlight === 0 && queue.length === 0) {
             // Queue fully drained — refresh grid chrome (counts, banners) once.
-            htmx.ajax('GET', '/api/matters/' + matterId + '/evidence-grid', '#evidence-grid');
+            htmx.ajax('GET', '/api/claims/' + claimId + '/evidence-grid', '#evidence-grid');
         }
     }
 
@@ -243,7 +243,7 @@ function initEvidenceUpload() {
         var form = new FormData();
         form.append('file', job.file, job.file.name);
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/matters/' + matterId + '/evidence');
+        xhr.open('POST', '/api/claims/' + claimId + '/evidence');
         if (csrf) xhr.setRequestHeader('X-CSRF-Token', csrf);
         xhr.onload = function () {
             inFlight -= 1;
@@ -494,10 +494,10 @@ document.addEventListener('change', function (e) {
         return;
     }
     var fileId = sel.dataset.evidenceGroupSelect;
-    var matterId = sel.dataset.matterId;
+    var claimId = sel.dataset.claimId;
     var fd = new FormData();
     fd.append('new_item_group_name', name.trim());
-    fetch('/api/matters/' + matterId + '/evidence/' + fileId + '/item-group', {
+    fetch('/api/claims/' + claimId + '/evidence/' + fileId + '/item-group', {
         method: 'PATCH',
         body: fd,
         credentials: 'same-origin',
@@ -591,7 +591,7 @@ document.addEventListener('click', function (e) {
 
 // Delegated change: data-item-group-select handles "+ New group…" by prompting
 // and stashing the name in the sibling hidden input named new_item_group_name.
-// On submit, the items router calls find_or_create(matter_id, new_item_group_name)
+// On submit, the items router calls find_or_create(claim_id, new_item_group_name)
 // before assigning item.item_group_id.
 document.addEventListener('change', function (e) {
     var sel = e.target;
@@ -616,7 +616,7 @@ document.addEventListener('change', function (e) {
 
 // ---- Live items list: surface scan / region-rescan results -------------
 // Both the full-scan HTMX poll and the region-scan JSON poll converge on a
-// single document event: cvp:items-added {detail:{matterId, jobId, count}}.
+// single document event: cvp:items-added {detail:{claimId, jobId, count}}.
 (function () {
   var handledScanJobs = new Set();
   var newItemsCount = 0;
@@ -637,7 +637,7 @@ document.addEventListener('change', function (e) {
     var count = parseInt(el.dataset.itemsCreated, 10) || 0;
     if (count <= 0) return;
     document.dispatchEvent(new CustomEvent('cvp:items-added', {
-      detail: { matterId: el.dataset.matterId, jobId: jobId, count: count }
+      detail: { claimId: el.dataset.claimId, jobId: jobId, count: count }
     }));
   });
 
@@ -647,7 +647,7 @@ document.addEventListener('change', function (e) {
     newItemsCount += (detail.count || 0);
     var banner = document.getElementById('items-new-banner');
     if (!banner) return;
-    if (detail.matterId) banner.dataset.matterId = detail.matterId;
+    if (detail.claimId) banner.dataset.claimId = detail.claimId;
     var label = banner.querySelector('[data-new-items-label]');
     if (label) {
       label.textContent =
@@ -661,12 +661,12 @@ document.addEventListener('change', function (e) {
     var btn = e.target.closest('[data-view-new-items]');
     if (!btn || !window.htmx) return;
     var banner = document.getElementById('items-new-banner');
-    var matterId = banner ? banner.dataset.matterId : null;
-    if (!matterId) return;
+    var claimId = banner ? banner.dataset.claimId : null;
+    if (!claimId) return;
 
-    htmx.ajax('GET', '/api/matters/' + matterId + '/items-rows',
+    htmx.ajax('GET', '/api/claims/' + claimId + '/items-rows',
       { target: '#items-tbody', swap: 'innerHTML' });
-    htmx.ajax('GET', '/api/matters/' + matterId + '/items-summary',
+    htmx.ajax('GET', '/api/claims/' + claimId + '/items-summary',
       { target: '#items-summary', swap: 'outerHTML' });
 
     newItemsCount = 0;

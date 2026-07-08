@@ -29,10 +29,10 @@ class Base(DeclarativeBase):
     pass
 
 
-class Matter(Base):
-    """A claim case. One matter = one attorney's claim, one report."""
+class Claim(Base):
+    """A claim case. One claim = one attorney's claim, one report."""
 
-    __tablename__ = "matters"
+    __tablename__ = "claims"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
     firm_name: Mapped[str] = mapped_column(String, default="")
@@ -64,16 +64,16 @@ class Matter(Base):
 
     # Relationships
     rooms: Mapped[list["Room"]] = relationship(
-        "Room", back_populates="matter", cascade="all, delete-orphan"
+        "Room", back_populates="claim", cascade="all, delete-orphan"
     )
     items: Mapped[list["Item"]] = relationship(
-        "Item", back_populates="matter", cascade="all, delete-orphan"
+        "Item", back_populates="claim", cascade="all, delete-orphan"
     )
     evidence_files: Mapped[list["EvidenceFile"]] = relationship(
-        "EvidenceFile", back_populates="matter", cascade="all, delete-orphan"
+        "EvidenceFile", back_populates="claim", cascade="all, delete-orphan"
     )
     vision_runs: Mapped[list["VisionRun"]] = relationship(
-        "VisionRun", back_populates="matter", cascade="all, delete-orphan"
+        "VisionRun", back_populates="claim", cascade="all, delete-orphan"
     )
 
 
@@ -83,7 +83,7 @@ class Room(Base):
     __tablename__ = "rooms"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
-    matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
+    claim_id: Mapped[str] = mapped_column(String, ForeignKey("claims.id"), nullable=False)
     name: Mapped[str] = mapped_column(String)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -92,7 +92,7 @@ class Room(Base):
     )
 
     # Relationships
-    matter: Mapped["Matter"] = relationship("Matter", back_populates="rooms")
+    claim: Mapped["Claim"] = relationship("Claim", back_populates="rooms")
     items: Mapped[list["Item"]] = relationship("Item", back_populates="room")
 
 
@@ -105,17 +105,17 @@ class ItemGroup(Base):
 
     __tablename__ = "item_groups"
     __table_args__ = (
-        Index("ix_item_groups_matter_id", "matter_id"),
+        Index("ix_item_groups_claim_id", "claim_id"),
         Index(
-            "uq_item_groups_matter_name_normalized",
-            "matter_id",
+            "uq_item_groups_claim_name_normalized",
+            "claim_id",
             "name_normalized",
             unique=True,
         ),
     )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
-    matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
+    claim_id: Mapped[str] = mapped_column(String, ForeignKey("claims.id"), nullable=False)
     name: Mapped[str] = mapped_column(String)
     name_normalized: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -145,7 +145,7 @@ class Item(Base):
     __tablename__ = "items"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
-    matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
+    claim_id: Mapped[str] = mapped_column(String, ForeignKey("claims.id"), nullable=False)
     room_id: Mapped[str | None] = mapped_column(String, ForeignKey("rooms.id"), nullable=True)
     item_group_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("item_groups.id", ondelete="SET NULL"), nullable=True
@@ -182,7 +182,7 @@ class Item(Base):
     )
 
     # Relationships
-    matter: Mapped["Matter"] = relationship("Matter", back_populates="items")
+    claim: Mapped["Claim"] = relationship("Claim", back_populates="items")
     room: Mapped["Room | None"] = relationship("Room", back_populates="items")
     category: Mapped["Category"] = relationship("Category", back_populates="items")
     item_group: Mapped["ItemGroup | None"] = relationship("ItemGroup")
@@ -192,12 +192,12 @@ class Item(Base):
 
 
 class EvidenceFile(Base):
-    """A file (photo, video, PDF, etc.) uploaded for a matter."""
+    """A file (photo, video, PDF, etc.) uploaded for a claim."""
 
     __tablename__ = "evidence_files"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
-    matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
+    claim_id: Mapped[str] = mapped_column(String, ForeignKey("claims.id"), nullable=False)
     filename: Mapped[str] = mapped_column(String)
     stored_path: Mapped[str] = mapped_column(String)
     mime_type: Mapped[str] = mapped_column(String, default="")
@@ -213,7 +213,7 @@ class EvidenceFile(Base):
     )
 
     # Relationships
-    matter: Mapped["Matter"] = relationship("Matter", back_populates="evidence_files")
+    claim: Mapped["Claim"] = relationship("Claim", back_populates="evidence_files")
     pinned_item_group: Mapped["ItemGroup | None"] = relationship("ItemGroup")
     vision_runs: Mapped[list["VisionRun"]] = relationship(
         "VisionRun", back_populates="evidence_file", cascade="all, delete-orphan"
@@ -229,7 +229,7 @@ class VisionRun(Base):
     __tablename__ = "vision_runs"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
-    matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
+    claim_id: Mapped[str] = mapped_column(String, ForeignKey("claims.id"), nullable=False)
     evidence_file_id: Mapped[str] = mapped_column(
         String, ForeignKey("evidence_files.id"), nullable=False
     )
@@ -242,7 +242,7 @@ class VisionRun(Base):
     ran_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relationships
-    matter: Mapped["Matter"] = relationship("Matter", back_populates="vision_runs")
+    claim: Mapped["Claim"] = relationship("Claim", back_populates="vision_runs")
     evidence_file: Mapped["EvidenceFile"] = relationship(
         "EvidenceFile", back_populates="vision_runs"
     )
@@ -252,10 +252,10 @@ class VisionJob(Base):
     """A batch vision scan job — groups one or more VisionJobImages."""
 
     __tablename__ = "vision_jobs"
-    __table_args__ = (Index("ix_vision_jobs_matter_created", "matter_id", "created_at"),)
+    __table_args__ = (Index("ix_vision_jobs_claim_created", "claim_id", "created_at"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
-    matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
+    claim_id: Mapped[str] = mapped_column(String, ForeignKey("claims.id"), nullable=False)
     model_slug: Mapped[str] = mapped_column(String, default="")
     status: Mapped[str] = mapped_column(String, default="running")  # running | done | error
     created_by_user_id: Mapped[str | None] = mapped_column(

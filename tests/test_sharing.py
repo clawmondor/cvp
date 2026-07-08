@@ -1,4 +1,4 @@
-"""Tests for matter sharing endpoints."""
+"""Tests for claim sharing endpoints."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -7,10 +7,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import claimos.dependencies as deps
-import claimos.models_access  # ensure matter_access table is registered  # noqa: F401
+import claimos.models_access  # ensure claim_access table is registered  # noqa: F401
 import claimos.models_auth  # ensure auth tables are registered on Base.metadata  # noqa: F401
 from claimos.auth import hash_password
-from claimos.models import Base, Matter
+from claimos.models import Base, Claim
 from claimos.models_auth import Group, User
 
 
@@ -51,8 +51,8 @@ def seeded_share_db(db_session):
         group_id="eg",
     )
     db_session.add_all([admin, ext_user])
-    matter = Matter(id="m1", owner_group_id="ig", created_by_id="ia")
-    db_session.add(matter)
+    claim = Claim(id="m1", owner_group_id="ig", created_by_id="ia")
+    db_session.add(claim)
     db_session.commit()
     return db_session
 
@@ -81,7 +81,7 @@ def client(seeded_share_db, monkeypatch):
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[require_active_user] = mock_admin
     # Bypass RBAC checks
-    monkeypatch.setattr(deps, "_check_matter_access", lambda db, user, matter_id, role: True)
+    monkeypatch.setattr(deps, "_check_claim_access", lambda db, user, claim_id, role: True)
 
     with TestClient(app) as c:
         yield c
@@ -91,7 +91,7 @@ def client(seeded_share_db, monkeypatch):
 
 def test_grant_access(client):
     resp = client.post(
-        "/api/matters/m1/access",
+        "/api/claims/m1/access",
         data={"user_id": "eu", "role": "viewer"},
     )
     assert resp.status_code == 200
@@ -100,8 +100,8 @@ def test_grant_access(client):
 
 def test_list_access(client):
     # First grant access
-    client.post("/api/matters/m1/access", data={"user_id": "eu", "role": "viewer"})
-    resp = client.get("/api/matters/m1/access")
+    client.post("/api/claims/m1/access", data={"user_id": "eu", "role": "viewer"})
+    resp = client.get("/api/claims/m1/access")
     assert resp.status_code == 200
     data = resp.json()
     assert any(item["user_id"] == "eu" for item in data)
@@ -109,16 +109,16 @@ def test_list_access(client):
 
 def test_revoke_access(client):
     # Grant first
-    client.post("/api/matters/m1/access", data={"user_id": "eu", "role": "viewer"})
+    client.post("/api/claims/m1/access", data={"user_id": "eu", "role": "viewer"})
     # Then revoke
-    resp = client.delete("/api/matters/m1/access/eu")
+    resp = client.delete("/api/claims/m1/access/eu")
     assert resp.status_code == 200
     assert resp.json()["ok"] is True
 
 
 def test_invalid_role(client):
     resp = client.post(
-        "/api/matters/m1/access",
+        "/api/claims/m1/access",
         data={"user_id": "eu", "role": "superuser"},
     )
     assert resp.status_code == 400
@@ -126,7 +126,7 @@ def test_invalid_role(client):
 
 def test_grant_user_not_found(client):
     resp = client.post(
-        "/api/matters/m1/access",
+        "/api/claims/m1/access",
         data={"user_id": "nonexistent-user-id", "role": "viewer"},
     )
     assert resp.status_code == 404
@@ -134,7 +134,7 @@ def test_grant_user_not_found(client):
 
 def test_revoke_grant_not_found(client):
     # No grant exists for "eu" — revoke should 404
-    resp = client.delete("/api/matters/m1/access/eu")
+    resp = client.delete("/api/claims/m1/access/eu")
     assert resp.status_code == 404
 
 
@@ -177,13 +177,13 @@ def test_grant_cross_tenant_blocked(seeded_share_db, monkeypatch):
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[require_active_user] = mock_ext_admin
-    monkeypatch.setattr(deps_local, "_check_matter_access", lambda db, user, matter_id, role: True)
+    monkeypatch.setattr(deps_local, "_check_claim_access", lambda db, user, claim_id, role: True)
 
     try:
         with TestClient(app) as c:
             # "ia" is in group "ig" (internal), external admin is in "eg" — cross-tenant
             resp = c.post(
-                "/api/matters/m1/access",
+                "/api/claims/m1/access",
                 data={"user_id": "ia", "role": "viewer"},
             )
     finally:

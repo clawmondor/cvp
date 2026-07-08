@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Contents Inventory and Valuation Report — {{ matter.policyholder_name }}</title>
+  <title>Contents Inventory and Valuation Report — {{ claim.policyholder_name }}</title>
   <style>
     /* ── Page setup ─────────────────────────────────────────────── */
     @page {
@@ -93,16 +93,16 @@
   <p class="muted" style="font-size:13pt; margin-bottom:24pt;">Prepared for Attorney Use Only</p>
 
   <table class="cover-table" style="max-width:380pt;">
-    <tr><td class="cover-label">Policyholder</td><td>{{ matter.policyholder_name or "—" }}</td></tr>
-    <tr><td class="cover-label">Loss Address</td><td>{{ matter.loss_location or "—" }}</td></tr>
-    <tr><td class="cover-label">Loss Event</td><td>{{ matter.loss_event or "—" }}</td></tr>
-    <tr><td class="cover-label">Date of Loss</td><td>{{ matter.loss_date.strftime("%B %-d, %Y") if matter.loss_date else "—" }}</td></tr>
-    <tr><td class="cover-label">Carrier</td><td>{{ matter.carrier or "—" }}</td></tr>
-    <tr><td class="cover-label">Claim Number</td><td>{{ matter.claim_number or "—" }}</td></tr>
-    <tr><td class="cover-label">Policy Number</td><td>{{ matter.policy_number or "—" }}</td></tr>
-    <tr><td class="cover-label">Coverage C Limit</td><td class="mono">${{ "{:,.2f}".format(matter.coverage_c_limit / 100) }}</td></tr>
-    <tr><td class="cover-label">Referring Firm</td><td>{{ matter.firm_name or "—" }}</td></tr>
-    <tr><td class="cover-label">Attorney</td><td>{{ matter.attorney_name or "—" }}</td></tr>
+    <tr><td class="cover-label">Policyholder</td><td>{{ claim.policyholder_name or "—" }}</td></tr>
+    <tr><td class="cover-label">Loss Address</td><td>{{ claim.loss_location or "—" }}</td></tr>
+    <tr><td class="cover-label">Loss Event</td><td>{{ claim.loss_event or "—" }}</td></tr>
+    <tr><td class="cover-label">Date of Loss</td><td>{{ claim.loss_date.strftime("%B %-d, %Y") if claim.loss_date else "—" }}</td></tr>
+    <tr><td class="cover-label">Carrier</td><td>{{ claim.carrier or "—" }}</td></tr>
+    <tr><td class="cover-label">Claim Number</td><td>{{ claim.claim_number or "—" }}</td></tr>
+    <tr><td class="cover-label">Policy Number</td><td>{{ claim.policy_number or "—" }}</td></tr>
+    <tr><td class="cover-label">Coverage C Limit</td><td class="mono">${{ "{:,.2f}".format(claim.coverage_c_limit / 100) }}</td></tr>
+    <tr><td class="cover-label">Referring Firm</td><td>{{ claim.firm_name or "—" }}</td></tr>
+    <tr><td class="cover-label">Attorney</td><td>{{ claim.attorney_name or "—" }}</td></tr>
     <tr><td class="cover-label">Report Date</td><td>{{ report_date }}</td></tr>
   </table>
 
@@ -140,10 +140,10 @@
   <h2>Executive Summary</h2>
   <p>
     This report presents a comprehensive contents inventory and replacement cost valuation for the personal
-    property of <strong>{{ matter.policyholder_name or "the insured" }}</strong> at
-    <strong>{{ matter.loss_location or "the loss address" }}</strong>, arising from the
-    <strong>{{ matter.loss_event or "reported loss event" }}</strong>{% if matter.loss_date %}
-    on <strong>{{ matter.loss_date.strftime("%B %-d, %Y") }}</strong>{% endif %}.
+    property of <strong>{{ claim.policyholder_name or "the insured" }}</strong> at
+    <strong>{{ claim.loss_location or "the loss address" }}</strong>, arising from the
+    <strong>{{ claim.loss_event or "reported loss event" }}</strong>{% if claim.loss_date %}
+    on <strong>{{ claim.loss_date.strftime("%B %-d, %Y") }}</strong>{% endif %}.
     All replacement cost values (RCV) reflect current market prices at the time of documentation.
     Actual cash values (ACV) are computed using the straight-line depreciation methodology
     described in Section 7.
@@ -164,7 +164,7 @@
     </div>
     <div class="figure-box">
       <div class="figure-label">Coverage C Limit</div>
-      <div class="figure-value">${{ "{:,.2f}".format(matter.coverage_c_limit / 100) }}</div>
+      <div class="figure-value">${{ "{:,.2f}".format(claim.coverage_c_limit / 100) }}</div>
     </div>
   </div>
 
@@ -174,10 +174,10 @@
      (RCV − ACV = <strong class="mono">${{ "{:,.2f}".format((total_rcv_cents - total_acv_cents) / 100) }}</strong>).</p>
   {% endif %}
 
-  {% if matter.coverage_c_limit and total_rcv_cents > matter.coverage_c_limit %}
+  {% if claim.coverage_c_limit and total_rcv_cents > claim.coverage_c_limit %}
   <div class="amber-box">
     ⚠ Total RCV exceeds the Coverage C limit by
-    <strong>${{ "{:,.2f}".format((total_rcv_cents - matter.coverage_c_limit) / 100) }}</strong>.
+    <strong>${{ "{:,.2f}".format((total_rcv_cents - claim.coverage_c_limit) / 100) }}</strong>.
   </div>
   {% endif %}
 </div>
@@ -185,9 +185,9 @@
 <!-- ═══ 4. SCOPE OF ENGAGEMENT ═══ -->
 <div class="report-section page-break">
   <h2>Scope of Engagement</h2>
-  <p>{{ company_name }} was retained by <strong>{{ matter.firm_name or "the referring law firm" }}</strong>
+  <p>{{ company_name }} was retained by <strong>{{ claim.firm_name or "the referring law firm" }}</strong>
      to prepare a documented contents inventory and replacement cost valuation report for the personal
-     property of <strong>{{ matter.policyholder_name or "the insured" }}</strong>.</p>
+     property of <strong>{{ claim.policyholder_name or "the insured" }}</strong>.</p>
   <p>The scope of this engagement is limited to the identification, description, and valuation of personal
      property (Coverage C) contents. Structural, mechanical, and real property components are expressly excluded.</p>
   <p>{{ company_name }} is an expert documentation and valuation services vendor. This report does not
@@ -224,10 +224,10 @@
   <h2>Data Sources and Inputs</h2>
   <p>The following inputs were used in preparing this inventory:</p>
   <ul>
-    {% if matter.loss_event %}<li>Loss event: {{ matter.loss_event }}</li>{% endif %}
-    {% if matter.loss_date %}<li>Date of loss: {{ matter.loss_date.strftime("%B %-d, %Y") }}</li>{% endif %}
-    {% if matter.loss_location %}<li>Loss address: {{ matter.loss_location }}</li>{% endif %}
-    {% if matter.loss_type %}<li>Loss type: {{ matter.loss_type.replace("_", " ").title() }}</li>{% endif %}
+    {% if claim.loss_event %}<li>Loss event: {{ claim.loss_event }}</li>{% endif %}
+    {% if claim.loss_date %}<li>Date of loss: {{ claim.loss_date.strftime("%B %-d, %Y") }}</li>{% endif %}
+    {% if claim.loss_location %}<li>Loss address: {{ claim.loss_location }}</li>{% endif %}
+    {% if claim.loss_type %}<li>Loss type: {{ claim.loss_type.replace("_", " ").title() }}</li>{% endif %}
     <li>Photographic and video evidence provided by policyholder and/or attorney</li>
     <li>Policyholder-provided item recall and documentation</li>
     <li>Current retail price research (sources documented in the Pricing Audit Trail)</li>
@@ -440,7 +440,7 @@ acv_total       = acv_unit × quantity</pre>
   </div>
   <p class="muted" style="font-size:7.5pt; margin-top:36pt; border-top:0.5pt solid #e5e7eb; padding-top:8pt;">
     Confidential — Attorney Work Product. Prepared at the direction of
-    {{ matter.attorney_name or "counsel" }}, {{ matter.firm_name or "the retaining law firm" }}.
+    {{ claim.attorney_name or "counsel" }}, {{ claim.firm_name or "the retaining law firm" }}.
     Not for distribution without attorney authorization.
   </p>
 </div>

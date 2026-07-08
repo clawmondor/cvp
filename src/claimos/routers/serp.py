@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from claimos.config import settings
 from claimos.db import SessionLocal
-from claimos.dependencies import CurrentUser, optional_user, require_matter_role
+from claimos.dependencies import CurrentUser, optional_user, require_claim_role
 from claimos.depreciation import compute_acv
 from claimos.models import Category, Item, ItemCrop, ItemGroup, Room, SerpSearch
 from claimos.services.audit import get_client_ip, write_audit_log
@@ -42,7 +42,7 @@ def serve_crop(crop_path: str, user: CurrentUser | None = Depends(optional_user)
 
 @router.get("/api/items/{item_id}/serp-panel", response_class=HTMLResponse)
 def serp_panel(
-    item_id: str, user: CurrentUser = Depends(require_matter_role("editor"))
+    item_id: str, user: CurrentUser = Depends(require_claim_role("editor"))
 ) -> HTMLResponse:
     """Render the SERP panel for an item showing all crops and their latest search results."""
     db = SessionLocal()
@@ -85,7 +85,7 @@ def run_google_lens(
     item_id: str,
     crop_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("editor")),
+    user: CurrentUser = Depends(require_claim_role("editor")),
     image_url: str = Form(""),
 ) -> HTMLResponse:
     """Run a Google Lens search for a specific item crop and persist the result."""
@@ -118,7 +118,7 @@ def run_google_lens(
         display_results = extract_results("google_lens", response_dict)
 
         item = db.get(Item, item_id)
-        matter_id = item.matter_id if item else None
+        claim_id = item.claim_id if item else None
 
         html = templates.get_template("_serp_result.html").render(
             s=search,
@@ -133,7 +133,7 @@ def run_google_lens(
         action="serp.run",
         resource_type="item",
         resource_id=item_id,
-        matter_id=matter_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
     )
     return HTMLResponse(html)
@@ -144,7 +144,7 @@ def serp_apply(
     request: Request,
     item_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("editor")),
+    user: CurrentUser = Depends(require_claim_role("editor")),
     source_url: str = Form(""),
     source_retailer: str = Form(""),
     rcv_unit_cents: str = Form(""),
@@ -180,12 +180,12 @@ def serp_apply(
         db.commit()
         db.refresh(item)
 
-        matter_id = item.matter_id
+        claim_id = item.claim_id
         categories = db.query(Category).order_by(Category.id).all()
-        rooms = db.query(Room).filter(Room.matter_id == matter_id).order_by(Room.sort_order).all()
+        rooms = db.query(Room).filter(Room.claim_id == claim_id).order_by(Room.sort_order).all()
         item_groups = (
             db.query(ItemGroup)
-            .filter(ItemGroup.matter_id == matter_id)
+            .filter(ItemGroup.claim_id == claim_id)
             .order_by(ItemGroup.created_at)
             .all()
         )
@@ -201,7 +201,7 @@ def serp_apply(
         action="serp.run",
         resource_type="item",
         resource_id=item_id,
-        matter_id=matter_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
     )
     return HTMLResponse(html)

@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 import claimos.dependencies as deps
 from claimos.db import get_db
 from claimos.dependencies import CurrentUser, require_active_user
-from claimos.models import Base, Category, EvidenceFile, Item, ItemCrop, Matter
+from claimos.models import Base, Category, Claim, EvidenceFile, Item, ItemCrop
 
 
 @pytest.fixture(scope="module")
@@ -34,18 +34,18 @@ def db_engine(tmp_base):
     Session = sessionmaker(bind=engine)
     db = Session()
     db.add(Category(id=1, name="Test", useful_life_years=10, acv_floor_pct=0.20))
-    db.add(Matter(id="m1", policyholder_name="Test"))
+    db.add(Claim(id="m1", policyholder_name="Test"))
     db.add(
         EvidenceFile(
             id="ef1",
-            matter_id="m1",
+            claim_id="m1",
             filename="photo.jpg",
             stored_path="ef1/photo.jpg",
             kind="image",
             scanned=True,
         )
     )
-    db.add(Item(id="item1", matter_id="m1", category_id=1, line_number=1, description="Lamp"))
+    db.add(Item(id="item1", claim_id="m1", category_id=1, line_number=1, description="Lamp"))
     db.add(
         ItemCrop(
             id="crop1",
@@ -94,7 +94,7 @@ def client(tmp_base, db_engine):
         patch.object(crops_mod, "SessionLocal", Session),
         patch("claimos.config.settings.upload_dir", str(tmp_base / "uploads")),
         patch("claimos.config.settings.crop_dir", str(tmp_base / "crops")),
-        patch.object(deps, "_check_matter_access", return_value=True),
+        patch.object(deps, "_check_claim_access", return_value=True),
     ):
         with TestClient(app) as c:
             yield c

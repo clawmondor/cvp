@@ -1,4 +1,4 @@
-"""Matter sharing endpoints — grant and revoke per-user access."""
+"""Claim sharing endpoints — grant and revoke per-user access."""
 
 from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import JSONResponse
@@ -6,22 +6,22 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from claimos.db import get_db
-from claimos.dependencies import CurrentUser, require_matter_role
-from claimos.models_access import MatterAccess
+from claimos.dependencies import CurrentUser, require_claim_role
+from claimos.models_access import ClaimAccess
 from claimos.models_auth import User
 
 router = APIRouter()
 
 
-@router.post("/api/matters/{matter_id}/access")
+@router.post("/api/claims/{claim_id}/access")
 def grant_access(
-    matter_id: str,
+    claim_id: str,
     user_id: str = Form(...),
     role: str = Form(...),
-    user: CurrentUser = Depends(require_matter_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager")),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
-    """Grant a user access to a matter with a specific role."""
+    """Grant a user access to a claim with a specific role."""
     valid_roles = {"viewer", "editor", "contributor", "manager"}
     if role not in valid_roles:
         raise HTTPException(
@@ -41,8 +41,8 @@ def grant_access(
         )
 
     existing = (
-        db.query(MatterAccess)
-        .filter(MatterAccess.user_id == user_id, MatterAccess.matter_id == matter_id)
+        db.query(ClaimAccess)
+        .filter(ClaimAccess.user_id == user_id, ClaimAccess.claim_id == claim_id)
         .first()
     )
 
@@ -50,9 +50,9 @@ def grant_access(
         existing.role = role
         existing.granted_by_id = user.id
     else:
-        access = MatterAccess(
+        access = ClaimAccess(
             user_id=user_id,
-            matter_id=matter_id,
+            claim_id=claim_id,
             role=role,
             granted_by_id=user.id,
         )
@@ -62,14 +62,14 @@ def grant_access(
     return JSONResponse({"ok": True, "user_id": user_id, "role": role})
 
 
-@router.delete("/api/matters/{matter_id}/access/{target_user_id}")
+@router.delete("/api/claims/{claim_id}/access/{target_user_id}")
 def revoke_access(
-    matter_id: str,
+    claim_id: str,
     target_user_id: str,
-    user: CurrentUser = Depends(require_matter_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager")),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
-    """Revoke a user's access to a matter."""
+    """Revoke a user's access to a claim."""
     # 1. Load the target user first
     target = db.get(User, target_user_id)
     if target is None:
@@ -84,10 +84,10 @@ def revoke_access(
 
     # 3. Find the grant and 404 if not found
     access = (
-        db.query(MatterAccess)
+        db.query(ClaimAccess)
         .filter(
-            MatterAccess.user_id == target_user_id,
-            MatterAccess.matter_id == matter_id,
+            ClaimAccess.user_id == target_user_id,
+            ClaimAccess.claim_id == claim_id,
         )
         .first()
     )
@@ -100,17 +100,17 @@ def revoke_access(
     return JSONResponse({"ok": True})
 
 
-@router.get("/api/matters/{matter_id}/access")
+@router.get("/api/claims/{claim_id}/access")
 def list_access(
-    matter_id: str,
-    user: CurrentUser = Depends(require_matter_role("manager")),
+    claim_id: str,
+    user: CurrentUser = Depends(require_claim_role("manager")),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
-    """List all users with access to a matter."""
+    """List all users with access to a claim."""
     rows = db.execute(
-        select(MatterAccess, User)
-        .join(User, MatterAccess.user_id == User.id)
-        .where(MatterAccess.matter_id == matter_id)
+        select(ClaimAccess, User)
+        .join(User, ClaimAccess.user_id == User.id)
+        .where(ClaimAccess.claim_id == claim_id)
     ).all()
 
     result = []

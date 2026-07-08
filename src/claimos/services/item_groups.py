@@ -1,4 +1,4 @@
-"""Service helpers for the ItemGroup entity (per-matter on-site placards)."""
+"""Service helpers for the ItemGroup entity (per-claim on-site placards)."""
 
 from __future__ import annotations
 
@@ -13,11 +13,11 @@ def _normalize(name: str) -> str:
     return name.strip().lower()
 
 
-def find_or_create(session: Session, matter_id: str, name: str) -> ItemGroup:
-    """Return the ItemGroup matching ``name`` for ``matter_id``, creating it if absent.
+def find_or_create(session: Session, claim_id: str, name: str) -> ItemGroup:
+    """Return the ItemGroup matching ``name`` for ``claim_id``, creating it if absent.
 
     Names are matched case-insensitively after whitespace trimming. The unique
-    index on ``(matter_id, name_normalized)`` is the source of truth for
+    index on ``(claim_id, name_normalized)`` is the source of truth for
     dedupe; this function catches an IntegrityError race and re-queries.
     """
     normalized = _normalize(name)
@@ -25,14 +25,14 @@ def find_or_create(session: Session, matter_id: str, name: str) -> ItemGroup:
         raise ValueError("group name cannot be empty")
     existing = session.execute(
         select(ItemGroup).where(
-            ItemGroup.matter_id == matter_id,
+            ItemGroup.claim_id == claim_id,
             ItemGroup.name_normalized == normalized,
         )
     ).scalar_one_or_none()
     if existing is not None:
         return existing
     group = ItemGroup(
-        matter_id=matter_id,
+        claim_id=claim_id,
         name=name.strip(),
         name_normalized=normalized,
     )
@@ -44,7 +44,7 @@ def find_or_create(session: Session, matter_id: str, name: str) -> ItemGroup:
         # caller's outer transaction is intact.
         return session.execute(
             select(ItemGroup).where(
-                ItemGroup.matter_id == matter_id,
+                ItemGroup.claim_id == claim_id,
                 ItemGroup.name_normalized == normalized,
             )
         ).scalar_one()

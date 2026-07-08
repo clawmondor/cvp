@@ -17,7 +17,7 @@ class AuditLog(Base):
     __table_args__ = (
         Index("ix_audit_logs_created_at", "created_at"),
         Index("ix_audit_logs_user_id", "user_id"),
-        Index("ix_audit_logs_matter_id", "matter_id"),
+        Index("ix_audit_logs_claim_id", "claim_id"),
         Index("ix_audit_logs_action", "action"),
     )
 
@@ -26,7 +26,7 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String, nullable=False)
     resource_type: Mapped[str] = mapped_column(String, nullable=True, default="")
     resource_id: Mapped[str | None] = mapped_column(String, nullable=True)
-    matter_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    claim_id: Mapped[str | None] = mapped_column(String, nullable=True)
     detail: Mapped[str | None] = mapped_column(Text, nullable=True)  # stored as JSON
     ip_address: Mapped[str] = mapped_column(String, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

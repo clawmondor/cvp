@@ -21,7 +21,7 @@ Base.metadata.create_all(engine)
 
 @pytest.fixture(autouse=True)
 def _clear_access_cache():
-    """The matter-access cache is a process-global dict; clear it between tests
+    """The claim-access cache is a process-global dict; clear it between tests
     so that an authorization decision from one test never leaks into another."""
     _access_cache._cache.clear()
     yield

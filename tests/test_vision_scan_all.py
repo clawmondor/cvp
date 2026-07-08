@@ -1,4 +1,4 @@
-"""Tests for POST /api/matters/{matter_id}/vision-scan-all."""
+"""Tests for POST /api/claims/{claim_id}/vision-scan-all."""
 
 import inspect
 import os
@@ -16,12 +16,12 @@ import claimos.routers.vision as vision_router
 from claimos.db import get_db
 from claimos.dependencies import CurrentUser
 from claimos.main import app
-from claimos.models import Base, EvidenceFile, Matter, VisionJob, VisionJobImage
+from claimos.models import Base, Claim, EvidenceFile, VisionJob, VisionJobImage
 from claimos.models_auth import User
 from claimos.models_vision import VisionModel
 
 CONTRIBUTOR_ID = "contrib-sa"
-MATTER_ID = "matter-sa"
+CLAIM_ID = "claim-sa"
 FILE_ID = "file-sa"
 
 
@@ -51,13 +51,13 @@ def db_session():
         )
     )
     db.add(User(id=CONTRIBUTOR_ID, email="c@t.com", display_name="C", system_role="internal_user"))
-    db.add(Matter(id=MATTER_ID, policyholder_name="Owner", loss_type="total_loss"))
+    db.add(Claim(id=CLAIM_ID, policyholder_name="Owner", loss_type="total_loss"))
     tmp = tempfile.mktemp(suffix=".jpg")
     PILImage.new("RGB", (10, 10), "white").save(tmp)
     db.add(
         EvidenceFile(
             id=FILE_ID,
-            matter_id=MATTER_ID,
+            claim_id=CLAIM_ID,
             filename="test.jpg",
             stored_path=tmp,
             mime_type="image/jpeg",
@@ -98,12 +98,12 @@ def test_scan_all_creates_job_for_unscanned(client_contributor, db_session, monk
     monkeypatch.setattr("claimos.services.vision_worker.wake", lambda: None)
 
     resp = client_contributor.post(
-        f"/api/matters/{MATTER_ID}/vision-scan-all",
+        f"/api/claims/{CLAIM_ID}/vision-scan-all",
         data={"model_slug": "anthropic/claude-opus-4"},
     )
     assert resp.status_code == 200
 
-    jobs = db_session.query(VisionJob).filter_by(matter_id=MATTER_ID).all()
+    jobs = db_session.query(VisionJob).filter_by(claim_id=CLAIM_ID).all()
     assert len(jobs) == 1
     images = db_session.query(VisionJobImage).filter_by(job_id=jobs[0].id).all()
     assert len(images) == 1
@@ -121,7 +121,7 @@ def test_scan_all_returns_empty_message_when_nothing_to_scan(
     db_session.commit()
 
     resp = client_contributor.post(
-        f"/api/matters/{MATTER_ID}/vision-scan-all",
+        f"/api/claims/{CLAIM_ID}/vision-scan-all",
         data={"model_slug": "anthropic/claude-opus-4"},
     )
     assert resp.status_code == 200
@@ -136,7 +136,7 @@ def test_scan_all_rejects_over_cap(client_contributor, db_session, monkeypatch):
     for i in range(3):
         db_session.add(
             EvidenceFile(
-                matter_id=MATTER_ID,
+                claim_id=CLAIM_ID,
                 filename=f"extra_{i}.jpg",
                 stored_path=f"/tmp/fake_{i}.jpg",
                 mime_type="image/jpeg",
@@ -148,7 +148,7 @@ def test_scan_all_rejects_over_cap(client_contributor, db_session, monkeypatch):
     db_session.commit()
 
     resp = client_contributor.post(
-        f"/api/matters/{MATTER_ID}/vision-scan-all",
+        f"/api/claims/{CLAIM_ID}/vision-scan-all",
         data={"model_slug": "anthropic/claude-opus-4"},
     )
     assert resp.status_code == 200

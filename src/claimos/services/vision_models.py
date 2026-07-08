@@ -12,7 +12,7 @@ RECOMMENDED_SLUGS: set[str] = {
     "google/gemini-2.5-pro",
 }
 
-# Order matters: first matching prefix wins.
+# Order claims: first matching prefix wins.
 ADAPTER_SUGGESTIONS: list[tuple[str, str]] = [
     ("anthropic/", "pixel_passthrough"),
     ("google/gemini-", "gemini_normalized_1000"),

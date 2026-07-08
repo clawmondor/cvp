@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     cookie_domain: str = ""
     rate_limit_enabled: bool = True
 
-    # Evidence upload runtime knobs — overridable per matter session via app_setting table
+    # Evidence upload runtime knobs — overridable per claim session via app_setting table
     evidence_upload_concurrency: int = 4
     evidence_upload_max_file_mb: int = 10
     evidence_upload_max_batch_count: int = 500

@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}New matter{% endblock %}
+{% block title %}New claim{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl">
   <div class="mb-6">
-    <h1 class="text-2xl font-semibold text-gray-900">New matter</h1>
-    <p class="mt-1 text-sm text-gray-500">Enter the claim and policy details to create a new matter.</p>
+    <h1 class="text-2xl font-semibold text-gray-900">New claim</h1>
+    <p class="mt-1 text-sm text-gray-500">Enter the claim and policy details to create a new claim.</p>
   </div>
 
-  <form method="post" action="/matters" class="space-y-8">
+  <form method="post" action="/claims" class="space-y-8">
 
     <fieldset class="space-y-4">
       <legend class="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-1 w-full">Firm and attorney</legend>
@@ -111,7 +111,7 @@
     <div class="flex items-center gap-3 pt-2">
       <button type="submit"
               class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-        Create matter
+        Create claim
       </button>
       <a href="/" class="text-sm text-gray-500 hover:text-gray-700">Cancel</a>
     </div>

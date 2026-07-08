@@ -3,7 +3,7 @@
 {% block sidebar %}
 <a href="/admin/org/?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm bg-emerald-700 text-white">Dashboard</a>
 <a href="/admin/org/users?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
-<a href="/admin/org/matters?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Matters</a>
+<a href="/admin/org/claims?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
 <a href="/admin/org/profile?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Profile</a>
 {% endblock %}
 {% block content %}
@@ -16,11 +16,11 @@
     <p class="text-3xl font-bold text-gray-900 mt-1">{{ user_count }}</p>
     <p class="text-xs text-emerald-600 mt-2">Manage users →</p>
   </a>
-  <a href="/admin/org/matters?group_id={{ group.id }}"
+  <a href="/admin/org/claims?group_id={{ group.id }}"
      class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
-    <p class="text-sm text-gray-500">Matters</p>
-    <p class="text-3xl font-bold text-gray-900 mt-1">{{ matter_count }}</p>
-    <p class="text-xs text-emerald-600 mt-2">View matters →</p>
+    <p class="text-sm text-gray-500">Claims</p>
+    <p class="text-3xl font-bold text-gray-900 mt-1">{{ claim_count }}</p>
+    <p class="text-xs text-emerald-600 mt-2">View claims →</p>
   </a>
 </div>
 {% endblock %}

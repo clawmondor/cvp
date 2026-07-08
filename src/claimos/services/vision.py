@@ -138,7 +138,7 @@ def _resolve_effective_item_group_id(
       1. If ``ef.pinned_item_group_id`` is set, the dropdown wins. A
          conflicting placard reading is logged at INFO and ignored.
       2. Otherwise, if ``placard_text`` is non-empty, find-or-create a group
-         on the matter using normalize-and-dedupe matching.
+         on the claim using normalize-and-dedupe matching.
       3. Otherwise, return ``None``.
     """
     pinned_id = ef.pinned_item_group_id
@@ -161,7 +161,7 @@ def _resolve_effective_item_group_id(
     if not text:
         return None
 
-    group = find_or_create(db, ef.matter_id, text)
+    group = find_or_create(db, ef.claim_id, text)
     return group.id
 
 
@@ -330,7 +330,7 @@ def process_one_image(job_image_id: str) -> None:
         parsed_items, placard_text = _parse_response(raw_text)
 
         max_line = (
-            db.query(sqlfunc.max(Item.line_number)).filter(Item.matter_id == job.matter_id).scalar()
+            db.query(sqlfunc.max(Item.line_number)).filter(Item.claim_id == job.claim_id).scalar()
             or 0
         )
         effective_item_group_id = _resolve_effective_item_group_id(db, ef, placard_text)
@@ -352,7 +352,7 @@ def process_one_image(job_image_id: str) -> None:
 
             max_line += 1
             item = Item(
-                matter_id=job.matter_id,
+                claim_id=job.claim_id,
                 category_id=cat_id,
                 item_group_id=effective_item_group_id,
                 line_number=max_line,
@@ -411,7 +411,7 @@ def process_one_image(job_image_id: str) -> None:
             items_this_file += 1
 
         vr = VisionRun(
-            matter_id=job.matter_id,
+            claim_id=job.claim_id,
             evidence_file_id=ef.id,
             model=job.model_slug,
             prompt_version=SCAN_PROMPT_VERSION,

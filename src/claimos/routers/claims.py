@@ -12,13 +12,13 @@ from sqlalchemy.orm import selectinload
 
 from claimos.config import settings
 from claimos.db import SessionLocal
-from claimos.dependencies import CurrentUser, require_active_user, require_matter_role
+from claimos.dependencies import CurrentUser, require_active_user, require_claim_role
 from claimos.models import (
     Category,
+    Claim,
     EvidenceFile,
     Item,
     ItemGroup,
-    Matter,
     VisionJob,
     VisionJobImage,
 )
@@ -40,13 +40,13 @@ LOSS_TYPES = ["total_loss", "partial_loss", "smoke", "water", "theft", "other"]
 LOSS_EVENTS = ["Palisades Fire", "Eaton Fire", "Other"]
 
 
-@router.get("/matters/new", response_class=HTMLResponse)
-def new_matter_form(
+@router.get("/claims/new", response_class=HTMLResponse)
+def new_claim_form(
     request: Request, user: CurrentUser = Depends(require_active_user)
 ) -> HTMLResponse:
     return templates.TemplateResponse(
         request=request,
-        name="matter_new.html",
+        name="claim_new.html",
         context={
             "loss_types": LOSS_TYPES,
             "loss_events": LOSS_EVENTS,
@@ -55,8 +55,8 @@ def new_matter_form(
     )
 
 
-@router.post("/matters")
-def create_matter(
+@router.post("/claims")
+def create_claim(
     request: Request,
     background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_active_user),
@@ -77,7 +77,7 @@ def create_matter(
 ) -> RedirectResponse:
     db = SessionLocal()
     try:
-        matter = Matter(
+        claim = Claim(
             id=str(uuid.uuid4()),
             firm_name=firm_name,
             attorney_name=attorney_name,
@@ -96,48 +96,45 @@ def create_matter(
                 date.fromisoformat(target_delivery_date) if target_delivery_date else None
             ),
         )
-        matter.owner_group_id = user.group_id
-        matter.created_by_id = user.id
-        db.add(matter)
+        claim.owner_group_id = user.group_id
+        claim.created_by_id = user.id
+        db.add(claim)
         db.commit()
-        db.refresh(matter)
-        matter_id = matter.id
+        db.refresh(claim)
+        claim_id = claim.id
     finally:
         db.close()
 
     background_tasks.add_task(
         write_audit_log,
         user_id=user.id,
-        action="matter.create",
-        resource_type="matter",
-        resource_id=matter_id,
-        matter_id=matter_id,
+        action="claim.create",
+        resource_type="claim",
+        resource_id=claim_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
     )
-    return RedirectResponse(url=f"/matters/{matter_id}", status_code=303)
+    return RedirectResponse(url=f"/claims/{claim_id}", status_code=303)
 
 
-@router.get("/matters/{matter_id}", response_class=HTMLResponse)
-def matter_detail(
+@router.get("/claims/{claim_id}", response_class=HTMLResponse)
+def claim_detail(
     request: Request,
-    matter_id: str,
+    claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
-        matter = (
-            db.query(Matter)
-            .options(selectinload(Matter.rooms))
-            .filter(Matter.id == matter_id)
-            .first()
+        claim = (
+            db.query(Claim).options(selectinload(Claim.rooms)).filter(Claim.id == claim_id).first()
         )
-        if matter is None:
-            return HTMLResponse("Matter not found", status_code=404)
+        if claim is None:
+            return HTMLResponse("Claim not found", status_code=404)
 
         # First page of evidence (newest-first), with cursor for infinite scroll.
         evidence_files, evidence_next_cursor = paginate_by_cursor(
-            db.query(EvidenceFile).filter(EvidenceFile.matter_id == matter_id),
+            db.query(EvidenceFile).filter(EvidenceFile.claim_id == claim_id),
             cursor_col=EvidenceFile.created_at,
             cursor_value=None,
             limit=24,
@@ -146,7 +143,7 @@ def matter_detail(
         evidence_next_cursor = evidence_next_cursor.isoformat() if evidence_next_cursor else None
 
         # Full-set items totals (aggregate query, not row-by-row).
-        _totals = compute_items_totals(matter_id, db)
+        _totals = compute_items_totals(claim_id, db)
         total_rcv_cents = _totals["items_rcv_total_cents"]
         total_acv_cents = _totals["items_acv_total_cents"]
         unconfirmed_count = _totals["unconfirmed_count"]
@@ -156,17 +153,17 @@ def matter_detail(
 
         # First page of items rows (line_number ASC), with cursor.
         items, items_next_cursor = paginate_by_cursor(
-            db.query(Item).options(selectinload(Item.crops)).filter(Item.matter_id == matter_id),
+            db.query(Item).options(selectinload(Item.crops)).filter(Item.claim_id == claim_id),
             cursor_col=Item.line_number,
             cursor_value=None,
             limit=50,
             order="asc",
         )
-        rooms = sorted(matter.rooms, key=lambda r: r.sort_order)
+        rooms = sorted(claim.rooms, key=lambda r: r.sort_order)
         item_groups_rows = (
             db.query(ItemGroup, func.count(Item.id))
             .outerjoin(Item, Item.item_group_id == ItemGroup.id)
-            .filter(ItemGroup.matter_id == matter_id)
+            .filter(ItemGroup.claim_id == claim_id)
             .group_by(ItemGroup.id)
             .order_by(ItemGroup.created_at)
             .all()
@@ -187,7 +184,7 @@ def matter_detail(
             default_vision_slug = last_slug
         if default_vision_slug is None:
             default_vision_slug = next((vm.slug for vm in vision_models if vm.is_default), None)
-        debounce = should_debounce_view(db, user.id, "matter.view", matter_id)
+        debounce = should_debounce_view(db, user.id, "claim.view", claim_id)
 
         # Scan error badges — latest error per unscanned image
         scan_errors: dict[str, str] = {}
@@ -195,7 +192,7 @@ def matter_detail(
             db.query(VisionJobImage.evidence_file_id, VisionJobImage.error_message)
             .join(VisionJob, VisionJobImage.job_id == VisionJob.id)
             .filter(
-                VisionJob.matter_id == matter_id,
+                VisionJob.claim_id == claim_id,
                 VisionJobImage.status == "error",
             )
             .order_by(VisionJobImage.created_at.asc())
@@ -210,7 +207,7 @@ def matter_detail(
         latest_job = (
             db.query(VisionJob)
             .filter(
-                VisionJob.matter_id == matter_id,
+                VisionJob.claim_id == claim_id,
                 VisionJob.status.in_(["done", "error"]),
             )
             .order_by(VisionJob.created_at.desc())
@@ -239,18 +236,18 @@ def matter_detail(
         background_tasks.add_task(
             write_audit_log,
             user_id=user.id,
-            action="matter.view",
-            resource_type="matter",
-            resource_id=matter_id,
-            matter_id=matter_id,
+            action="claim.view",
+            resource_type="claim",
+            resource_id=claim_id,
+            claim_id=claim_id,
             ip_address=get_client_ip(request),
         )
 
     return templates.TemplateResponse(
         request=request,
-        name="matter_detail.html",
+        name="claim_detail.html",
         context={
-            "matter": matter,
+            "claim": claim,
             "items": items,
             "items_next_cursor": items_next_cursor,
             "items_total_count": items_total_count,
@@ -281,12 +278,12 @@ def matter_detail(
     )
 
 
-@router.post("/matters/{matter_id}/update")
-def update_matter(
+@router.post("/claims/{claim_id}/update")
+def update_claim(
     request: Request,
-    matter_id: str,
+    claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager")),
     firm_name: str = Form(default=""),
     attorney_name: str = Form(default=""),
     attorney_email: str = Form(default=""),
@@ -305,47 +302,47 @@ def update_matter(
 ) -> RedirectResponse:
     db = SessionLocal()
     try:
-        matter = db.get(Matter, matter_id)
-        if matter is None:
-            return HTMLResponse("Matter not found", status_code=404)
-        matter.firm_name = firm_name
-        matter.attorney_name = attorney_name
-        matter.attorney_email = attorney_email
-        matter.policyholder_name = policyholder_name
-        matter.loss_location = loss_location
-        matter.loss_type = loss_type
-        matter.loss_event = loss_event
-        matter.loss_date = date.fromisoformat(loss_date) if loss_date else None
-        matter.carrier = carrier
-        matter.policy_number = policy_number
-        matter.claim_number = claim_number
-        matter.coverage_c_limit = int(float(coverage_c_limit_dollars or 0) * 100)
-        matter.firm_file_number = firm_file_number
-        matter.target_delivery_date = (
+        claim = db.get(Claim, claim_id)
+        if claim is None:
+            return HTMLResponse("Claim not found", status_code=404)
+        claim.firm_name = firm_name
+        claim.attorney_name = attorney_name
+        claim.attorney_email = attorney_email
+        claim.policyholder_name = policyholder_name
+        claim.loss_location = loss_location
+        claim.loss_type = loss_type
+        claim.loss_event = loss_event
+        claim.loss_date = date.fromisoformat(loss_date) if loss_date else None
+        claim.carrier = carrier
+        claim.policy_number = policy_number
+        claim.claim_number = claim_number
+        claim.coverage_c_limit = int(float(coverage_c_limit_dollars or 0) * 100)
+        claim.firm_file_number = firm_file_number
+        claim.target_delivery_date = (
             date.fromisoformat(target_delivery_date) if target_delivery_date else None
         )
-        matter.internal_notes = internal_notes
+        claim.internal_notes = internal_notes
         db.commit()
     finally:
         db.close()
     background_tasks.add_task(
         write_audit_log,
         user_id=user.id,
-        action="matter.update",
-        resource_type="matter",
-        resource_id=matter_id,
-        matter_id=matter_id,
+        action="claim.update",
+        resource_type="claim",
+        resource_id=claim_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
     )
-    return RedirectResponse(url=f"/matters/{matter_id}#overview", status_code=303)
+    return RedirectResponse(url=f"/claims/{claim_id}#overview", status_code=303)
 
 
-@router.post("/api/matters/{matter_id}/status")
-def update_matter_status(
+@router.post("/api/claims/{claim_id}/status")
+def update_claim_status(
     request: Request,
-    matter_id: str,
+    claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager")),
     status: str = Form(...),
 ) -> RedirectResponse:
     valid = {"draft", "in_review", "delivered", "archived"}
@@ -353,56 +350,56 @@ def update_matter_status(
         return HTMLResponse("Invalid status", status_code=400)
     db = SessionLocal()
     try:
-        matter = db.get(Matter, matter_id)
-        if matter is None:
-            return HTMLResponse("Matter not found", status_code=404)
-        matter.status = status
+        claim = db.get(Claim, claim_id)
+        if claim is None:
+            return HTMLResponse("Claim not found", status_code=404)
+        claim.status = status
         if status == "delivered":
-            matter.delivered_date = date.today()
+            claim.delivered_date = date.today()
         db.commit()
     finally:
         db.close()
     background_tasks.add_task(
         write_audit_log,
         user_id=user.id,
-        action="matter.update",
-        resource_type="matter",
-        resource_id=matter_id,
-        matter_id=matter_id,
+        action="claim.update",
+        resource_type="claim",
+        resource_id=claim_id,
+        claim_id=claim_id,
         detail={"status": status},
         ip_address=get_client_ip(request),
     )
-    return RedirectResponse(url=f"/matters/{matter_id}#overview", status_code=303)
+    return RedirectResponse(url=f"/claims/{claim_id}#overview", status_code=303)
 
 
-@router.get("/matters/{matter_id}/preview", response_class=HTMLResponse)
-def matter_preview(
-    request: Request, matter_id: str, user: CurrentUser = Depends(require_matter_role("viewer"))
+@router.get("/claims/{claim_id}/preview", response_class=HTMLResponse)
+def claim_preview(
+    request: Request, claim_id: str, user: CurrentUser = Depends(require_claim_role("viewer"))
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
-        matter = (
-            db.query(Matter)
+        claim = (
+            db.query(Claim)
             .options(
-                selectinload(Matter.items),
-                selectinload(Matter.evidence_files),
-                selectinload(Matter.rooms),
+                selectinload(Claim.items),
+                selectinload(Claim.evidence_files),
+                selectinload(Claim.rooms),
             )
-            .filter(Matter.id == matter_id)
+            .filter(Claim.id == claim_id)
             .first()
         )
-        if matter is None:
-            return HTMLResponse("Matter not found", status_code=404)
+        if claim is None:
+            return HTMLResponse("Claim not found", status_code=404)
 
         confirmed_items = sorted(
-            [i for i in matter.items if i.confirmed and not i.excluded],
+            [i for i in claim.items if i.confirmed and not i.excluded],
             key=lambda i: i.line_number,
         )
         total_rcv_cents = sum(i.rcv_total_cents for i in confirmed_items)
         total_acv_cents = sum(i.acv_total_cents for i in confirmed_items)
 
         # Room lookup map
-        room_map = {r.id: r.name for r in matter.rooms}
+        room_map = {r.id: r.name for r in claim.rooms}
 
         # Category lookup
         all_categories = db.query(Category).order_by(Category.id).all()
@@ -428,7 +425,7 @@ def matter_preview(
 
         by_room = []
         # Named rooms first (in sort_order), then unassigned
-        for room in sorted(matter.rooms, key=lambda r: r.sort_order):
+        for room in sorted(claim.rooms, key=lambda r: r.sort_order):
             if room.id in room_count:
                 by_room.append(
                     dict(
@@ -454,12 +451,12 @@ def matter_preview(
         request=request,
         name="preview.html",
         context={
-            "matter": matter,
+            "claim": claim,
             "confirmed_items": confirmed_items,
             "total_items": len(confirmed_items),
             "total_rcv_cents": total_rcv_cents,
             "total_acv_cents": total_acv_cents,
-            "evidence_files": matter.evidence_files,
+            "evidence_files": claim.evidence_files,
             "room_map": room_map,
             "cat_map": cat_map,
             "categories_used": categories_used,

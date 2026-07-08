@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from claimos.config import settings
 from claimos.db import SessionLocal
-from claimos.dependencies import CurrentUser, require_matter_role
+from claimos.dependencies import CurrentUser, require_claim_role
 from claimos.depreciation import compute_acv
 from claimos.models import Category, Item, ItemGroup, Room, SerpSearch
 from claimos.services.audit import get_client_ip, write_audit_log
@@ -33,20 +33,20 @@ CONDITIONS = ["excellent", "above_average", "average", "below_average"]
 ITEMS_PAGE_SIZE = 50
 
 
-def _get_context(matter_id: str, db):
+def _get_context(claim_id: str, db):
     categories = db.query(Category).order_by(Category.id).all()
-    rooms = db.query(Room).filter(Room.matter_id == matter_id).order_by(Room.sort_order).all()
+    rooms = db.query(Room).filter(Room.claim_id == claim_id).order_by(Room.sort_order).all()
     item_groups = (
         db.query(ItemGroup)
-        .filter(ItemGroup.matter_id == matter_id)
+        .filter(ItemGroup.claim_id == claim_id)
         .order_by(ItemGroup.created_at)
         .all()
     )
     return categories, rooms, item_groups
 
 
-def compute_items_totals(matter_id: str, db) -> dict[str, int]:
-    """Money + count totals for a matter's items.
+def compute_items_totals(claim_id: str, db) -> dict[str, int]:
+    """Money + count totals for a claim's items.
 
     Money totals (RCV/ACV) count only rows that are confirmed and not
     excluded. Counts are integer cents — never floats.
@@ -59,7 +59,7 @@ def compute_items_totals(matter_id: str, db) -> dict[str, int]:
             Item.acv_total_cents,
             Item.rcv_unit_cents,
         )
-        .filter(Item.matter_id == matter_id)
+        .filter(Item.claim_id == claim_id)
         .all()
     )
     confirmed_rows = [r for r in rows if r.confirmed and not r.excluded]
@@ -114,7 +114,7 @@ def _item_row_edit_html(
 
 def _resolve_item_group_id(
     db,
-    matter_id: str,
+    claim_id: str,
     item_group_id: str,
     new_item_group_name: str,
 ) -> str | None:
@@ -122,15 +122,15 @@ def _resolve_item_group_id(
 
     ``new_item_group_name`` wins over ``item_group_id`` (explicit create beats
     select). Returns ``None`` when both are empty (clear / leave unset). Raises
-    HTTPException(400) when ``item_group_id`` refers to a group in another matter.
+    HTTPException(400) when ``item_group_id`` refers to a group in another claim.
     """
     if new_item_group_name.strip():
-        ig = find_or_create(db, matter_id, new_item_group_name)
+        ig = find_or_create(db, claim_id, new_item_group_name)
         return ig.id
     if item_group_id:
         ig = db.get(ItemGroup, item_group_id)
-        if ig is None or ig.matter_id != matter_id:
-            raise HTTPException(status_code=400, detail="Group not in matter")
+        if ig is None or ig.claim_id != claim_id:
+            raise HTTPException(status_code=400, detail="Group not in claim")
         return ig.id
     return None
 
@@ -142,12 +142,12 @@ def _parse_cents(dollars_str: str) -> int:
         return 0
 
 
-@router.get("/api/matters/{matter_id}/items-rows", response_class=HTMLResponse)
+@router.get("/api/claims/{claim_id}/items-rows", response_class=HTMLResponse)
 def get_items_rows(
     request: Request,
-    matter_id: str,
+    claim_id: str,
     cursor: str = "",
-    user: CurrentUser = Depends(require_matter_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer")),
 ) -> HTMLResponse:
     """Render one cursor-paginated page of item `<tr>` rows + sentinel.
 
@@ -158,48 +158,48 @@ def get_items_rows(
     db = SessionLocal()
     try:
         rows, next_cursor = paginate_by_cursor(
-            db.query(Item).options(selectinload(Item.crops)).filter(Item.matter_id == matter_id),
+            db.query(Item).options(selectinload(Item.crops)).filter(Item.claim_id == claim_id),
             cursor_col=Item.line_number,
             cursor_value=cursor_int,
             limit=ITEMS_PAGE_SIZE,
             order="asc",
         )
-        categories, room_objs, _groups = _get_context(matter_id, db)
+        categories, room_objs, _groups = _get_context(claim_id, db)
     finally:
         db.close()
     return HTMLResponse(
         templates.get_template("_items_rows_fragment.html").render(
             items=rows,
             items_next_cursor=next_cursor,
-            matter_id=matter_id,
+            claim_id=claim_id,
             categories=categories,
             rooms=room_objs,
         )
     )
 
 
-@router.get("/api/matters/{matter_id}/items-summary", response_class=HTMLResponse)
+@router.get("/api/claims/{claim_id}/items-summary", response_class=HTMLResponse)
 def get_items_summary(
-    matter_id: str,
-    user: CurrentUser = Depends(require_matter_role("viewer")),
+    claim_id: str,
+    user: CurrentUser = Depends(require_claim_role("viewer")),
 ) -> HTMLResponse:
     """Render the Confirmed / RCV total / ACV total summary block."""
     db = SessionLocal()
     try:
-        totals = compute_items_totals(matter_id, db)
+        totals = compute_items_totals(claim_id, db)
     finally:
         db.close()
     return HTMLResponse(
-        templates.get_template("_items_summary.html").render(matter_id=matter_id, **totals)
+        templates.get_template("_items_summary.html").render(claim_id=claim_id, **totals)
     )
 
 
-@router.post("/api/matters/{matter_id}/items", response_class=HTMLResponse)
+@router.post("/api/claims/{claim_id}/items", response_class=HTMLResponse)
 def create_item(
     request: Request,
-    matter_id: str,
+    claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor")),
     description: str = Form(""),
     category_id: int = Form(...),
     room_id: str = Form(""),
@@ -220,10 +220,10 @@ def create_item(
             raise HTTPException(status_code=400, detail="Invalid category")
 
         max_line = (
-            db.query(func.max(Item.line_number)).filter(Item.matter_id == matter_id).scalar() or 0
+            db.query(func.max(Item.line_number)).filter(Item.claim_id == claim_id).scalar() or 0
         )
         item = Item(
-            matter_id=matter_id,
+            claim_id=claim_id,
             category_id=category_id,
             room_id=room_id or None,
             line_number=max_line + 1,
@@ -238,14 +238,14 @@ def create_item(
             confirmed=True,  # manually entered items start confirmed; Vision drafts use False
         )
         item.item_group_id = _resolve_item_group_id(
-            db, matter_id, item_group_id, new_item_group_name
+            db, claim_id, item_group_id, new_item_group_name
         )
         _compute_and_set_totals(item, cat)
         db.add(item)
         db.commit()
         db.refresh(item)
         item_id = item.id
-        categories, rooms, item_groups = _get_context(matter_id, db)
+        categories, rooms, item_groups = _get_context(claim_id, db)
         row_html = _item_row_html(item, categories, rooms, item_groups)
         # Remove the empty-state placeholder if it's present; HTMX silently
         # no-ops when the target element isn't in the DOM.
@@ -259,7 +259,7 @@ def create_item(
         action="item.create",
         resource_type="item",
         resource_id=item_id,
-        matter_id=matter_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
     )
     # Use HX-Trigger to nudge the client to refresh totals + drop empty-state row.
@@ -269,14 +269,14 @@ def create_item(
 
 @router.get("/api/items/{item_id}/edit", response_class=HTMLResponse)
 def item_edit_form(
-    item_id: str, user: CurrentUser = Depends(require_matter_role("editor"))
+    item_id: str, user: CurrentUser = Depends(require_claim_role("editor"))
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
         item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
         if item is None:
             raise HTTPException(status_code=404)
-        categories, rooms, item_groups = _get_context(item.matter_id, db)
+        categories, rooms, item_groups = _get_context(item.claim_id, db)
 
         latest_by_crop: dict = {}
         display_by_crop: dict = {}
@@ -305,14 +305,14 @@ def item_edit_form(
 
 @router.get("/api/items/{item_id}/view", response_class=HTMLResponse)
 def item_view_row(
-    item_id: str, user: CurrentUser = Depends(require_matter_role("viewer"))
+    item_id: str, user: CurrentUser = Depends(require_claim_role("viewer"))
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
         item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
         if item is None:
             raise HTTPException(status_code=404)
-        categories, rooms, item_groups = _get_context(item.matter_id, db)
+        categories, rooms, item_groups = _get_context(item.claim_id, db)
         html = _item_row_html(item, categories, rooms, item_groups)
     finally:
         db.close()
@@ -324,7 +324,7 @@ def update_item(
     request: Request,
     item_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("editor")),
+    user: CurrentUser = Depends(require_claim_role("editor")),
     description: str = Form(""),
     category_id: int = Form(...),
     room_id: str = Form(""),
@@ -376,14 +376,14 @@ def update_item(
             item.acv_override_reason = None
 
         item.item_group_id = _resolve_item_group_id(
-            db, item.matter_id, item_group_id, new_item_group_name
+            db, item.claim_id, item_group_id, new_item_group_name
         )
 
         _compute_and_set_totals(item, cat)
         db.commit()
         db.refresh(item)
-        matter_id = item.matter_id
-        categories, rooms, item_groups = _get_context(matter_id, db)
+        claim_id = item.claim_id
+        categories, rooms, item_groups = _get_context(claim_id, db)
         html = _item_row_html(item, categories, rooms, item_groups)
     finally:
         db.close()
@@ -393,7 +393,7 @@ def update_item(
         action="item.update",
         resource_type="item",
         resource_id=item_id,
-        matter_id=matter_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
     )
     return HTMLResponse(html)
@@ -404,7 +404,7 @@ def toggle_confirm(
     request: Request,
     item_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -420,8 +420,8 @@ def toggle_confirm(
             item.confirmed_at = None
         db.commit()
         db.refresh(item)
-        matter_id = item.matter_id
-        categories, rooms, item_groups = _get_context(matter_id, db)
+        claim_id = item.claim_id
+        categories, rooms, item_groups = _get_context(claim_id, db)
         html = _item_row_html(item, categories, rooms, item_groups)
     finally:
         db.close()
@@ -431,7 +431,7 @@ def toggle_confirm(
         action="item.update",
         resource_type="item",
         resource_id=item_id,
-        matter_id=matter_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
     )
     return HTMLResponse(html)
@@ -442,7 +442,7 @@ def toggle_exclude(
     request: Request,
     item_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -452,8 +452,8 @@ def toggle_exclude(
         item.excluded = not item.excluded
         db.commit()
         db.refresh(item)
-        matter_id = item.matter_id
-        categories, rooms, item_groups = _get_context(matter_id, db)
+        claim_id = item.claim_id
+        categories, rooms, item_groups = _get_context(claim_id, db)
         html = _item_row_html(item, categories, rooms, item_groups)
     finally:
         db.close()
@@ -463,7 +463,7 @@ def toggle_exclude(
         action="item.update",
         resource_type="item",
         resource_id=item_id,
-        matter_id=matter_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
     )
     return HTMLResponse(html)
@@ -474,14 +474,14 @@ def delete_item(
     request: Request,
     item_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
         item = db.get(Item, item_id)
         if item is None:
             raise HTTPException(status_code=404)
-        matter_id = item.matter_id
+        claim_id = item.claim_id
         db.delete(item)
         db.commit()
     finally:
@@ -492,7 +492,7 @@ def delete_item(
         action="item.delete",
         resource_type="item",
         resource_id=item_id,
-        matter_id=matter_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
     )
     return HTMLResponse("", status_code=200)

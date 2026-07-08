@@ -26,7 +26,7 @@
         Edit crops
       </button>
       {% else %}
-      <form hx-post="/api/matters/{{ matter_id }}/vision-scan"
+      <form hx-post="/api/claims/{{ claim_id }}/vision-scan"
             hx-target="#scan-progress-{{ f.id }}"
             hx-include="#model_slug"
             hx-swap="innerHTML"

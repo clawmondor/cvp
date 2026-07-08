@@ -401,10 +401,10 @@
       }
     });
 
-    function pollRegionJob(matterId, jobId) {
+    function pollRegionJob(claimId, jobId) {
       clearRegionInterval();
       activeRegionInterval = setInterval(function () {
-        fetch('/api/matters/' + matterId + '/vision-scan/' + jobId + '/status')
+        fetch('/api/claims/' + claimId + '/vision-scan/' + jobId + '/status')
           .then(function (r) { return r.json(); })
           .then(function (d) {
             if (d.status === 'running') {
@@ -417,7 +417,7 @@
                 'Finished with errors — ' + d.items_created + ' item(s) created.';
               if (d.items_created > 0) {
                 document.dispatchEvent(new CustomEvent('cvp:items-added', {
-                  detail: { matterId: matterId, jobId: jobId, count: d.items_created }
+                  detail: { claimId: claimId, jobId: jobId, count: d.items_created }
                 }));
               }
               scanRegionBtn.disabled = false;  // allow retry; pendingRegion is still set
@@ -426,7 +426,7 @@
             regionStatusEl.textContent = 'Done — ' + d.items_created + ' item(s) created.';
             if (d.items_created > 0) {
               document.dispatchEvent(new CustomEvent('cvp:items-added', {
-                detail: { matterId: matterId, jobId: jobId, count: d.items_created }
+                detail: { claimId: claimId, jobId: jobId, count: d.items_created }
               }));
             }
             if (window.htmx) {
@@ -458,7 +458,7 @@
             scanRegionBtn.disabled = false;
             return;
           }
-          pollRegionJob(res.d.matter_id, res.d.job_id);
+          pollRegionJob(res.d.claim_id, res.d.job_id);
         })
         .catch(function () {
           regionStatusEl.textContent = 'Error — check console.';

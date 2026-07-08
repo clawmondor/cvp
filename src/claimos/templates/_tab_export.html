@@ -7,10 +7,10 @@
         <h3 class="text-sm font-semibold text-gray-800">PDF Report</h3>
         <p class="mt-1 text-xs text-gray-500">
           Full Contents Inventory and Valuation Report — all 12 sections, paginated for US Letter.
-          Saved to <span class="font-mono">./data/exports/{{ matter.id }}/</span>
+          Saved to <span class="font-mono">./data/exports/{{ claim.id }}/</span>
         </p>
       </div>
-      <button hx-post="/api/matters/{{ matter.id }}/exports/pdf"
+      <button hx-post="/api/claims/{{ claim.id }}/exports/pdf"
               hx-target="#pdf-result"
               hx-swap="innerHTML"
               hx-indicator="#pdf-spinner"
@@ -29,10 +29,10 @@
         <h3 class="text-sm font-semibold text-gray-800">Xactimate CSV</h3>
         <p class="mt-1 text-xs text-gray-500">
           Confirmed, non-excluded items with exact Xactimate column headers.
-          Saved to <span class="font-mono">./data/exports/{{ matter.id }}/</span>
+          Saved to <span class="font-mono">./data/exports/{{ claim.id }}/</span>
         </p>
       </div>
-      <button hx-post="/api/matters/{{ matter.id }}/exports/csv"
+      <button hx-post="/api/claims/{{ claim.id }}/exports/csv"
               hx-target="#csv-result"
               hx-swap="innerHTML"
               hx-indicator="#csv-spinner"
@@ -47,7 +47,7 @@
   <!-- Preview link -->
   <div class="rounded-lg border border-gray-100 bg-gray-50 p-4 text-center">
     <p class="text-sm text-gray-600 mb-3">Review the report before exporting</p>
-    <a href="/matters/{{ matter.id }}/preview" target="_blank"
+    <a href="/claims/{{ claim.id }}/preview" target="_blank"
        class="inline-flex items-center rounded-md bg-white border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50">
       Open report preview ↗
     </a>

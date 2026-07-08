@@ -11,9 +11,9 @@ from sqlalchemy.orm import Session
 from claimos.db import get_db
 from claimos.dependencies import (
     CurrentUser,
-    _check_matter_access,
+    _check_claim_access,
     require_active_user,
-    require_matter_role,
+    require_claim_role,
 )
 from claimos.models import Item
 from claimos.models_auth import User
@@ -33,14 +33,14 @@ def _get_comment_and_check_access(
     user: CurrentUser,
     db: Session,
 ) -> Comment:
-    """Load a comment and verify the caller has at least minimum_role on its matter."""
+    """Load a comment and verify the caller has at least minimum_role on its claim."""
     comment = db.get(Comment, comment_id)
     if comment is None:
         raise HTTPException(status_code=404, detail="Comment not found")
     item = db.get(Item, comment.item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found")
-    if not _check_matter_access(db, user, item.matter_id, minimum_role):
+    if not _check_claim_access(db, user, item.claim_id, minimum_role):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     return comment
 
@@ -48,7 +48,7 @@ def _get_comment_and_check_access(
 @router.get("/api/items/{item_id}/comments", response_class=HTMLResponse)
 def list_comments(
     item_id: str,
-    user: CurrentUser = Depends(require_matter_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer")),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     """List comments for an item, filtered by visibility."""
@@ -81,7 +81,7 @@ def create_comment(
     item_id: str,
     body: str = Form(...),
     visibility: str = Form("shared"),
-    user: CurrentUser = Depends(require_matter_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer")),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     """Create a comment on an item."""

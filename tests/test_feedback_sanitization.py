@@ -8,7 +8,7 @@ def test_accepts_simple_path():
 
 
 def test_accepts_path_with_query():
-    assert _clean_page_url("/matters/abc?tab=items") == "/matters/abc?tab=items"
+    assert _clean_page_url("/claims/abc?tab=items") == "/claims/abc?tab=items"
 
 
 def test_rejects_protocol_relative():

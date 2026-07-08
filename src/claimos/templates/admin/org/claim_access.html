@@ -1,14 +1,14 @@
 {% extends "admin/base.html" %}
-{% block title %}Access: {{ matter.insured_name }}{% endblock %}
+{% block title %}Claim Access{% endblock %}
 {% block sidebar %}
-<a href="/admin/internal/" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
-<a href="/admin/internal/users" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
-<a href="/admin/internal/matters" class="block px-3 py-2 rounded text-sm bg-slate-700 text-white">Matters</a>
-<a href="/admin/internal/groups" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">External Groups</a>
+<a href="/admin/org/?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
+<a href="/admin/org/users?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
+<a href="/admin/org/claims?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded text-sm bg-emerald-700 text-white">Claims</a>
+<a href="/admin/org/profile?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Profile</a>
 {% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold text-gray-900 mb-2">Access — {{ matter.insured_name }}</h1>
-<p class="text-sm text-gray-500 mb-6">Matter ID: {{ matter.id }}</p>
+<h1 class="text-2xl font-bold text-gray-900 mb-2">Claim Access</h1>
+<p class="text-sm text-gray-500 mb-6">{{ claim.insured_name }}</p>
 
 <div class="bg-white shadow rounded-lg mb-6">
   <div class="px-6 py-4 border-b border-gray-200">
@@ -22,15 +22,13 @@
       </tr>
     </thead>
     <tbody class="bg-white divide-y divide-gray-200">
-      {% for g in grants %}
+      {% for grant in grants %}
       <tr>
-        <td class="px-6 py-4 text-sm text-gray-900">{{ g.user.email }}</td>
-        <td class="px-6 py-4 text-sm text-gray-500">{{ g.role }}</td>
+        <td class="px-6 py-4 text-sm text-gray-900">{{ grant.user.email }}</td>
+        <td class="px-6 py-4 text-sm text-gray-500">{{ grant.role }}</td>
       </tr>
       {% else %}
-      <tr>
-        <td colspan="2" class="px-6 py-4 text-sm text-gray-400 italic">No explicit grants.</td>
-      </tr>
+      <tr><td colspan="2" class="px-6 py-4 text-sm text-gray-500">No access grants yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -40,11 +38,12 @@
   <div class="px-6 py-4 border-b border-gray-200">
     <h2 class="text-base font-semibold text-gray-900">Grant Access</h2>
   </div>
-  <form method="POST" action="/admin/internal/matters/{{ matter.id }}/access" class="px-6 py-4 grid grid-cols-2 gap-4">
+  <form method="POST" action="/admin/org/claims/{{ claim.id }}/access?group_id={{ group.id if group else '' }}"
+        class="px-6 py-4 grid grid-cols-2 gap-4">
     <div>
       <label class="block text-sm font-medium text-gray-700">User</label>
       <select name="user_id" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm">
-        {% for u in all_users %}
+        {% for u in group_users %}
         <option value="{{ u.id }}">{{ u.email }}</option>
         {% endfor %}
       </select>
@@ -59,7 +58,7 @@
       </select>
     </div>
     <div class="col-span-2">
-      <button type="submit" class="bg-indigo-700 text-white px-4 py-2 rounded text-sm hover:bg-indigo-600">Grant Access</button>
+      <button type="submit" class="bg-emerald-700 text-white px-4 py-2 rounded text-sm hover:bg-emerald-600">Grant Access</button>
     </div>
   </form>
 </div>

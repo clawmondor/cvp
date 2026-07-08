@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import claimos.models_vision  # noqa: F401
-from claimos.models import Base, EvidenceFile, Matter, VisionJob, VisionJobImage
+from claimos.models import Base, Claim, EvidenceFile, VisionJob, VisionJobImage
 
 
 @pytest.fixture
@@ -31,11 +31,11 @@ def Session(engine):
 @pytest.fixture
 def db(engine, Session):
     session = Session()
-    session.add(Matter(id="m1", policyholder_name="T", loss_type="total_loss"))
+    session.add(Claim(id="m1", policyholder_name="T", loss_type="total_loss"))
     session.add(
         EvidenceFile(
             id="ef1",
-            matter_id="m1",
+            claim_id="m1",
             filename="a.jpg",
             stored_path="/tmp/a.jpg",
             mime_type="image/jpeg",
@@ -63,7 +63,7 @@ def _isolate_worker(db):
 
 
 def _add_job_image(db, status="pending"):
-    job = VisionJob(matter_id="m1", model_slug="some/model", status="running")
+    job = VisionJob(claim_id="m1", model_slug="some/model", status="running")
     db.add(job)
     db.flush()
     ji = VisionJobImage(job_id=job.id, evidence_file_id="ef1", status=status)

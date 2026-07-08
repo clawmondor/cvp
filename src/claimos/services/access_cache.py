@@ -1,16 +1,16 @@
-"""TTL cache for the matter-access decision used by `require_matter_role`.
+"""TTL cache for the claim-access decision used by `require_claim_role`.
 
-Browsers fan out 50+ concurrent thumbnail requests on a single matter page
-load. Each one runs `_check_matter_access`, which does two DB queries. The
+Browsers fan out 50+ concurrent thumbnail requests on a single claim page
+load. Each one runs `_check_claim_access`, which does two DB queries. The
 cache makes a burst of N thumbnail requests cost 1 DB check + (N-1) cache
 hits, preventing the SQLAlchemy `QueuePool timeout` we saw after PR #17.
 
-Cache key is (user_id, matter_id, minimum_role); value is bool. TTL is 60 s.
+Cache key is (user_id, claim_id, minimum_role); value is bool. TTL is 60 s.
 System admins short-circuit before the cache so admin grants never end up
 cached or shared with non-admins.
 
 Worst-case staleness after a role change is `_TTL_SECONDS`. Wiring of
-`invalidate_matter` / `invalidate_user` into MatterAccess and user-role
+`invalidate_claim` / `invalidate_user` into ClaimAccess and user-role
 mutation paths is tracked as a follow-up in the spec's Backlog.
 """
 
@@ -37,18 +37,18 @@ def _now() -> float:
     return time.time()
 
 
-def _check_matter_access(
+def _check_claim_access(
     db: Session,
     user: "CurrentUser",
-    matter_id: str,
+    claim_id: str,
     minimum_role: str,
 ) -> bool:
     """Indirection through `claimos.dependencies` so that tests which monkeypatch
-    `claimos.dependencies._check_matter_access` are honored here too. Tests that
+    `claimos.dependencies._check_claim_access` are honored here too. Tests that
     want to stub the cache's view of access can also monkeypatch this name
-    directly (`access_cache._check_matter_access`).
+    directly (`access_cache._check_claim_access`).
     """
-    return _deps._check_matter_access(db, user, matter_id, minimum_role)
+    return _deps._check_claim_access(db, user, claim_id, minimum_role)
 
 
 def _evict_oldest() -> None:
@@ -58,34 +58,34 @@ def _evict_oldest() -> None:
         _cache.pop(key, None)
 
 
-def check_matter_access_cached(
+def check_claim_access_cached(
     db: Session,
     user: "CurrentUser",
-    matter_id: str,
+    claim_id: str,
     minimum_role: str,
 ) -> bool:
-    """Cached wrapper around `_check_matter_access`. System admins skip the cache."""
+    """Cached wrapper around `_check_claim_access`. System admins skip the cache."""
     if user.system_role == "system_admin":
         return True
 
-    key = (user.id, matter_id, minimum_role)
+    key = (user.id, claim_id, minimum_role)
     entry = _cache.get(key)
     if entry is not None:
         loaded_at, allowed = entry
         if (_now() - loaded_at) < _TTL_SECONDS:
             return allowed
 
-    allowed = _check_matter_access(db, user, matter_id, minimum_role)
+    allowed = _check_claim_access(db, user, claim_id, minimum_role)
     _cache[key] = (_now(), allowed)
     if len(_cache) > _MAX_ENTRIES:
         _evict_oldest()
     return allowed
 
 
-def invalidate_matter(matter_id: str) -> None:
-    """Drop every cache entry for `matter_id` (call when access on a matter changes)."""
+def invalidate_claim(claim_id: str) -> None:
+    """Drop every cache entry for `claim_id` (call when access on a claim changes)."""
     for key in list(_cache.keys()):
-        if key[1] == matter_id:
+        if key[1] == claim_id:
             _cache.pop(key, None)
 
 

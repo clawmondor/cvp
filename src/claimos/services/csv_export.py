@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from claimos.config import settings
 from claimos.db import SessionLocal
-from claimos.models import Category, Matter
+from claimos.models import Category, Claim
 
 # Exact column names required for Xactimate import compatibility
 CSV_HEADERS = [
@@ -32,30 +32,30 @@ def _dollars(cents: int) -> str:
     return f"{cents / 100:.2f}"
 
 
-def generate_csv(matter_id: str) -> Path:
+def generate_csv(claim_id: str) -> Path:
     """Write the Xactimate CSV and return the output path."""
     db = SessionLocal()
     try:
-        matter = (
-            db.query(Matter)
-            .options(selectinload(Matter.items), selectinload(Matter.rooms))
-            .filter(Matter.id == matter_id)
+        claim = (
+            db.query(Claim)
+            .options(selectinload(Claim.items), selectinload(Claim.rooms))
+            .filter(Claim.id == claim_id)
             .first()
         )
-        if matter is None:
-            raise ValueError(f"Matter {matter_id} not found")
+        if claim is None:
+            raise ValueError(f"Claim {claim_id} not found")
 
-        room_map = {r.id: r.name for r in matter.rooms}
+        room_map = {r.id: r.name for r in claim.rooms}
 
         all_categories = db.query(Category).order_by(Category.id).all()
         cat_map = {c.id: c.name for c in all_categories}
 
         confirmed_items = sorted(
-            [i for i in matter.items if i.confirmed and not i.excluded],
+            [i for i in claim.items if i.confirmed and not i.excluded],
             key=lambda i: i.line_number,
         )
 
-        export_dir = Path(settings.export_dir) / matter_id
+        export_dir = Path(settings.export_dir) / claim_id
         export_dir.mkdir(parents=True, exist_ok=True)
         datestamp = datetime.now().strftime("%Y%m%d")
         out_path = export_dir / f"contents_xactimate_{datestamp}.csv"
@@ -64,7 +64,7 @@ def generate_csv(matter_id: str) -> Path:
             # Attorney work product header
             f.write(
                 f"# Confidential — Attorney Work Product | "
-                f"Matter: {matter.policyholder_name} | "
+                f"Claim: {claim.policyholder_name} | "
                 f"Generated: {datetime.now().strftime('%Y-%m-%d')}\n"
             )
             writer = csv.DictWriter(f, fieldnames=CSV_HEADERS)

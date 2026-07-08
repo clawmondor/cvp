@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from claimos.config import settings
 from claimos.db import SessionLocal, get_db
-from claimos.dependencies import CurrentUser, require_matter_role
+from claimos.dependencies import CurrentUser, require_claim_role
 from claimos.models import EvidenceFile
 from claimos.services import runtime_config
 from claimos.services.audit import get_client_ip, write_audit_log
@@ -35,13 +35,13 @@ def _kind_from_mime(mime: str) -> str:
     return "other"
 
 
-@router.post("/api/matters/{matter_id}/evidence", response_class=HTMLResponse)
+@router.post("/api/claims/{claim_id}/evidence", response_class=HTMLResponse)
 async def upload_evidence(
     request: Request,
-    matter_id: str,
+    claim_id: str,
     background_tasks: BackgroundTasks,
     file: UploadFile,
-    user: CurrentUser = Depends(require_matter_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor")),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     """Accept a single evidence file, stream it to disk, return its tile fragment.
@@ -61,13 +61,13 @@ async def upload_evidence(
         raise HTTPException(status_code=413, detail=f"File exceeds {max_mb} MB cap")
 
     upload_base = Path(settings.upload_dir).resolve()
-    matter_dir = upload_base / matter_id
-    matter_dir.mkdir(parents=True, exist_ok=True)
+    claim_dir = upload_base / claim_id
+    claim_dir.mkdir(parents=True, exist_ok=True)
 
     raw_name = Path(file.filename or "file").name
     uid8 = str(uuid.uuid4())[:8]
     stored_name = f"{uid8}_{raw_name}"
-    dest = matter_dir / stored_name
+    dest = claim_dir / stored_name
 
     # Stream to disk in 1 MB chunks, enforcing the size cap as we go.
     bytes_written = 0
@@ -92,9 +92,9 @@ async def upload_evidence(
 
     mime = file.content_type or (mimetypes.guess_type(raw_name)[0] or "")
     ef = EvidenceFile(
-        matter_id=matter_id,
+        claim_id=claim_id,
         filename=raw_name,
-        stored_path=f"{matter_id}/{stored_name}",
+        stored_path=f"{claim_id}/{stored_name}",
         mime_type=mime,
         size_bytes=bytes_written,
         kind=_kind_from_mime(mime),
@@ -114,24 +114,24 @@ async def upload_evidence(
         action="evidence.create",
         resource_type="evidence",
         resource_id=ef.id,
-        matter_id=matter_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
     )
 
     return HTMLResponse(
-        templates.get_template("_evidence_tile.html").render(f=ef, matter_id=matter_id)
+        templates.get_template("_evidence_tile.html").render(f=ef, claim_id=claim_id)
     )
 
 
 EVIDENCE_PAGE_SIZE = 24
 
 
-@router.get("/api/matters/{matter_id}/evidence-grid", response_class=HTMLResponse)
+@router.get("/api/claims/{claim_id}/evidence-grid", response_class=HTMLResponse)
 def get_evidence_grid(
     request: Request,
-    matter_id: str,
+    claim_id: str,
     cursor: str = "",
-    user: CurrentUser = Depends(require_matter_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer")),
 ) -> HTMLResponse:
     """Render one cursor-paginated page of evidence tiles + sentinel.
 
@@ -144,7 +144,7 @@ def get_evidence_grid(
     db = SessionLocal()
     try:
         rows, next_cursor = paginate_by_cursor(
-            db.query(EvidenceFile).filter(EvidenceFile.matter_id == matter_id),
+            db.query(EvidenceFile).filter(EvidenceFile.claim_id == claim_id),
             cursor_col=EvidenceFile.created_at,
             cursor_value=cursor_dt,
             limit=EVIDENCE_PAGE_SIZE,
@@ -157,7 +157,7 @@ def get_evidence_grid(
         templates.get_template("_evidence_grid_fragment.html").render(
             evidence_files=rows,
             evidence_next_cursor=next_cursor_str,
-            matter_id=matter_id,
+            claim_id=claim_id,
         )
     )
 
@@ -167,9 +167,9 @@ def delete_evidence(
     request: Request,
     file_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_matter_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager")),
 ) -> HTMLResponse:
-    matter_id: str | None = None
+    claim_id: str | None = None
     db = SessionLocal()
     try:
         ef = db.get(EvidenceFile, file_id)
@@ -180,7 +180,7 @@ def delete_evidence(
         dest = (upload_base / ef.stored_path).resolve()
         if not dest.is_relative_to(upload_base):
             raise HTTPException(status_code=400, detail="Invalid path")
-        matter_id = ef.matter_id
+        claim_id = ef.claim_id
         delete_evidence_file(db, ef, upload_base, crop_base)
     finally:
         db.close()
@@ -191,25 +191,25 @@ def delete_evidence(
         action="evidence.delete",
         resource_type="evidence",
         resource_id=file_id,
-        matter_id=matter_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
     )
     return HTMLResponse("", status_code=200)
 
 
-@router.post("/api/matters/{matter_id}/evidence/remove-all-images", response_class=HTMLResponse)
+@router.post("/api/claims/{claim_id}/evidence/remove-all-images", response_class=HTMLResponse)
 def remove_all_images(
     request: Request,
-    matter_id: str,
+    claim_id: str,
     background_tasks: BackgroundTasks,
     confirm_count: int = Form(...),
-    user: CurrentUser = Depends(require_matter_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
         image_files = (
             db.query(EvidenceFile)
-            .filter_by(matter_id=matter_id, kind="image")
+            .filter_by(claim_id=claim_id, kind="image")
             .order_by(EvidenceFile.created_at)
             .all()
         )
@@ -236,7 +236,7 @@ def remove_all_images(
 
         evidence_files = (
             db.query(EvidenceFile)
-            .filter_by(matter_id=matter_id)
+            .filter_by(claim_id=claim_id)
             .order_by(EvidenceFile.created_at.desc())
             .all()
         )
@@ -247,26 +247,26 @@ def remove_all_images(
         write_audit_log,
         user_id=user.id,
         action="evidence.remove_all_images",
-        resource_type="matter",
-        resource_id=matter_id,
-        matter_id=matter_id,
+        resource_type="claim",
+        resource_id=claim_id,
+        claim_id=claim_id,
         ip_address=get_client_ip(request),
         detail={"count": deleted_count},
     )
     return HTMLResponse(
         templates.get_template("_evidence_grid.html").render(
-            evidence_files=evidence_files, matter_id=matter_id
+            evidence_files=evidence_files, claim_id=claim_id
         )
     )
 
 
-@router.get("/files/{matter_id}/{filename:path}")
+@router.get("/files/{claim_id}/{filename:path}")
 def serve_file(
-    matter_id: str,
+    claim_id: str,
     filename: str,
-    user: CurrentUser = Depends(require_matter_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer")),
 ) -> FileResponse:
-    stored_path = f"{matter_id}/{filename}"
+    stored_path = f"{claim_id}/{filename}"
     upload_base = Path(settings.upload_dir).resolve()
     dest = (upload_base / stored_path).resolve()
     # Path-traversal guard

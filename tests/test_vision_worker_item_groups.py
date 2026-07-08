@@ -14,7 +14,7 @@ from sqlalchemy.pool import StaticPool
 
 import claimos.models_access  # noqa: F401
 import claimos.models_auth  # noqa: F401
-from claimos.models import Base, Category, EvidenceFile, ItemGroup, Matter
+from claimos.models import Base, Category, Claim, EvidenceFile, ItemGroup
 from claimos.services.vision import _resolve_effective_item_group_id
 
 
@@ -35,18 +35,18 @@ def db_session():
 @pytest.fixture
 def seeded(db_session):
     db_session.add(Category(id=1, name="Misc", useful_life_years=10, acv_floor_pct=0.2))
-    db_session.add(Matter(id="m1", firm_name="T"))
+    db_session.add(Claim(id="m1", firm_name="T"))
     db_session.commit()
     return db_session
 
 
 def _make_ef(seeded, *, pinned_group_name: str | None = None) -> EvidenceFile:
     """Insert an EvidenceFile; optionally seed and pin a group."""
-    ef = EvidenceFile(matter_id="m1", filename="x.jpg", stored_path="x.jpg", kind="image")
+    ef = EvidenceFile(claim_id="m1", filename="x.jpg", stored_path="x.jpg", kind="image")
     seeded.add(ef)
     if pinned_group_name is not None:
         g = ItemGroup(
-            matter_id="m1",
+            claim_id="m1",
             name=pinned_group_name,
             name_normalized=pinned_group_name.strip().lower(),
         )
@@ -70,19 +70,19 @@ def test_placard_creates_group_when_no_pin(seeded):
     gid = _resolve_effective_item_group_id(seeded, ef, placard_text="12")
     seeded.commit()
     assert gid is not None
-    groups = seeded.query(ItemGroup).filter(ItemGroup.matter_id == "m1").all()
+    groups = seeded.query(ItemGroup).filter(ItemGroup.claim_id == "m1").all()
     assert len(groups) == 1
     assert groups[0].id == gid
     assert groups[0].name == "12"
 
 
 def test_placard_reuses_existing_group_case_insensitive(seeded):
-    seeded.add(ItemGroup(matter_id="m1", name="Box A", name_normalized="box a"))
+    seeded.add(ItemGroup(claim_id="m1", name="Box A", name_normalized="box a"))
     seeded.commit()
     ef = _make_ef(seeded)
     gid = _resolve_effective_item_group_id(seeded, ef, placard_text="box a")
     seeded.commit()
-    groups = seeded.query(ItemGroup).filter(ItemGroup.matter_id == "m1").all()
+    groups = seeded.query(ItemGroup).filter(ItemGroup.claim_id == "m1").all()
     assert len(groups) == 1
     assert seeded.get(ItemGroup, gid).name == "Box A"
 
@@ -92,7 +92,7 @@ def test_pinned_wins_over_placard(seeded):
     gid = _resolve_effective_item_group_id(seeded, ef, placard_text="99")
     assert gid == ef.pinned_item_group_id
     # No new group was created for "99".
-    groups = seeded.query(ItemGroup).filter(ItemGroup.matter_id == "m1").all()
+    groups = seeded.query(ItemGroup).filter(ItemGroup.claim_id == "m1").all()
     assert len(groups) == 1
     assert groups[0].name == "A"
 
