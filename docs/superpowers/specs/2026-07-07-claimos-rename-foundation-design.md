@@ -61,18 +61,21 @@ with a repeatable path to migrate each client's data from CVP into ClaimOS.
 - Domain rename `matter` → `claim` across ORM, DB schema, routes, templates, JS, tests.
 - Clean squashed **baseline** Alembic migration for the ClaimOS `claims` schema.
 - New ClaimOS Railway environment: fresh Postgres, subdomain, distinct secrets.
-- Per-client **ETL script** to migrate one client's data CVP-DB → ClaimOS-DB.
-- Rebrand to **ClaimOS** (name only) across UI chrome, README, docs.
+- One-shot **full-database migration script** to move all data CVP-DB → ClaimOS-DB.
+- Code/package/domain rename to **ClaimOS** and updated product name in README/docs.
 - Docs updates (`CLAUDE.md`, `README.md`, affected `docs/`).
 
 **Out of scope (follow-on — see §11):**
 
+- **The visual rebrand** — new layout, dark theme, brand chrome, sidebar/nav — is a
+  **separate mockup-driven styling slice** run *after* this foundation merges, so new
+  templates are built against final naming and the provided mockups (see §11).
 - Self-service registration / onboarding, billing, subscription/plan model.
 - Tenant-isolation hardening beyond what exists today (row-level enforcement audits,
   per-tenant rate limits, etc.).
 - Rewriting the "internal ops tool" posture and immutable rule #6 (no public
   registration) — revisited when SaaS lands.
-- Any new domain features, workflow, or UI beyond the rename/rebrand.
+- Any new domain features or workflow beyond the rename.
 
 ## 4. Non-goals / invariants preserved
 
@@ -168,33 +171,43 @@ from this one baseline.
   produces a schema that matches the ORM (autogenerate diff is empty), then
   `uv run seed` populates the 42 categories.
 
-### 8.2 Per-client ETL (CVP → ClaimOS)
-A one-time, per-client migration script (`src/claimos/…` or a `scripts/` entry,
-exposed as a `[project.scripts]` command, e.g. `migrate-client`):
+### 8.2 One-shot full-database migration (CVP → ClaimOS)
+A single migration script (exposed as a `[project.scripts]` command, e.g.
+`migrate-db`) that moves **all** data in one cutover run:
 
 - Connects to **both** the legacy CVP Postgres (source) and the ClaimOS Postgres
   (target).
-- Copies one owning `Group`'s data: its `matters` → `claims`, and all children
-  (rooms, item_groups, items, item_crops, evidence_files, vision_*), preserving
-  UUID primary keys and foreign-key relationships and remapping `matter_id` →
-  `claim_id`.
-- Copies associated users/group and `matter_access` → `claim_access` rows as needed
-  so the migrated client can log in and see their claims.
+- Copies **every** table: `groups`, `users`, `matters` → `claims`, and all children
+  (rooms, item_groups, items, item_crops, evidence_files, vision_*),
+  `matter_access` → `claim_access`, audit logs, comments, feedback, app settings,
+  vision models — preserving UUID primary keys and all foreign-key relationships and
+  remapping `matter_id` → `claim_id`.
 - Runs **read-only against the source** (never mutates legacy data).
-- Idempotent / re-runnable per client (skip or upsert on existing PK) so a failed
-  run can be retried.
-- **Verification:** row-count and spot-value diff (RCV/ACV totals per claim,
-  evidence-file counts) between source and target after each run.
+- Runs against an **empty** target (post baseline migration + seed); ordering
+  respects FK dependencies (groups/users before claims before children). Re-runnable
+  by upserting on primary key so a failed run can be retried.
+- **Verification:** row-count parity per table and spot-value diff (RCV/ACV totals
+  per claim, evidence-file counts) between source and target after the run.
 
-Run per client at their cutover moment. When the last client is migrated, retire the
-legacy environment.
+Executed once at cutover. After it succeeds and is verified, the legacy environment
+can be retired.
 
-## 9. Rebrand & legal copy (name-only)
+## 9. Product identity & legal copy
 
-- Product name **ClaimOS** in `<title>`, base chrome/brand mark, README, and the
-  product name wherever it appears in PDF/CSV markers. The
-  "Confidential — Attorney Work Product" marker keeps its meaning under the new name.
-- **Do not** rewrite the substance of the legal/compliance copy in this effort. The
+The foundation does the **structural / vocabulary** rename only. The **visual
+rebrand** (layout, dark theme, brand mark, sidebar/nav chrome) is **deferred to the
+mockup-driven styling slice** (§11) so it's built once, against final naming and the
+new mockups — not applied to templates we're about to restyle.
+
+- **In this effort:** the domain vocabulary changes with the rename — user-facing
+  "Matter" copy → "Claim" in the templates being renamed (§7). Update the product
+  name to **ClaimOS** in README/docs and non-visual identifiers (`<title>`,
+  `pyproject` description). PDF/CSV "Confidential — Attorney Work Product" markers
+  keep their meaning; only the product name updates where it literally appears.
+- **Interim UI is acceptable:** existing page chrome/theme stays as-is until the
+  styling slice restyles it from mockups. The app is internal-only during this
+  window, so transitional branding is fine.
+- **Do not** rewrite the substance of the legal/compliance copy. The
   flat-fee / not-a-public-adjuster / no-legal-advice / attorney-work-product
   disclaimers are product-independent and still apply verbatim.
 - The internal-only → external-SaaS posture rewrite — including immutable rule #6
@@ -213,13 +226,24 @@ legacy environment.
   `bootstrap-admin`) verified against the fresh ClaimOS Postgres; `/healthz` green.
 - `.env.example` updated for ClaimOS naming; the real `.env` is never committed.
 
-## 11. Follow-on: SaaS-ification (tracked, not built here)
+## 11. Follow-on efforts (tracked, not built here)
 
-A separate brainstorm → spec → plan cycle covers, in roughly this order:
-self-service registration & org onboarding; billing/subscription; tenant-isolation
-hardening (audit every query for `owner_group` scoping, add row-level guards);
-revisiting the legal/compliance posture and immutable rule #6 for external users.
-This spec's clean rename is the enabling foundation for that work.
+Each is its own brainstorm → spec → plan → build cycle, built on the clean rename
+this foundation delivers.
+
+**11.1 Mockup-driven styling slice (next).** Restyle layout, theme, and brand chrome
+from the **new mockups**. Runs immediately after this foundation merges so it builds
+against final `claim`/`claimos` naming. Worth **harvesting the abandoned
+`feat/claimos-shell-ia` assets** as a starting point where they match the mockups:
+the dark `/static/theme.css` custom-property tokens, the `workspace_base.html`
+sidebar shell, and the status-badge Jinja macro — all CSP-safe (no inline JS,
+Tailwind CDN, no build step). Must honor CLAUDE.md CSP rules (no inline event
+handlers; `data-*` + delegated listeners in `app.js`).
+
+**11.2 SaaS-ification.** Roughly in order: self-service registration & org
+onboarding; billing/subscription; tenant-isolation hardening (audit every query for
+`owner_group` scoping, add row-level guards); revisiting the legal/compliance
+posture and immutable rule #6 for external users.
 
 ## 12. Testing & verification
 
@@ -230,8 +254,9 @@ This spec's clean rename is the enabling foundation for that work.
   evidence upload, an item with a priced source, PDF preview, and CSV export.
 - Alembic: `alembic upgrade head` on an empty DB yields a schema whose autogenerate
   diff against the ORM is empty; `uv run seed` idempotent.
-- ETL smoke test: seed a fixture client in a scratch "legacy" DB, run the migration
-  into a scratch ClaimOS DB, assert row counts and RCV/ACV totals match.
+- Migration smoke test: seed fixture data in a scratch "legacy" (CVP-schema) DB, run
+  the full-DB migration into a scratch ClaimOS DB, assert per-table row counts and
+  RCV/ACV totals match.
 - `/healthz` green on the new ClaimOS environment after first deploy.
 
 ## 13. Sequencing (keep legacy safe throughout)
@@ -241,11 +266,13 @@ This spec's clean rename is the enabling foundation for that work.
 2. On `feat/claimos-rename`: package rename (§6) → tests green.
 3. Domain rename (§7) → tests green; `ruff format` clean.
 4. Squash to baseline migration (§8.1); verify empty autogenerate diff + seed.
-5. Rebrand + docs (§9, and `CLAUDE.md`/`README`/`docs/`).
-6. Write + test the per-client ETL (§8.2).
+5. Product identity + docs (§9: vocabulary/name only; visual rebrand deferred to the
+   styling slice) — `CLAUDE.md`/`README`/`docs/`.
+6. Write + test the one-shot full-DB migration script (§8.2).
 7. Review; merge to `main`; rename the GitHub repo (§5.3).
 8. Provision the ClaimOS Railway environment (§10); deploy `main`; `/healthz` green.
-9. Migrate the first client with the ETL; verify; begin phased client cutovers.
+9. Run the one-shot migration CVP-DB → ClaimOS-DB at cutover; verify parity; retire
+   the legacy environment once confirmed.
 
 ---
 
@@ -257,4 +284,4 @@ This spec's clean rename is the enabling foundation for that work.
 - 7 template files with `matter` in the filename.
 - 18 existing Alembic migrations → collapse to 1 baseline for ClaimOS.
 - Entry-point scripts: `dev`, `seed`, `seed-auth`, `bootstrap-admin`
-  (+ new `migrate-client` for the ETL).
+  (+ new `migrate-db` for the one-shot CVP → ClaimOS data migration).
