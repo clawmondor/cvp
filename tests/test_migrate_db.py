@@ -1,7 +1,11 @@
+import pytest
 import sqlalchemy as sa
 
-from claimos.migrate_db import TABLE_PLAN, migrate
+from claimos.migrate_db import TABLE_PLAN, migrate, raise_on_parity_mismatch, verify_parity
 from claimos.models import Base
+
+# Subset of TABLE_PLAN matching the minimal fixtures below (groups/claims/rooms).
+_SUBSET_PLAN = [(t, s, r) for t, s, r in TABLE_PLAN if t in {"groups", "claims", "rooms"}]
 
 
 def _make_legacy_db(url: str) -> None:
@@ -86,3 +90,66 @@ def test_table_plan_is_fk_safe_topological_order():
                 f"{index[table.name]}) before its FK-parent '{parent}' "
                 f"(position {index[parent]})"
             )
+
+
+def test_verify_parity_matches_after_full_migrate(tmp_path):
+    src = f"sqlite:///{tmp_path / 'legacy.db'}"
+    tgt = f"sqlite:///{tmp_path / 'claimos.db'}"
+    _make_legacy_db(src)
+    _make_claimos_db(tgt)
+
+    migrate(src, tgt, only_tables=["groups", "claims", "rooms"])
+
+    parity = verify_parity(src, tgt, table_plan=_SUBSET_PLAN)
+
+    assert parity == {"groups": (1, 1), "claims": (1, 1), "rooms": (1, 1)}
+    raise_on_parity_mismatch(parity)  # must not raise: everything matches
+
+
+def test_verify_parity_reports_and_raises_on_missing_rows(tmp_path):
+    src = f"sqlite:///{tmp_path / 'legacy.db'}"
+    tgt = f"sqlite:///{tmp_path / 'claimos.db'}"
+    _make_legacy_db(src)
+    _make_claimos_db(tgt)
+
+    # Only migrate a subset of tables, leaving "rooms" un-migrated in the target.
+    migrate(src, tgt, only_tables=["groups", "claims"])
+
+    parity = verify_parity(src, tgt, table_plan=_SUBSET_PLAN)
+
+    # rooms: 1 row in the legacy source, 0 copied into the target -> mismatch reported.
+    assert parity["rooms"] == (1, 0)
+    assert parity["groups"] == (1, 1)
+    assert parity["claims"] == (1, 1)
+
+    with pytest.raises(RuntimeError, match="rooms"):
+        raise_on_parity_mismatch(parity)
+
+
+def test_copy_table_raises_on_source_column_with_no_target_counterpart(tmp_path):
+    """A legacy column that survives the matter_id->claim_id remap but has no
+    counterpart in the target table must fail loudly and early, naming the
+    table and the offending column, instead of an opaque INSERT error."""
+    src = f"sqlite:///{tmp_path / 'legacy.db'}"
+    tgt = f"sqlite:///{tmp_path / 'claimos.db'}"
+
+    eng = sa.create_engine(src)
+    with eng.begin() as c:
+        c.exec_driver_sql(
+            "CREATE TABLE rooms (id TEXT PRIMARY KEY, matter_id TEXT, name TEXT, "
+            "sort_order INTEGER, extra_legacy_col TEXT)"
+        )
+        c.exec_driver_sql("INSERT INTO rooms VALUES ('r1', 'm1', 'Kitchen', 0, 'unexpected')")
+
+    eng = sa.create_engine(tgt)
+    with eng.begin() as c:
+        c.exec_driver_sql(
+            "CREATE TABLE rooms (id TEXT PRIMARY KEY, claim_id TEXT, name TEXT, sort_order INTEGER)"
+        )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        migrate(src, tgt, only_tables=["rooms"])
+
+    message = str(exc_info.value)
+    assert "rooms" in message
+    assert "extra_legacy_col" in message

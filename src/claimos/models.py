@@ -1,4 +1,4 @@
-"""SQLAlchemy 2.x ORM models for CVP database schema."""
+"""SQLAlchemy 2.x ORM models for ClaimOS database schema."""
 
 import uuid
 from datetime import date, datetime

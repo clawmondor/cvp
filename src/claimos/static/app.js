@@ -616,7 +616,7 @@ document.addEventListener('change', function (e) {
 
 // ---- Live items list: surface scan / region-rescan results -------------
 // Both the full-scan HTMX poll and the region-scan JSON poll converge on a
-// single document event: cvp:items-added {detail:{claimId, jobId, count}}.
+// single document event: claimos:items-added {detail:{claimId, jobId, count}}.
 (function () {
   var handledScanJobs = new Set();
   var newItemsCount = 0;
@@ -636,13 +636,13 @@ document.addEventListener('change', function (e) {
     handledScanJobs.add(jobId);
     var count = parseInt(el.dataset.itemsCreated, 10) || 0;
     if (count <= 0) return;
-    document.dispatchEvent(new CustomEvent('cvp:items-added', {
+    document.dispatchEvent(new CustomEvent('claimos:items-added', {
       detail: { claimId: el.dataset.claimId, jobId: jobId, count: count }
     }));
   });
 
   // Accumulate count + reveal the banner.
-  document.addEventListener('cvp:items-added', function (e) {
+  document.addEventListener('claimos:items-added', function (e) {
     var detail = e.detail || {};
     newItemsCount += (detail.count || 0);
     var banner = document.getElementById('items-new-banner');

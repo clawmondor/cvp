@@ -416,7 +416,7 @@
               regionStatusEl.textContent =
                 'Finished with errors — ' + d.items_created + ' item(s) created.';
               if (d.items_created > 0) {
-                document.dispatchEvent(new CustomEvent('cvp:items-added', {
+                document.dispatchEvent(new CustomEvent('claimos:items-added', {
                   detail: { claimId: claimId, jobId: jobId, count: d.items_created }
                 }));
               }
@@ -425,7 +425,7 @@
             }
             regionStatusEl.textContent = 'Done — ' + d.items_created + ' item(s) created.';
             if (d.items_created > 0) {
-              document.dispatchEvent(new CustomEvent('cvp:items-added', {
+              document.dispatchEvent(new CustomEvent('claimos:items-added', {
                 detail: { claimId: claimId, jobId: jobId, count: d.items_created }
               }));
             }
