@@ -1,8 +1,8 @@
 """baseline claimos schema
 
-Revision ID: 3099fa2532d7
+Revision ID: 438d468b59ca
 Revises: 
-Create Date: 2026-07-08 04:09:23.585245+00:00
+Create Date: 2026-07-08 04:14:41.513286+00:00
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '3099fa2532d7'
+revision: str = '438d468b59ca'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -111,6 +111,29 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['owner_group_id'], ['groups.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('feedback',
+    sa.Column('id', sa.String(), nullable=False),
+    sa.Column('author_user_id', sa.String(), nullable=False),
+    sa.Column('author_group_id', sa.String(), nullable=False),
+    sa.Column('page_url', sa.Text(), nullable=False),
+    sa.Column('body', sa.Text(), nullable=False),
+    sa.Column('status', sa.String(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('status_changed_at', sa.DateTime(), nullable=True),
+    sa.Column('status_changed_by_user_id', sa.String(), nullable=True),
+    sa.Column('deleted_at', sa.DateTime(), nullable=True),
+    sa.Column('deleted_by_user_id', sa.String(), nullable=True),
+    sa.Column('last_admin_read_at', sa.DateTime(), nullable=True),
+    sa.Column('last_author_read_at', sa.DateTime(), nullable=True),
+    sa.CheckConstraint("status IN ('pending','reviewing','backlog','canceled','done')", name='ck_feedback_status'),
+    sa.ForeignKeyConstraint(['author_group_id'], ['groups.id'], ),
+    sa.ForeignKeyConstraint(['author_user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['deleted_by_user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['status_changed_by_user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('ix_feedback_author_created', 'feedback', ['author_user_id', 'created_at'], unique=False)
+    op.create_index('ix_feedback_status_created', 'feedback', ['status', 'created_at'], unique=False)
     op.create_table('refresh_tokens',
     sa.Column('id', sa.String(), nullable=False),
     sa.Column('user_id', sa.String(), nullable=False),
@@ -155,6 +178,20 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_claim_access_claim_id'), 'claim_access', ['claim_id'], unique=False)
     op.create_index(op.f('ix_claim_access_user_id'), 'claim_access', ['user_id'], unique=False)
+    op.create_table('feedback_comments',
+    sa.Column('id', sa.String(), nullable=False),
+    sa.Column('feedback_id', sa.String(), nullable=False),
+    sa.Column('author_user_id', sa.String(), nullable=False),
+    sa.Column('body', sa.Text(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('deleted_at', sa.DateTime(), nullable=True),
+    sa.Column('deleted_by_user_id', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['author_user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['deleted_by_user_id'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['feedback_id'], ['feedback.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('ix_feedback_comments_feedback_created', 'feedback_comments', ['feedback_id', 'created_at'], unique=False)
     op.create_table('item_groups',
     sa.Column('id', sa.String(), nullable=False),
     sa.Column('claim_id', sa.String(), nullable=False),
@@ -343,12 +380,17 @@ def downgrade() -> None:
     op.drop_index('uq_item_groups_claim_name_normalized', table_name='item_groups')
     op.drop_index('ix_item_groups_claim_id', table_name='item_groups')
     op.drop_table('item_groups')
+    op.drop_index('ix_feedback_comments_feedback_created', table_name='feedback_comments')
+    op.drop_table('feedback_comments')
     op.drop_index(op.f('ix_claim_access_user_id'), table_name='claim_access')
     op.drop_index(op.f('ix_claim_access_claim_id'), table_name='claim_access')
     op.drop_table('claim_access')
     op.drop_table('vision_models')
     op.drop_index(op.f('ix_refresh_tokens_token_hash'), table_name='refresh_tokens')
     op.drop_table('refresh_tokens')
+    op.drop_index('ix_feedback_status_created', table_name='feedback')
+    op.drop_index('ix_feedback_author_created', table_name='feedback')
+    op.drop_table('feedback')
     op.drop_table('claims')
     op.drop_index('ix_audit_logs_user_id', table_name='audit_logs')
     op.drop_index('ix_audit_logs_created_at', table_name='audit_logs')

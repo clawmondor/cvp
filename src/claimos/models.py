@@ -387,4 +387,5 @@ import claimos.models_app_setting as _app_setting_models  # noqa: F401, E402 —
 import claimos.models_audit as _audit_models  # noqa: F401, E402
 import claimos.models_auth as _auth_models  # noqa: F401, E402 — register auth tables with Base
 import claimos.models_comments as _comment_models  # noqa: F401, E402 — register comments table with Base
+import claimos.models_feedback as _feedback_models  # noqa: F401, E402 — register feedback tables with Base
 import claimos.models_vision as _vision_models  # noqa: F401, E402 — register vision_models table with Base
