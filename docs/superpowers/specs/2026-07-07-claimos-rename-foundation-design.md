@@ -183,14 +183,25 @@ A single migration script (exposed as a `[project.scripts]` command, e.g.
   vision models — preserving UUID primary keys and all foreign-key relationships and
   remapping `matter_id` → `claim_id`.
 - Runs **read-only against the source** (never mutates legacy data).
-- Runs against an **empty** target (post baseline migration + seed); ordering
-  respects FK dependencies (groups/users before claims before children). Re-runnable
-  by upserting on primary key so a failed run can be retried.
+- Runs against an **empty** target — schema only (`alembic upgrade head`), with
+  **`seed` and `bootstrap-admin` NOT yet run** (they populate `categories` and a
+  `users` admin row; the copy brings those over from legacy, and the parity check
+  compares row counts, so a pre-seeded/pre-bootstrapped target would either fail
+  parity or collide on the `users.email` unique constraint). `seed`/`bootstrap-admin`
+  run *after* the copy (see §10, §13). Ordering respects FK dependencies (groups/users
+  before claims before children). Re-runnable by upserting on primary key so a failed
+  run can be retried.
 - **Verification:** row-count parity per table and spot-value diff (RCV/ACV totals
   per claim, evidence-file counts) between source and target after the run.
 
 Executed once at cutover. After it succeeds and is verified, the legacy environment
 can be retired.
+
+**Note — bootstrap-admin ordering:** `bootstrap-admin` is idempotent and skips when a
+`system_admin` already exists, so it must run **after** `migrate-db`: the legacy copy
+brings the existing admins across, and a fresh admin bootstrapped *before* the copy
+would clash with a migrated user on the unique `email` (silently replaced on SQLite;
+a hard unique-violation on Postgres) or push the `users` count out of parity.
 
 ## 9. Product identity & legal copy
 
@@ -216,14 +227,22 @@ new mockups — not applied to templates we're about to restyle.
 
 ## 10. Environments & deploy
 
-- **New ClaimOS Railway environment/service:** fresh Postgres (empty → baseline
-  migration + seed + bootstrap-admin via `preDeployCommand`), its own subdomain via
+- **New ClaimOS Railway environment/service:** fresh Postgres, its own subdomain via
   Cloudflare, and **distinct** secrets (`ANTHROPIC_API_KEY`, JWT/auth secrets, admin
   bootstrap vars). Never share the CVP prod DB.
 - **Legacy CVP environment:** repointed to auto-deploy from `cvp-legacy`. Frozen
   except cherry-picked critical fixes.
-- `railway.toml` preDeploy chain (`alembic upgrade head` → `seed` →
-  `bootstrap-admin`) verified against the fresh ClaimOS Postgres; `/healthz` green.
+- **Two distinct deploy paths — do not conflate them:**
+  - *Routine deploy* (no legacy import — greenfield ClaimOS): the standard
+    `railway.toml` preDeploy chain `alembic upgrade head` → `seed` →
+    `bootstrap-admin` is correct.
+  - *One-time cutover deploy* (importing a legacy CVP DB): `migrate-db` requires an
+    **empty** target, so on the cutover the sequence is `alembic upgrade head` →
+    **`migrate-db`** → `seed` → `bootstrap-admin` (seed/bootstrap run *after* the
+    copy). Do **not** let the routine `seed`/`bootstrap-admin` run before `migrate-db`
+    on the cutover (see §8.2, §13). In practice: deploy with a schema-only preDeploy
+    (or provision the empty schema, run `migrate-db` out-of-band, then run
+    `seed`/`bootstrap-admin`), and verify `/healthz` green after.
 - `.env.example` updated for ClaimOS naming; the real `.env` is never committed.
 
 ## 11. Follow-on efforts (tracked, not built here)
@@ -270,9 +289,13 @@ posture and immutable rule #6 for external users.
    styling slice) — `CLAUDE.md`/`README`/`docs/`.
 6. Write + test the one-shot full-DB migration script (§8.2).
 7. Review; merge to `main`; rename the GitHub repo (§5.3).
-8. Provision the ClaimOS Railway environment (§10); deploy `main`; `/healthz` green.
-9. Run the one-shot migration CVP-DB → ClaimOS-DB at cutover; verify parity; retire
-   the legacy environment once confirmed.
+8. Provision the ClaimOS Railway environment (§10) with a **fresh empty Postgres**;
+   apply schema only (`alembic upgrade head`) — do **not** `seed`/`bootstrap-admin`
+   yet on the cutover path.
+9. Run the one-shot migration CVP-DB → ClaimOS-DB against that empty target; verify
+   parity. **Then** run `seed` and `bootstrap-admin` (idempotent — bootstrap-admin
+   no-ops if a legacy admin came across). Confirm `/healthz` green; retire the legacy
+   environment once verified.
 
 ---
 

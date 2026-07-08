@@ -182,10 +182,12 @@ This codebase was renamed from **CVP** (Contents Valuation Platform) to **ClaimO
 
 The pre-rename code is preserved on the frozen `cvp-legacy` branch, which continues to serve the existing internal deployment until data is migrated. To cut a legacy deployment over to ClaimOS:
 
-1. Point `LEGACY_DATABASE_URL` at the existing (pre-rename) database.
-2. Bring the target ClaimOS database up to date: `uv run alembic upgrade head`, then `uv run seed`.
-3. Run `uv run migrate-db` — a one-shot, read-only-on-the-source copy that maps legacy tables/columns (`matters`/`matter_id`, `matter_access`, etc.) onto the ClaimOS schema (`claims`/`claim_id`, `claim_access`, etc.). See `src/claimos/migrate_db.py` for the exact table/column mapping.
-4. Point `DATABASE_URL` at the new ClaimOS database and deploy ClaimOS in place of `cvp-legacy`.
+1. Point `LEGACY_DATABASE_URL` at the existing (pre-rename) database and `DATABASE_URL` at the new (empty) ClaimOS database.
+2. Create the ClaimOS **schema only** on the target: `uv run alembic upgrade head`. **Do not run `seed` or `bootstrap-admin` yet** — `migrate-db` requires an empty target. It copies `categories` and the `users` table (including admins) from the legacy DB, and it verifies per-table row-count parity; a pre-seeded `categories` table or a pre-bootstrapped admin would either fail that parity check or collide on the unique `users.email`.
+3. Run `uv run migrate-db` — a one-shot, read-only-on-the-source copy that maps legacy tables/columns (`matters`/`matter_id`, `matter_access`, etc.) onto the ClaimOS schema (`claims`/`claim_id`, `claim_access`, etc.), FK-safe ordering, with a built-in parity check that fails loudly on mismatch. See `src/claimos/migrate_db.py` for the exact table/column mapping.
+4. **After** the copy passes parity, run `uv run seed` (idempotent) and then `uv run bootstrap-admin` (idempotent — it no-ops if a `system_admin` was migrated over, otherwise creates one). Then deploy ClaimOS in place of `cvp-legacy`.
+
+> **Order matters.** `bootstrap-admin`/`seed` run *after* `migrate-db`, never before. This is a one-time legacy-import sequence; a normal greenfield deploy with no legacy data uses the usual `alembic upgrade head` → `seed` → `bootstrap-admin` order.
 
 No new development happens on `cvp-legacy` — it exists only to keep the current deployment running during migration.
 

@@ -613,9 +613,14 @@ Run these around the merge; they touch git remotes, Railway, GitHub, and DNS.
    `git branch cvp-legacy main && git push -u origin cvp-legacy`. In Railway, set the existing **CVP production** service to auto-deploy `cvp-legacy`. Confirm it still deploys and `/healthz` is green. Legacy is now frozen (critical fixes only).
 2. **Merge** `feat/claimos-rename` → `main` (squash per repo convention).
 3. **Rename the GitHub repo** `clawmondor/cvp` → `clawmondor/claimos` (Settings → rename). Do **not** create a new repo named `cvp`. Update local remotes: `git remote set-url origin https://github.com/clawmondor/claimos.git`.
-4. **Provision the ClaimOS environment:** new Railway environment/service, **new empty Postgres**, new subdomain via Cloudflare, distinct secrets (`ANTHROPIC_API_KEY`/`OPENROUTER_API_KEY`, `JWT_SECRET`, `MFA_ENCRYPTION_KEY`, admin bootstrap vars). Set `DATABASE_URL` to the new Postgres. Deploy `main`; `preDeployCommand` runs baseline migration + seed + bootstrap-admin. Confirm `/healthz` green.
-5. **Cutover migration:** set `LEGACY_DATABASE_URL` to the CVP prod Postgres (read-only creds if possible) and `DATABASE_URL` to the ClaimOS Postgres; run `uv run migrate-db`. Verify per-table row-count parity and spot-check RCV/ACV totals + evidence-file counts against legacy.
+4. **Provision the ClaimOS environment:** new Railway environment/service, **new empty Postgres**, new subdomain via Cloudflare, distinct secrets (`ANTHROPIC_API_KEY`/`OPENROUTER_API_KEY`, `JWT_SECRET`, `MFA_ENCRYPTION_KEY`, admin bootstrap vars). Set `DATABASE_URL` to the new Postgres. Apply **schema only** — `uv run alembic upgrade head`. **Do NOT run `seed`/`bootstrap-admin` yet on the cutover path** — `migrate-db` needs an empty target (a pre-seeded `categories` table or a pre-bootstrapped admin `users` row trips the parity check or collides on the unique `email`). If your `preDeployCommand` normally chains `seed`/`bootstrap-admin`, override it to schema-only for this one cutover deploy.
+5. **Cutover migration (order matters):** set `LEGACY_DATABASE_URL` to the CVP prod Postgres (read-only creds if possible) and `DATABASE_URL` to the ClaimOS Postgres, then:
+   a. `uv run migrate-db` — copies all legacy data (incl. `users`/admins) into the empty target; the built-in per-table row-count parity check must pass. Spot-check RCV/ACV totals + evidence-file counts against legacy.
+   b. `uv run seed` — populate any rows the legacy DB didn't carry (idempotent).
+   c. `uv run bootstrap-admin` — idempotent; **no-ops if a legacy `system_admin` came across**, otherwise creates one. Running it *before* `migrate-db` would clash with a migrated user on the unique `email` (silent replace on SQLite; hard error on Postgres) or break parity.
 6. **Retire legacy** once cutover is verified and clients are on ClaimOS.
+
+> **Routine vs. cutover:** the standard `preDeployCommand` (`alembic upgrade head` → `seed` → `bootstrap-admin`) is correct for a normal greenfield deploy with no legacy import. It is ONLY the one-time legacy-import cutover that must interleave `migrate-db` before `seed`/`bootstrap-admin`.
 
 ---
 
