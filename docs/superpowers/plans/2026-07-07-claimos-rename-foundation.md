@@ -537,24 +537,34 @@ In `src/claimos/config.py` change `openrouter_app_title: str = "CVP"` → `"Clai
 
 Update the package path references `src/cvp/` → `src/claimos/`, the project-layout block, the command list, and the "What this project is" framing to note: product is now **ClaimOS**; the internal→external SaaS posture and immutable rule #6 (no public registration) are revisited in the SaaS follow-on; the visual rebrand is a separate mockup-driven slice; `cvp-legacy` branch holds the frozen internal deployment.
 
-- [ ] **Step 3: Update `README.md`, `docs/*`, `.env.example`**
+- [ ] **Step 3: Rewrite `README.md` to reflect ClaimOS**
 
-Rename product/paths in `README.md`; sweep `docs/*.md` for `cvp`/`matter` references that are now stale (keep historical spec/plan filenames as-is). In `.env.example`, add a commented `LEGACY_DATABASE_URL=` line (source DB for `migrate-db`) and note the ClaimOS `DATABASE_URL` target.
+`README.md` is the primary onboarding doc — update it thoroughly, not just the title:
+- Product name/heading and description → **ClaimOS**.
+- Package/path references `src/cvp/` → `src/claimos/`; the sqlite path `data/cvp.db` → `data/claimos.db`.
+- Command list — confirm every `uv run` command still matches the renamed `[project.scripts]` (`dev`, `seed`, `seed-auth`, `bootstrap-admin`, and the new `migrate-db`); document `migrate-db` and its `LEGACY_DATABASE_URL`/`DATABASE_URL` env vars.
+- Any `/matters` URL examples → `/claims`; any "matter" domain wording → "claim".
+- Add a short "Legacy CVP / coexistence" note: the frozen `cvp-legacy` branch serves the internal deployment until clients migrate.
+- Leave macOS prereqs (`brew install pango cairo libffi`) and stack sections unchanged except naming.
 
-- [ ] **Step 4: Verify no stale product/path references remain in docs chrome**
+- [ ] **Step 4: Update `docs/*` and `.env.example`**
+
+Sweep `docs/*.md` for `cvp`/`matter` references that are now stale (keep historical spec/plan **filenames** as-is). In `.env.example`, add a commented `LEGACY_DATABASE_URL=` line (source DB for `migrate-db`) and note the ClaimOS `DATABASE_URL` target.
+
+- [ ] **Step 5: Verify no stale product/path references remain in docs chrome**
 
 ```bash
-rg -n '\bcvp\b|src/cvp' README.md CLAUDE.md
+rg -n '\bcvp\b|src/cvp|/matters\b|\bmatter\b' README.md CLAUDE.md
 ```
 
-Expected: no hits except intentional historical references (e.g. the `cvp-legacy` branch name, `data/cvp.db` mentions if kept). Review each remaining hit.
+Expected: no hits except intentional historical references (e.g. the `cvp-legacy` branch name). Review each remaining hit.
 
-- [ ] **Step 5: Lint/format + commit**
+- [ ] **Step 6: Lint/format + commit**
 
 ```bash
 uv run ruff check . && uv run ruff format . && uv run ruff format --check .
 git add -A
-git commit -m "docs: rebrand product name to ClaimOS; update package paths and legacy/coexistence notes"
+git commit -m "docs: rebrand product name to ClaimOS; update README, package paths, legacy/coexistence notes"
 ```
 
 ---
