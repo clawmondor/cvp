@@ -69,7 +69,7 @@ Operational runbook for the production deployment on Railway. Linked from `docs/
 2. Find the previous successful deployment → ⋯ menu → "Redeploy".
 3. ~30 seconds to swap. Healthcheck verifies before traffic moves.
 
-### Scenario 2: Wrong matter deleted (data loss)
+### Scenario 2: Wrong claim deleted (data loss)
 
 **Destructive — Railway snapshots are daily, so up to 24 hours of writes since the snapshot will be lost. Coordinate with the team before clicking. If an offsite `pg_dump` ran more recently than the latest Railway snapshot, prefer the offsite copy.**
 

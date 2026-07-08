@@ -35,4 +35,4 @@ def test_settings_openrouter_defaults():
     s = Settings(_env_file=None)
     assert s.openrouter_api_key == ""
     assert s.openrouter_referer == ""
-    assert s.openrouter_app_title == "CVP"
+    assert s.openrouter_app_title == "ClaimOS"

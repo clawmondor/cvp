@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Contents Valuation Platform", lifespan=lifespan)
+app = FastAPI(title="ClaimOS", lifespan=lifespan)
 
 # Security headers middleware
 app.add_middleware(SecurityHeadersMiddleware, environment=settings.environment)

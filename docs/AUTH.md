@@ -101,11 +101,11 @@ Invite codes cannot be reused after registration is complete. Expired codes show
 
 ## Password Rules
 
-Passwords are validated by `validate_password_strength()` in `src/cvp/auth.py`:
+Passwords are validated by `validate_password_strength()` in `src/claimos/auth.py`:
 
 - Minimum 12 characters.
 - Maximum 128 characters.
-- Must not appear in the top-100k breached passwords list (loaded from `src/cvp/data/pwned_passwords_top100k.txt` at startup; if the file is absent, this check is skipped).
+- Must not appear in the top-100k breached passwords list (loaded from `src/claimos/data/pwned_passwords_top100k.txt` at startup; if the file is absent, this check is skipped).
 
 These rules apply on registration and on the password change form in the profile page.
 
@@ -266,9 +266,9 @@ Log in as a `system_admin`. From `/admin/system/users`, create and register thes
 ### Scenario 5: Invite expiry
 
 1. Create an invite for `expiredqa@test.local`.
-2. In the database (`data/cvp.db`), set `invite_expires_at` to a past timestamp for that user:
+2. In the database (`data/claimos.db`), set `invite_expires_at` to a past timestamp for that user:
    ```bash
-   sqlite3 data/cvp.db "UPDATE users SET invite_expires_at='2000-01-01 00:00:00' WHERE email='expiredqa@test.local';"
+   sqlite3 data/claimos.db "UPDATE users SET invite_expires_at='2000-01-01 00:00:00' WHERE email='expiredqa@test.local';"
    ```
 3. Visit the invite URL — expect: "Invalid or expired invite" page.
 

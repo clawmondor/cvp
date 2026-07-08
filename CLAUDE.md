@@ -4,7 +4,13 @@ Project memory for Claude Code. Read at the start of every session. Keep it lean
 
 ## What this project is
 
-Internal ops tool the founding team uses to produce Contents Inventory and Valuation Reports for first-party property insurance claims — specifically for LA attorneys handling Palisades and Eaton fire cases. It is **not** customer-facing. Attorneys never log in. Specialists use it; attorneys receive the finished PDF + CSV by email.
+**ClaimOS** is the internal ops tool the founding team uses to produce Contents Inventory and Valuation Reports for first-party property insurance claims — specifically for LA attorneys handling Palisades and Eaton fire cases. It is **not** customer-facing today. Attorneys never log in. Specialists use it; attorneys receive the finished PDF + CSV by email.
+
+An internal→external SaaS posture (self-serve signup, attorneys logging in directly) is under consideration as a later slice — see `@docs/PRD.md` and the backlog. If and when that happens, immutable rule #6 below ("no public registration") is the one that gets revisited; until then it stands as written.
+
+The `cvp-legacy` branch holds the frozen pre-rename codebase (package `cvp`, domain `matter`) that continues to serve the existing internal deployment until clients are migrated onto ClaimOS via `uv run migrate-db` (see README).
+
+A visual rebrand (new theme/layout/CSS/brand chrome) is intentionally deferred to a separate, later, mockup-driven slice. This pass only changes product-name text and vocabulary.
 
 The full product requirements are in `@docs/PRD.md`. Read it before starting any new feature, and re-check it whenever scope is unclear.
 
@@ -29,6 +35,7 @@ uv run alembic upgrade head   # apply migrations
 uv run alembic revision --autogenerate -m "msg"  # new migration
 uv run seed            # populate the 42 category rows (idempotent)
 uv run bootstrap-admin   # idempotent first-deploy admin bootstrap (see docs/RUNBOOK.md)
+uv run migrate-db      # one-shot copy from legacy CVP db (LEGACY_DATABASE_URL) into ClaimOS db (DATABASE_URL)
 uv run pytest          # run tests
 uv run ruff check .    # lint
 uv run ruff format .   # format
@@ -54,14 +61,15 @@ docs/
 ├── RUNBOOK.md         # First-deploy and disaster recovery runbook
 ├── BACKLOG.md         # Deferred work tracker
 └── ...                # PRD, data-model, depreciation-schedule, AUTH, RBAC, QA
-src/cvp/
+src/claimos/
 ├── main.py            # FastAPI app entry
 ├── config.py          # pydantic-settings, reads .env
 ├── db.py              # SQLAlchemy session, WAL mode PRAGMA
 ├── models.py          # ORM models (all tables)
+├── migrate_db.py      # One-shot legacy-CVP-db -> ClaimOS-db data migration (`uv run migrate-db`)
 ├── depreciation.py    # The formula + category lookup — pure functions, unit-tested
 ├── seed.py            # Category seed data
-├── routers/           # FastAPI routers: matters, evidence, items, rooms, vision, exports
+├── routers/           # FastAPI routers: claims, evidence, items, rooms, vision, exports
 ├── services/          # vision.py, pdf_generator.py, csv_export.py
 ├── templates/         # Jinja2; report/ subdirectory for report sections
 └── static/            # Tailwind-via-CDN HTML, minimal app.js
@@ -73,7 +81,7 @@ Full layout in `@docs/PRD.md` section 17.
 
 1. **Currency is always stored and computed as integer cents.** Never store or compute currency as a Python `float`. Format to dollars only at the display or export layer.
 2. **Every RCV must have a source.** An item with a price but no `source_url`, `source_retailer`, `source_captured_at`, and `match_type` is invalid and must fail validation. The audit trail is the whole product.
-3. **ACV is computed, not entered.** The ACV of an item is always derived from the formula in `src/cvp/depreciation.py` unless an explicit `acv_override_cents` with a non-empty `acv_override_reason` is set. The UI must make overrides visually obvious.
+3. **ACV is computed, not entered.** The ACV of an item is always derived from the formula in `src/claimos/depreciation.py` unless an explicit `acv_override_cents` with a non-empty `acv_override_reason` is set. The UI must make overrides visually obvious.
 4. **Depreciation methodology is the one in `@docs/depreciation-schedule.md`.** Do not invent new useful lives, new categories, or new floor percentages without a code review and a note in the docs file.
 5. **No live retailer scraping in v0.** The specialist pastes URLs and captures screenshots manually (or via Playwright if it's already wired up). Scrapers are a v1 topic.
 6. **No public registration. Attorneys do not log in (they receive PDF/CSV by email). Internal specialists and approved external collaborators authenticate via the existing auth/MFA/RBAC system.**
@@ -98,9 +106,9 @@ When writing any user-facing text, report template content, UI copy, README, or 
 - **UUIDs as strings, not UUID objects.** Keeps SQLite, Pydantic, and Jinja happy with zero conversion.
 - **Timestamps as timezone-aware UTC datetimes.** Display in the user's local time only at the template layer.
 - **One router file per top-level resource.** Keep them under 200 lines each; if a router grows past that, split it.
-- **Services layer for anything with side effects.** PDF rendering, CSV writing, Vision API calls, and screenshot capture go in `src/cvp/services/`, not in routers.
+- **Services layer for anything with side effects.** PDF rendering, CSV writing, Vision API calls, and screenshot capture go in `src/claimos/services/`, not in routers.
 - **Pure functions in `depreciation.py`.** No database access. Tested in isolation.
-- **Tests live in `tests/` mirroring the `src/cvp/` layout.** Depreciation has near-100% coverage; routers have one happy-path integration test each; Vision is mocked.
+- **Tests live in `tests/` mirroring the `src/claimos/` layout.** Depreciation has near-100% coverage; routers have one happy-path integration test each; Vision is mocked.
 - **Run `ruff format .` then `ruff format --check .` before every commit.** CI enforces format; the check must show zero files would be reformatted. Line length 100.
 - **No clever tricks.** This is a prototype built by a small team. Boring code is maintainable code.
 
@@ -120,8 +128,8 @@ When writing any user-facing text, report template content, UI copy, README, or 
 - Don't generate fake client data or test fixtures with real-looking personal information.
 - Don't write PDF content as literal strings in Python code — it always goes through a Jinja template.
 - Don't change the Xactimate CSV column names. Carriers and attorneys depend on exact header matches.
-- Don't optimize prematurely. This runs on one laptop, for one user, with a few thousand items per matter at most. Clarity beats cleverness.
-- **Never use inline JavaScript event handlers** (`onclick=`, `onchange=`, `onsubmit=`, etc.) in Jinja templates. The CSP `script-src` policy has no `unsafe-inline` and hashes don't apply to event handlers, so they are hard-blocked in production. Always wire interactivity via `data-*` attributes and delegated `document.addEventListener('click', ...)` listeners in `src/cvp/static/app.js` — see the existing pattern at lines 225–275.
+- Don't optimize prematurely. This runs on one laptop, for one user, with a few thousand items per claim at most. Clarity beats cleverness.
+- **Never use inline JavaScript event handlers** (`onclick=`, `onchange=`, `onsubmit=`, etc.) in Jinja templates. The CSP `script-src` policy has no `unsafe-inline` and hashes don't apply to event handlers, so they are hard-blocked in production. Always wire interactivity via `data-*` attributes and delegated `document.addEventListener('click', ...)` listeners in `src/claimos/static/app.js` — see the existing pattern at lines 225–275.
 
 ## Useful references
 

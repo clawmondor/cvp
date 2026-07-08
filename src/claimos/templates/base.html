@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="csrf-token" content="{{ request.cookies.get('cvp_csrf', '') }}" />
-  <title>{% block title %}CVP{% endblock %} — Contents Valuation Platform</title>
+  <title>{% block title %}ClaimOS{% endblock %} — ClaimOS</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="/static/app.js" defer></script>
@@ -14,7 +14,7 @@
   <nav class="bg-white border-b border-gray-200">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="flex h-14 items-center justify-between">
-        <a href="/dashboard" class="text-base font-semibold text-gray-900">Contents Valuation Platform</a>
+        <a href="/dashboard" class="text-base font-semibold text-gray-900">ClaimOS</a>
         <div class="flex items-center gap-4">
           <a href="/claims/new"
              class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">

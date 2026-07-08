@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     vision_model_fallback: str = "claude-sonnet-4-6"  # deprecated — remove soon
     openrouter_api_key: str = ""
     openrouter_referer: str = ""
-    openrouter_app_title: str = "CVP"
+    openrouter_app_title: str = "ClaimOS"
     port: int = 8000
     database_url: str = "sqlite:///./data/claimos.db"
     upload_dir: str = "./data/uploads"
