@@ -8,8 +8,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_vision  # noqa: F401
-from cvp.models import (
+import claimos.models_vision  # noqa: F401
+from claimos.models import (
     Base,
     Category,
     EvidenceFile,
@@ -20,8 +20,8 @@ from cvp.models import (
     VisionJobImage,
     VisionRun,
 )
-from cvp.models_vision import VisionModel
-from cvp.services import vision as vision_svc
+from claimos.models_vision import VisionModel
+from claimos.services import vision as vision_svc
 
 
 @pytest.fixture
@@ -111,9 +111,9 @@ def matter_with_job(isolated_db, tmp_path):
 
 
 def _monkeypatch_vision(monkeypatch, isolated_db, tmp_path):
-    monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: isolated_db)
+    monkeypatch.setattr("claimos.services.vision.SessionLocal", lambda: isolated_db)
     monkeypatch.setattr(
-        "cvp.config.settings",
+        "claimos.config.settings",
         type(
             "S",
             (),
@@ -151,7 +151,7 @@ def test_process_one_image_creates_items_and_crops(
         ]
     )
 
-    with patch("cvp.services.vision.openrouter.call_vision", return_value=fake_response):
+    with patch("claimos.services.vision.openrouter.call_vision", return_value=fake_response):
         vision_svc.process_one_image(job_image_id)
 
     items = isolated_db.query(Item).filter_by(matter_id=matter_id).all()
@@ -191,7 +191,7 @@ def test_process_one_image_releases_connection_during_api_call(
         in_tx_at_call.append(isolated_db.in_transaction())
         return "[]"
 
-    with patch("cvp.services.vision.openrouter.call_vision", side_effect=_capture_tx_state):
+    with patch("claimos.services.vision.openrouter.call_vision", side_effect=_capture_tx_state):
         vision_svc.process_one_image(job_image_id)
 
     assert in_tx_at_call == [False], (
@@ -222,7 +222,7 @@ def test_process_one_image_skips_crop_when_adapter_none(
         ]
     )
 
-    with patch("cvp.services.vision.openrouter.call_vision", return_value=fake_response):
+    with patch("claimos.services.vision.openrouter.call_vision", return_value=fake_response):
         vision_svc.process_one_image(job_image_id)
 
     items = isolated_db.query(Item).filter_by(matter_id=matter_id).all()
@@ -237,10 +237,10 @@ def test_process_one_image_marks_error_on_api_failure(
     _, job_image_id = matter_with_job
     _monkeypatch_vision(monkeypatch, isolated_db, tmp_path)
 
-    from cvp.services.openrouter import OpenRouterError
+    from claimos.services.openrouter import OpenRouterError
 
     with patch(
-        "cvp.services.vision.openrouter.call_vision",
+        "claimos.services.vision.openrouter.call_vision",
         side_effect=OpenRouterError(429, "rate limit"),
     ):
         vision_svc.process_one_image(job_image_id)
@@ -260,7 +260,7 @@ def test_process_skips_already_scanned_file(matter_with_job, isolated_db, monkey
     ef.scanned = True
     isolated_db.commit()
 
-    with patch("cvp.services.vision.openrouter.call_vision") as mock_call:
+    with patch("claimos.services.vision.openrouter.call_vision") as mock_call:
         vision_svc.process_one_image(job_image_id)
         mock_call.assert_not_called()
 
@@ -270,14 +270,14 @@ def test_process_skips_already_scanned_file(matter_with_job, isolated_db, monkey
 
 
 def test_estimate_cost_known_model(isolated_db, monkeypatch):
-    monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: isolated_db)
+    monkeypatch.setattr("claimos.services.vision.SessionLocal", lambda: isolated_db)
     # Seed has null pricing -> should return "~$?"
     result = vision_svc.estimate_cost(3, "anthropic/claude-opus-4")
     assert result == "~$?"
 
 
 def test_estimate_cost_with_pricing(isolated_db, monkeypatch):
-    monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: isolated_db)
+    monkeypatch.setattr("claimos.services.vision.SessionLocal", lambda: isolated_db)
     isolated_db.query(VisionModel).filter_by(slug="anthropic/claude-opus-4").update(
         {"prompt_image_cost_cents": 3}
     )
@@ -287,7 +287,7 @@ def test_estimate_cost_with_pricing(isolated_db, monkeypatch):
 
 
 def test_estimate_cost_unknown_model(isolated_db, monkeypatch):
-    monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: isolated_db)
+    monkeypatch.setattr("claimos.services.vision.SessionLocal", lambda: isolated_db)
     result = vision_svc.estimate_cost(1, "unknown/model")
     assert result == "~$?"
 
@@ -351,7 +351,7 @@ def test_region_scan_uses_drawn_region_as_crop(isolated_db, monkeypatch, tmp_pat
     )
 
     with patch(
-        "cvp.services.vision.openrouter.call_vision", return_value=fake_response
+        "claimos.services.vision.openrouter.call_vision", return_value=fake_response
     ) as mock_call:
         vision_svc.process_one_image(ji_id)
         mock_call.assert_called_once()
@@ -435,7 +435,7 @@ def test_region_scan_crop_equals_region_regardless_of_model_box(isolated_db, mon
         ]
     )
 
-    with patch("cvp.services.vision.openrouter.call_vision", return_value=fake_response):
+    with patch("claimos.services.vision.openrouter.call_vision", return_value=fake_response):
         vision_svc.process_one_image(ji_id)
 
     crops = (

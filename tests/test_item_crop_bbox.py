@@ -2,7 +2,7 @@
 
 from sqlalchemy.orm import configure_mappers
 
-from cvp.models import ItemCrop
+from claimos.models import ItemCrop
 
 configure_mappers()
 

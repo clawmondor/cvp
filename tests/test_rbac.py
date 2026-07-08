@@ -4,14 +4,14 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from cvp.dependencies import (
+from claimos.dependencies import (
     ROLE_HIERARCHY,
     CurrentUser,
     _check_matter_access,
 )
-from cvp.models import Base, Matter
-from cvp.models_access import MatterAccess
-from cvp.models_auth import Group, User
+from claimos.models import Base, Matter
+from claimos.models_access import MatterAccess
+from claimos.models_auth import Group, User
 
 
 def test_matter_access_model_fields():

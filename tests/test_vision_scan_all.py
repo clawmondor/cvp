@@ -11,14 +11,14 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_vision  # noqa: F401
-import cvp.routers.vision as vision_router
-from cvp.db import get_db
-from cvp.dependencies import CurrentUser
-from cvp.main import app
-from cvp.models import Base, EvidenceFile, Matter, VisionJob, VisionJobImage
-from cvp.models_auth import User
-from cvp.models_vision import VisionModel
+import claimos.models_vision  # noqa: F401
+import claimos.routers.vision as vision_router
+from claimos.db import get_db
+from claimos.dependencies import CurrentUser
+from claimos.main import app
+from claimos.models import Base, EvidenceFile, Matter, VisionJob, VisionJobImage
+from claimos.models_auth import User
+from claimos.models_vision import VisionModel
 
 CONTRIBUTOR_ID = "contrib-sa"
 MATTER_ID = "matter-sa"
@@ -94,8 +94,8 @@ def client_contributor(db_session):
 
 
 def test_scan_all_creates_job_for_unscanned(client_contributor, db_session, monkeypatch):
-    monkeypatch.setattr("cvp.routers.vision.SessionLocal", lambda: db_session)
-    monkeypatch.setattr("cvp.services.vision_worker.wake", lambda: None)
+    monkeypatch.setattr("claimos.routers.vision.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.services.vision_worker.wake", lambda: None)
 
     resp = client_contributor.post(
         f"/api/matters/{MATTER_ID}/vision-scan-all",
@@ -113,8 +113,8 @@ def test_scan_all_creates_job_for_unscanned(client_contributor, db_session, monk
 def test_scan_all_returns_empty_message_when_nothing_to_scan(
     client_contributor, db_session, monkeypatch
 ):
-    monkeypatch.setattr("cvp.routers.vision.SessionLocal", lambda: db_session)
-    monkeypatch.setattr("cvp.services.vision_worker.wake", lambda: None)
+    monkeypatch.setattr("claimos.routers.vision.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.services.vision_worker.wake", lambda: None)
 
     ef = db_session.get(EvidenceFile, FILE_ID)
     ef.scanned = True
@@ -129,9 +129,9 @@ def test_scan_all_returns_empty_message_when_nothing_to_scan(
 
 
 def test_scan_all_rejects_over_cap(client_contributor, db_session, monkeypatch):
-    monkeypatch.setattr("cvp.routers.vision.SessionLocal", lambda: db_session)
-    monkeypatch.setattr("cvp.services.vision_worker.wake", lambda: None)
-    monkeypatch.setattr("cvp.routers.vision._SCAN_ALL_CAP", 2)
+    monkeypatch.setattr("claimos.routers.vision.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.services.vision_worker.wake", lambda: None)
+    monkeypatch.setattr("claimos.routers.vision._SCAN_ALL_CAP", 2)
 
     for i in range(3):
         db_session.add(

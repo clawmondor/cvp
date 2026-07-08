@@ -2,8 +2,8 @@
 
 import pytest
 
-from cvp.dependencies import CurrentUser
-from cvp.services import access_cache
+from claimos.dependencies import CurrentUser
+from claimos.services import access_cache
 
 
 @pytest.fixture(autouse=True)

@@ -11,14 +11,14 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_vision  # noqa: F401
-import cvp.routers.vision as vision_router
-from cvp.db import get_db
-from cvp.dependencies import CurrentUser
-from cvp.main import app
-from cvp.models import Base, EvidenceFile, Matter, VisionJob, VisionJobImage
-from cvp.models_auth import User
-from cvp.models_vision import VisionModel
+import claimos.models_vision  # noqa: F401
+import claimos.routers.vision as vision_router
+from claimos.db import get_db
+from claimos.dependencies import CurrentUser
+from claimos.main import app
+from claimos.models import Base, EvidenceFile, Matter, VisionJob, VisionJobImage
+from claimos.models_auth import User
+from claimos.models_vision import VisionModel
 
 CONTRIBUTOR_EMAIL = "contrib@test.com"
 CONTRIBUTOR_ID = "contrib-id"
@@ -114,8 +114,8 @@ def client_contributor(db_session):
 
 
 def test_start_scan_rejects_unknown_model(client_contributor, db_session, monkeypatch):
-    monkeypatch.setattr("cvp.routers.vision.SessionLocal", lambda: db_session)
-    monkeypatch.setattr("cvp.services.vision_worker.wake", lambda: None)
+    monkeypatch.setattr("claimos.routers.vision.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.services.vision_worker.wake", lambda: None)
     resp = client_contributor.post(
         f"/api/matters/{MATTER_ID}/vision-scan",
         data={"evidence_file_ids": FILE_ID, "model_slug": "made/up"},
@@ -124,8 +124,8 @@ def test_start_scan_rejects_unknown_model(client_contributor, db_session, monkey
 
 
 def test_start_scan_records_last_used_and_creates_job(client_contributor, db_session, monkeypatch):
-    monkeypatch.setattr("cvp.routers.vision.SessionLocal", lambda: db_session)
-    monkeypatch.setattr("cvp.services.vision_worker.wake", lambda: None)
+    monkeypatch.setattr("claimos.routers.vision.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.services.vision_worker.wake", lambda: None)
     resp = client_contributor.post(
         f"/api/matters/{MATTER_ID}/vision-scan",
         data={"evidence_file_ids": FILE_ID, "model_slug": "anthropic/claude-opus-4"},
@@ -143,7 +143,7 @@ def test_start_scan_records_last_used_and_creates_job(client_contributor, db_ses
 
 
 def test_cost_estimate_endpoint(client_contributor, db_session, monkeypatch):
-    monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.services.vision.SessionLocal", lambda: db_session)
     resp = client_contributor.get(
         f"/api/matters/{MATTER_ID}/vision-scan-estimate?count=4&model_slug=anthropic/claude-opus-4"
     )
@@ -152,8 +152,8 @@ def test_cost_estimate_endpoint(client_contributor, db_session, monkeypatch):
 
 
 def test_region_scan_creates_job_with_region(client_contributor, db_session, monkeypatch):
-    monkeypatch.setattr("cvp.routers.vision.SessionLocal", lambda: db_session)
-    monkeypatch.setattr("cvp.services.vision_worker.wake", lambda: None)
+    monkeypatch.setattr("claimos.routers.vision.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.services.vision_worker.wake", lambda: None)
 
     db_session.query(User).filter_by(id=CONTRIBUTOR_ID).update(
         {"last_vision_model_slug": "anthropic/claude-opus-4"}
@@ -181,7 +181,7 @@ def test_region_scan_creates_job_with_region(client_contributor, db_session, mon
 
 
 def test_region_scan_rejects_out_of_bounds(client_contributor, db_session, monkeypatch):
-    monkeypatch.setattr("cvp.routers.vision.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.routers.vision.SessionLocal", lambda: db_session)
     db_session.query(User).filter_by(id=CONTRIBUTOR_ID).update(
         {"last_vision_model_slug": "anthropic/claude-opus-4"}
     )
@@ -195,7 +195,7 @@ def test_region_scan_rejects_out_of_bounds(client_contributor, db_session, monke
 
 
 def test_region_scan_requires_last_used_model(client_contributor, db_session, monkeypatch):
-    monkeypatch.setattr("cvp.routers.vision.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.routers.vision.SessionLocal", lambda: db_session)
     # User has no last_vision_model_slug set.
     resp = client_contributor.post(
         f"/api/evidence/{FILE_ID}/region-scan",
@@ -205,8 +205,8 @@ def test_region_scan_requires_last_used_model(client_contributor, db_session, mo
 
 
 def test_poll_scan_status_returns_json(client_contributor, db_session, monkeypatch):
-    monkeypatch.setattr("cvp.routers.vision.SessionLocal", lambda: db_session)
-    monkeypatch.setattr("cvp.services.vision.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.routers.vision.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.services.vision.SessionLocal", lambda: db_session)
     job = VisionJob(matter_id=MATTER_ID, model_slug="anthropic/claude-opus-4", status="done")
     db_session.add(job)
     db_session.flush()
@@ -223,7 +223,7 @@ def test_poll_scan_status_returns_json(client_contributor, db_session, monkeypat
 
 
 def test_poll_scan_status_rejects_foreign_matter(client_contributor, db_session, monkeypatch):
-    monkeypatch.setattr("cvp.routers.vision.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.routers.vision.SessionLocal", lambda: db_session)
     # Job belongs to a different matter than the one in the request path.
     other = Matter(id="matter-other", policyholder_name="Other", loss_type="total_loss")
     db_session.add(other)

@@ -6,10 +6,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_auth  # ensure auth tables are registered on Base.metadata  # noqa: F401
-from cvp.dependencies import CurrentUser, require_system_admin
-from cvp.models import Base
-from cvp.models_auth import Group, User
+import claimos.models_auth  # ensure auth tables are registered on Base.metadata  # noqa: F401
+from claimos.dependencies import CurrentUser, require_system_admin
+from claimos.models import Base
+from claimos.models_auth import Group, User
 
 
 @pytest.fixture
@@ -28,8 +28,8 @@ def db_session():
 
 @pytest.fixture
 def admin_client(db_session):
-    from cvp.db import get_db
-    from cvp.main import app
+    from claimos.db import get_db
+    from claimos.main import app
 
     async def mock_admin():
         return CurrentUser(
@@ -53,8 +53,8 @@ def admin_client(db_session):
 @pytest.fixture
 def seeded_client(db_session):
     """Client with a pre-seeded Group and User in the in-memory DB."""
-    from cvp.db import get_db
-    from cvp.main import app
+    from claimos.db import get_db
+    from claimos.main import app
 
     # Seed a group
     group = Group(id="test-group-id", name="Test Group", kind="internal")
@@ -204,7 +204,7 @@ def test_system_regenerate_invite_unknown_user_returns_404(seeded_client):
 
 
 def test_system_regenerate_invite_replaces_old_code(seeded_client):
-    from cvp.auth import generate_invite_code, hash_token
+    from claimos.auth import generate_invite_code, hash_token
 
     client, db = seeded_client
     user = db.get(User, "existing-user-id")

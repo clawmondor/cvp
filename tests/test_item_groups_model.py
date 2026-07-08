@@ -3,8 +3,8 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from cvp.db import SessionLocal
-from cvp.models import ItemGroup, Matter
+from claimos.db import SessionLocal
+from claimos.models import ItemGroup, Matter
 
 
 @pytest.fixture

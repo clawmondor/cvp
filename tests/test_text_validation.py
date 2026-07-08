@@ -3,7 +3,7 @@
 import pytest
 from fastapi import HTTPException
 
-from cvp.text_validation import assert_plain_text
+from claimos.text_validation import assert_plain_text
 
 
 def test_accepts_plain_ascii():

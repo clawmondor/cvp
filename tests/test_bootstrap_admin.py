@@ -1,10 +1,10 @@
 import pytest
 
-from cvp.config import get_settings
+from claimos.config import get_settings
 
 
 def test_skips_when_admin_already_exists(monkeypatch, tmp_path, capsys):
-    import cvp.config as config_module
+    import claimos.config as config_module
 
     db_url = f"sqlite:///{tmp_path}/bootstrap.db"
     monkeypatch.setenv("DATABASE_URL", db_url)
@@ -20,7 +20,7 @@ def test_skips_when_admin_already_exists(monkeypatch, tmp_path, capsys):
     cfg.set_main_option("sqlalchemy.url", db_url)
     command.upgrade(cfg, "head")
 
-    from cvp.bootstrap_admin import main as bootstrap_admin
+    from claimos.bootstrap_admin import main as bootstrap_admin
 
     bootstrap_admin()  # first run: creates admin
     bootstrap_admin()  # second run: skips
@@ -31,7 +31,7 @@ def test_skips_when_admin_already_exists(monkeypatch, tmp_path, capsys):
 
 
 def test_raises_when_env_vars_missing(monkeypatch, tmp_path):
-    import cvp.config as config_module
+    import claimos.config as config_module
 
     db_url = f"sqlite:///{tmp_path}/bootstrap2.db"
     monkeypatch.setenv("DATABASE_URL", db_url)
@@ -47,7 +47,7 @@ def test_raises_when_env_vars_missing(monkeypatch, tmp_path):
     cfg.set_main_option("sqlalchemy.url", db_url)
     command.upgrade(cfg, "head")
 
-    from cvp.bootstrap_admin import main as bootstrap_admin
+    from claimos.bootstrap_admin import main as bootstrap_admin
 
     with pytest.raises(SystemExit):
         bootstrap_admin()

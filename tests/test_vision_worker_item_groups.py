@@ -12,10 +12,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_access  # noqa: F401
-import cvp.models_auth  # noqa: F401
-from cvp.models import Base, Category, EvidenceFile, ItemGroup, Matter
-from cvp.services.vision import _resolve_effective_item_group_id
+import claimos.models_access  # noqa: F401
+import claimos.models_auth  # noqa: F401
+from claimos.models import Base, Category, EvidenceFile, ItemGroup, Matter
+from claimos.services.vision import _resolve_effective_item_group_id
 
 
 @pytest.fixture
@@ -104,14 +104,14 @@ def test_pin_with_no_placard_returns_pin(seeded):
 
 
 def _capture_vision_logs(emit_fn):
-    """Install a direct INFO handler on cvp.services.vision and return cleanup.
+    """Install a direct INFO handler on claimos.services.vision and return cleanup.
 
     Necessary because alembic's fileConfig (run from migrations/env.py during
     other tests in the suite) defaults disable_existing_loggers=True, which sets
     logger.disabled=True on previously-created loggers — and caplog can't
     override that flag.
     """
-    vision_logger = logging.getLogger("cvp.services.vision")
+    vision_logger = logging.getLogger("claimos.services.vision")
 
     class _Capture(logging.Handler):
         def emit(self, record: logging.LogRecord) -> None:

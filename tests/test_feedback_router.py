@@ -6,12 +6,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_auth  # noqa: F401
-import cvp.models_feedback  # noqa: F401
-from cvp.dependencies import CurrentUser, require_active_user
-from cvp.models import Base
-from cvp.models_auth import Group, User
-from cvp.models_feedback import Feedback, FeedbackComment
+import claimos.models_auth  # noqa: F401
+import claimos.models_feedback  # noqa: F401
+from claimos.dependencies import CurrentUser, require_active_user
+from claimos.models import Base
+from claimos.models_auth import Group, User
+from claimos.models_feedback import Feedback, FeedbackComment
 
 
 def _session():
@@ -49,8 +49,8 @@ def _seed(db, *, role="internal_user"):
 
 @pytest.fixture
 def client_and_db():
-    from cvp.db import get_db
-    from cvp.main import app
+    from claimos.db import get_db
+    from claimos.main import app
 
     db = _session()
     user, _other = _seed(db)
@@ -431,8 +431,8 @@ def test_unread_badge_shows_dot_after_admin_comment(client_and_db):
 def test_submit_as_system_admin_without_group_uses_internal_group():
     """A bootstrapped system_admin with no group_id can still submit feedback;
     author_group_id snapshots the internal group."""
-    from cvp.db import get_db
-    from cvp.main import app
+    from claimos.db import get_db
+    from claimos.main import app
 
     db = _session()
 
@@ -481,8 +481,8 @@ def test_submit_as_system_admin_without_group_uses_internal_group():
 def test_submit_as_non_admin_without_group_400s():
     """A non-admin with no group_id still gets 400 — the internal-group fallback
     only applies to system_admins."""
-    from cvp.db import get_db
-    from cvp.main import app
+    from claimos.db import get_db
+    from claimos.main import app
 
     db = _session()
     internal = Group(id="g_internal", name="Internal", kind="internal")

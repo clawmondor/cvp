@@ -6,9 +6,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_auth  # ensure auth tables are registered on Base.metadata  # noqa: F401
-from cvp.models import Base
-from cvp.models_auth import Group
+import claimos.models_auth  # ensure auth tables are registered on Base.metadata  # noqa: F401
+from claimos.models import Base
+from claimos.models_auth import Group
 
 
 @pytest.fixture
@@ -26,8 +26,8 @@ def db_session():
 
 @pytest.fixture
 def internal_client(db_session):
-    from cvp.db import get_db
-    from cvp.main import app
+    from claimos.db import get_db
+    from claimos.main import app
 
     ig = Group(id="ig", name="Internal", kind="internal")
     db_session.add(ig)
@@ -37,7 +37,7 @@ def internal_client(db_session):
         yield db_session
 
     async def mock_internal_admin():
-        from cvp.dependencies import CurrentUser
+        from claimos.dependencies import CurrentUser
 
         return CurrentUser(
             id="ia",
@@ -47,8 +47,8 @@ def internal_client(db_session):
             group_kind="internal",
         )
 
-    from cvp.dependencies import require_active_user
-    from cvp.routers.admin.internal import _require_internal_or_above
+    from claimos.dependencies import require_active_user
+    from claimos.routers.admin.internal import _require_internal_or_above
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[require_active_user] = mock_internal_admin
@@ -70,9 +70,9 @@ def test_internal_users_page(internal_client):
 
 @pytest.fixture
 def seeded_internal_client(db_session):
-    from cvp.db import get_db
-    from cvp.main import app
-    from cvp.models_auth import User
+    from claimos.db import get_db
+    from claimos.main import app
+    from claimos.models_auth import User
 
     ig = Group(id="ig", name="Internal", kind="internal")
     other_group = Group(id="og", name="Other", kind="external")
@@ -103,7 +103,7 @@ def seeded_internal_client(db_session):
         yield db_session
 
     async def mock_internal_admin():
-        from cvp.dependencies import CurrentUser
+        from claimos.dependencies import CurrentUser
 
         return CurrentUser(
             id="ia",
@@ -113,8 +113,8 @@ def seeded_internal_client(db_session):
             group_kind="internal",
         )
 
-    from cvp.dependencies import require_active_user
-    from cvp.routers.admin.internal import _require_internal_or_above
+    from claimos.dependencies import require_active_user
+    from claimos.routers.admin.internal import _require_internal_or_above
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[require_active_user] = mock_internal_admin
@@ -127,7 +127,7 @@ def seeded_internal_client(db_session):
 def test_internal_regenerate_invite_updates_code(seeded_internal_client):
     from datetime import datetime, timedelta, timezone
 
-    from cvp.models_auth import User
+    from claimos.models_auth import User
 
     client, db = seeded_internal_client
     user = db.get(User, "target-user-id")
@@ -160,7 +160,7 @@ def test_internal_regenerate_invite_outside_group_returns_404(seeded_internal_cl
 
 
 def test_internal_regenerate_invite_inactive_user_returns_400(seeded_internal_client):
-    from cvp.models_auth import User
+    from claimos.models_auth import User
 
     client, db = seeded_internal_client
     user = db.get(User, "target-user-id")

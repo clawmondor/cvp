@@ -7,10 +7,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_audit  # noqa: F401
-from cvp.models import Base
-from cvp.models_audit import AuditLog
-from cvp.services.audit import should_debounce_view
+import claimos.models_audit  # noqa: F401
+from claimos.models import Base
+from claimos.models_audit import AuditLog
+from claimos.services.audit import should_debounce_view
 
 
 def test_audit_log_model():
@@ -78,7 +78,7 @@ def test_should_debounce_view_old_event(audit_db):
 
 
 def test_get_client_ip_forwarded():
-    from cvp.services.audit import get_client_ip
+    from claimos.services.audit import get_client_ip
 
     class FakeRequest:
         headers = {"x-forwarded-for": "1.2.3.4, 5.6.7.8"}
@@ -88,7 +88,7 @@ def test_get_client_ip_forwarded():
 
 
 def test_get_client_ip_direct():
-    from cvp.services.audit import get_client_ip
+    from claimos.services.audit import get_client_ip
 
     class FakeClient:
         host = "9.9.9.9"

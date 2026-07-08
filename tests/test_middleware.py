@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from cvp.middleware import SecurityHeadersMiddleware
+from claimos.middleware import SecurityHeadersMiddleware
 
 
 def _make_app(environment: str = "production") -> FastAPI:

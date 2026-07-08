@@ -6,12 +6,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.dependencies as deps
-import cvp.models_access  # noqa: F401
-import cvp.models_auth  # noqa: F401
-from cvp.auth import hash_password
-from cvp.models import Base, Category, Item, ItemGroup, Matter
-from cvp.models_auth import Group, User
+import claimos.dependencies as deps
+import claimos.models_access  # noqa: F401
+import claimos.models_auth  # noqa: F401
+from claimos.auth import hash_password
+from claimos.models import Base, Category, Item, ItemGroup, Matter
+from claimos.models_auth import Group, User
 
 
 @pytest.fixture
@@ -49,9 +49,9 @@ def seeded_db(db_session):
 
 @pytest.fixture
 def make_client(seeded_db, monkeypatch):
-    from cvp.db import get_db
-    from cvp.dependencies import CurrentUser, require_active_user
-    from cvp.main import app
+    from claimos.db import get_db
+    from claimos.dependencies import CurrentUser, require_active_user
+    from claimos.main import app
 
     def override_get_db():
         try:
@@ -77,7 +77,7 @@ def make_client(seeded_db, monkeypatch):
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[require_active_user] = mock_user
         monkeypatch.setattr(deps, "_check_matter_access", fake_check)
-        monkeypatch.setattr("cvp.routers.items.SessionLocal", lambda: seeded_db)
+        monkeypatch.setattr("claimos.routers.items.SessionLocal", lambda: seeded_db)
         return TestClient(app), "m1"
 
     yield _make

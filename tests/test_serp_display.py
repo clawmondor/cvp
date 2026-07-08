@@ -1,6 +1,6 @@
 """Tests for SerpAPI result extraction."""
 
-from cvp.services.serp_display import extract_results
+from claimos.services.serp_display import extract_results
 
 GOOGLE_LENS_FIXTURE = {
     "visual_matches": [

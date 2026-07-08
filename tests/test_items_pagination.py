@@ -6,12 +6,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_vision  # noqa: F401
-from cvp.db import get_db
-from cvp.dependencies import CurrentUser
-from cvp.main import app
-from cvp.models import Base, Category, Item, Matter
-from cvp.services import access_cache
+import claimos.models_vision  # noqa: F401
+from claimos.db import get_db
+from claimos.dependencies import CurrentUser
+from claimos.main import app
+from claimos.models import Base, Category, Item, Matter
+from claimos.services import access_cache
 
 VIEWER_ID = "v1"
 MATTER_ID = "m-items"
@@ -34,7 +34,7 @@ def db_session():
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     s = Session()
-    from cvp.models_auth import User
+    from claimos.models_auth import User
 
     s.add(User(id=VIEWER_ID, email="v@test.com", display_name="V", system_role="internal_user"))
     s.add(Matter(id=MATTER_ID, policyholder_name="P", loss_type="total_loss"))
@@ -48,7 +48,7 @@ def db_session():
 def client(db_session, monkeypatch):
     import inspect
 
-    import cvp.routers.items as items_router
+    import claimos.routers.items as items_router
 
     async def mock_viewer():
         return CurrentUser(
@@ -65,7 +65,7 @@ def client(db_session, monkeypatch):
     dep = inspect.signature(items_router.get_items_rows).parameters["user"].default.dependency
     app.dependency_overrides[dep] = mock_viewer
     app.dependency_overrides[get_db] = override_get_db
-    monkeypatch.setattr("cvp.routers.items.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.routers.items.SessionLocal", lambda: db_session)
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -141,7 +141,7 @@ def client_contrib(db_session, monkeypatch):
     """
     import inspect
 
-    import cvp.routers.items as items_router
+    import claimos.routers.items as items_router
 
     async def mock_admin():
         return CurrentUser(
@@ -160,7 +160,7 @@ def client_contrib(db_session, monkeypatch):
     app.dependency_overrides[create_dep] = mock_admin
     app.dependency_overrides[rows_dep] = mock_admin
     app.dependency_overrides[get_db] = override_get_db
-    monkeypatch.setattr("cvp.routers.items.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.routers.items.SessionLocal", lambda: db_session)
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()

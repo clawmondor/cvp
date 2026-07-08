@@ -1,4 +1,4 @@
-from cvp.services.audit import get_client_ip
+from claimos.services.audit import get_client_ip
 
 
 class _CaseInsensitiveHeaders(dict):

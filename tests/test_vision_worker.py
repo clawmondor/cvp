@@ -7,8 +7,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_vision  # noqa: F401
-from cvp.models import Base, EvidenceFile, Matter, VisionJob, VisionJobImage
+import claimos.models_vision  # noqa: F401
+from claimos.models import Base, EvidenceFile, Matter, VisionJob, VisionJobImage
 
 
 @pytest.fixture
@@ -55,7 +55,7 @@ def _isolate_worker(db):
     Depending on `db` ensures this fixture tears down BEFORE `db` closes,
     so the worker cannot race against session cleanup in teardown.
     """
-    from cvp.services import vision_worker
+    from claimos.services import vision_worker
 
     vision_worker.stop_worker()  # kill any stale worker from previous test
     yield
@@ -73,9 +73,9 @@ def _add_job_image(db, status="pending"):
 
 
 def test_recover_stale_jobs_resets_running_to_pending(db, Session, monkeypatch):
-    from cvp.services import vision_worker
+    from claimos.services import vision_worker
 
-    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", Session)
+    monkeypatch.setattr("claimos.services.vision_worker.SessionLocal", Session)
 
     ji_id = _add_job_image(db, status="running")
 
@@ -88,9 +88,9 @@ def test_recover_stale_jobs_resets_running_to_pending(db, Session, monkeypatch):
 
 
 def test_recover_leaves_done_rows_unchanged(db, Session, monkeypatch):
-    from cvp.services import vision_worker
+    from claimos.services import vision_worker
 
-    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", Session)
+    monkeypatch.setattr("claimos.services.vision_worker.SessionLocal", Session)
 
     ji_id = _add_job_image(db, status="done")
     vision_worker.recover_stale_jobs()
@@ -101,9 +101,9 @@ def test_recover_leaves_done_rows_unchanged(db, Session, monkeypatch):
 
 
 def test_claim_next_pending_marks_running(db, Session, monkeypatch):
-    from cvp.services import vision_worker
+    from claimos.services import vision_worker
 
-    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", Session)
+    monkeypatch.setattr("claimos.services.vision_worker.SessionLocal", Session)
 
     ji_id = _add_job_image(db, status="pending")
     claimed = vision_worker._claim_next_pending()
@@ -116,18 +116,18 @@ def test_claim_next_pending_marks_running(db, Session, monkeypatch):
 
 
 def test_claim_next_pending_returns_none_when_empty(db, Session, monkeypatch):
-    from cvp.services import vision_worker
+    from claimos.services import vision_worker
 
-    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", Session)
+    monkeypatch.setattr("claimos.services.vision_worker.SessionLocal", Session)
 
     result = vision_worker._claim_next_pending()
     assert result is None
 
 
 def test_worker_processes_pending_row(db, Session, monkeypatch):
-    from cvp.services import vision_worker
+    from claimos.services import vision_worker
 
-    monkeypatch.setattr("cvp.services.vision_worker.SessionLocal", Session)
+    monkeypatch.setattr("claimos.services.vision_worker.SessionLocal", Session)
 
     processed = []
 
@@ -137,8 +137,8 @@ def test_worker_processes_pending_row(db, Session, monkeypatch):
         db.commit()
         processed.append(job_image_id)
 
-    monkeypatch.setattr("cvp.services.vision_worker._process_fn", fake_process)
-    monkeypatch.setattr("cvp.services.vision_worker._SLEEP_SECONDS", 0)
+    monkeypatch.setattr("claimos.services.vision_worker._process_fn", fake_process)
+    monkeypatch.setattr("claimos.services.vision_worker._SLEEP_SECONDS", 0)
 
     ji_id = _add_job_image(db, status="pending")
 
@@ -153,7 +153,7 @@ def test_worker_processes_pending_row(db, Session, monkeypatch):
 
 
 def test_region_bbox_property():
-    from cvp.models import VisionJobImage
+    from claimos.models import VisionJobImage
 
     none_set = VisionJobImage(job_id="j", evidence_file_id="ef1")
     assert none_set.region_bbox is None

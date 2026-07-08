@@ -2,8 +2,8 @@
 
 import pytest
 
-from cvp.db import SessionLocal
-from cvp.models import Category, EvidenceFile, Item, ItemGroup, Matter
+from claimos.db import SessionLocal
+from claimos.models import Category, EvidenceFile, Item, ItemGroup, Matter
 
 
 @pytest.fixture

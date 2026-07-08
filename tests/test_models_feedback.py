@@ -6,11 +6,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_auth  # noqa: F401 — ensures users/groups tables exist
-import cvp.models_feedback  # noqa: F401
-from cvp.models import Base
-from cvp.models_auth import Group, User
-from cvp.models_feedback import Feedback, FeedbackComment
+import claimos.models_auth  # noqa: F401 — ensures users/groups tables exist
+import claimos.models_feedback  # noqa: F401
+from claimos.models import Base
+from claimos.models_auth import Group, User
+from claimos.models_feedback import Feedback, FeedbackComment
 
 
 @pytest.fixture

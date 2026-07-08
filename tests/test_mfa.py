@@ -2,7 +2,7 @@
 
 import pyotp
 
-from cvp.services.mfa import (
+from claimos.services.mfa import (
     decrypt_secret,
     encrypt_secret,
     generate_provisioning_uri,

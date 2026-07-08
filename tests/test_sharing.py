@@ -6,12 +6,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.dependencies as deps
-import cvp.models_access  # ensure matter_access table is registered  # noqa: F401
-import cvp.models_auth  # ensure auth tables are registered on Base.metadata  # noqa: F401
-from cvp.auth import hash_password
-from cvp.models import Base, Matter
-from cvp.models_auth import Group, User
+import claimos.dependencies as deps
+import claimos.models_access  # ensure matter_access table is registered  # noqa: F401
+import claimos.models_auth  # ensure auth tables are registered on Base.metadata  # noqa: F401
+from claimos.auth import hash_password
+from claimos.models import Base, Matter
+from claimos.models_auth import Group, User
 
 
 @pytest.fixture
@@ -59,9 +59,9 @@ def seeded_share_db(db_session):
 
 @pytest.fixture
 def client(seeded_share_db, monkeypatch):
-    from cvp.db import get_db
-    from cvp.dependencies import CurrentUser, require_active_user
-    from cvp.main import app
+    from claimos.db import get_db
+    from claimos.dependencies import CurrentUser, require_active_user
+    from claimos.main import app
 
     def override_get_db():
         try:
@@ -140,14 +140,14 @@ def test_revoke_grant_not_found(client):
 
 def test_grant_cross_tenant_blocked(seeded_share_db, monkeypatch):
     """External admin cannot grant access to a user in a different group."""
-    import cvp.dependencies as deps_local
+    import claimos.dependencies as deps_local
 
     # Add an external_admin user in the "eg" group
-    from cvp.auth import hash_password as hp
-    from cvp.db import get_db
-    from cvp.dependencies import CurrentUser, require_active_user
-    from cvp.main import app
-    from cvp.models_auth import User as U
+    from claimos.auth import hash_password as hp
+    from claimos.db import get_db
+    from claimos.dependencies import CurrentUser, require_active_user
+    from claimos.main import app
+    from claimos.models_auth import User as U
 
     ea = U(
         id="ea",

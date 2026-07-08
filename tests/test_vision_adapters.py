@@ -1,5 +1,5 @@
 # tests/test_vision_adapters.py
-from cvp.services.vision_adapters import (
+from claimos.services.vision_adapters import (
     bbox_prompt,
     gemini_normalized_1000,
     none_adapter,

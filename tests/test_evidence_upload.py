@@ -9,12 +9,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_vision  # noqa: F401
-from cvp.db import get_db
-from cvp.dependencies import CurrentUser
-from cvp.main import app
-from cvp.models import Base, EvidenceFile, Matter
-from cvp.services import runtime_config
+import claimos.models_vision  # noqa: F401
+from claimos.db import get_db
+from claimos.dependencies import CurrentUser
+from claimos.main import app
+from claimos.models import Base, EvidenceFile, Matter
+from claimos.services import runtime_config
 
 CONTRIB_ID = "contrib-1"
 MATTER_ID = "matter-up"
@@ -37,7 +37,7 @@ def db_session():
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     s = Session()
-    from cvp.models_auth import User
+    from claimos.models_auth import User
 
     s.add(User(id=CONTRIB_ID, email="c@test.com", display_name="C", system_role="internal_user"))
     s.add(Matter(id=MATTER_ID, policyholder_name="Owner", loss_type="total_loss"))
@@ -50,7 +50,7 @@ def db_session():
 def client_contrib(db_session, monkeypatch, tmp_path):
     import inspect
 
-    import cvp.routers.evidence as ev_router
+    import claimos.routers.evidence as ev_router
 
     async def mock_contrib():
         return CurrentUser(
@@ -69,10 +69,10 @@ def client_contrib(db_session, monkeypatch, tmp_path):
     app.dependency_overrides[get_db] = override_get_db
 
     monkeypatch.setattr(
-        "cvp.routers.evidence.settings",
+        "claimos.routers.evidence.settings",
         type("S", (), {"upload_dir": str(tmp_path), "crop_dir": str(tmp_path)})(),
     )
-    monkeypatch.setattr("cvp.routers.evidence.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.routers.evidence.SessionLocal", lambda: db_session)
 
     with TestClient(app) as c:
         yield c

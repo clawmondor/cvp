@@ -2,8 +2,8 @@
 
 import json
 
-from cvp.services.vision import _parse_response
-from cvp.services.vision_prompts import SCAN_PROMPT_VERSION, build_scan_prompt
+from claimos.services.vision import _parse_response
+from claimos.services.vision_prompts import SCAN_PROMPT_VERSION, build_scan_prompt
 
 
 def test_prompt_version_bumped() -> None:

@@ -1,11 +1,11 @@
-"""Unit tests for cvp.services.item_groups.find_or_create."""
+"""Unit tests for claimos.services.item_groups.find_or_create."""
 
 import pytest
 from sqlalchemy import func, select
 
-from cvp.db import SessionLocal
-from cvp.models import ItemGroup, Matter
-from cvp.services.item_groups import find_or_create
+from claimos.db import SessionLocal
+from claimos.models import ItemGroup, Matter
+from claimos.services.item_groups import find_or_create
 
 
 @pytest.fixture

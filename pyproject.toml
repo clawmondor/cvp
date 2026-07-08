@@ -1,7 +1,7 @@
 [project]
-name = "cvp"
+name = "claimos"
 version = "0.1.0"
-description = "Contents Valuation Prototype — internal ops tool"
+description = "ClaimOS — contents claim valuation platform"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
@@ -31,17 +31,17 @@ dev = [
 ]
 
 [project.scripts]
-dev = "cvp.main:run_dev"
-seed = "cvp.seed:main"
-seed-auth = "cvp.seed_auth:main"
-bootstrap-admin = "cvp.bootstrap_admin:main"
+dev = "claimos.main:run_dev"
+seed = "claimos.seed:main"
+seed-auth = "claimos.seed_auth:main"
+bootstrap-admin = "claimos.bootstrap_admin:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatchling.build.targets.wheel]
-packages = ["src/cvp"]
+packages = ["src/claimos"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -54,6 +54,6 @@ exclude = ["migrations/"]
 select = ["E", "F", "I"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/cvp/services/vision_prompts.py" = ["E501"]
+"src/claimos/services/vision_prompts.py" = ["E501"]
 # Prompt-text fragments for each adapter are long, formatted strings.
-"src/cvp/services/vision_adapters.py" = ["E501"]
+"src/claimos/services/vision_adapters.py" = ["E501"]

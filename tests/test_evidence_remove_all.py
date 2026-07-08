@@ -9,11 +9,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_vision  # noqa: F401
-from cvp.db import get_db
-from cvp.dependencies import CurrentUser
-from cvp.main import app
-from cvp.models import Base, EvidenceFile, Matter
+import claimos.models_vision  # noqa: F401
+from claimos.db import get_db
+from claimos.dependencies import CurrentUser
+from claimos.main import app
+from claimos.models import Base, EvidenceFile, Matter
 
 MANAGER_ID = "mgr-1"
 MATTER_ID = "matter-rem"
@@ -29,7 +29,7 @@ def db_session():
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     db = Session()
-    from cvp.models_auth import User
+    from claimos.models_auth import User
 
     db.add(
         User(id=MANAGER_ID, email="mgr@test.com", display_name="Mgr", system_role="internal_user")
@@ -44,7 +44,7 @@ def db_session():
 def client_manager(db_session):
     import inspect
 
-    import cvp.routers.evidence as ev_router
+    import claimos.routers.evidence as ev_router
 
     async def mock_manager():
         return CurrentUser(
@@ -86,10 +86,10 @@ def test_remove_all_images_deletes_images_leaves_pdfs(
     client_manager, db_session, monkeypatch, tmp_path
 ):
     monkeypatch.setattr(
-        "cvp.routers.evidence.settings",
+        "claimos.routers.evidence.settings",
         type("S", (), {"upload_dir": str(tmp_path), "crop_dir": str(tmp_path)})(),
     )
-    monkeypatch.setattr("cvp.routers.evidence.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.routers.evidence.SessionLocal", lambda: db_session)
 
     img1 = str(tmp_path / "a.jpg")
     img2 = str(tmp_path / "b.jpg")
@@ -124,10 +124,10 @@ def test_remove_all_images_rejects_mismatched_count(
     client_manager, db_session, monkeypatch, tmp_path
 ):
     monkeypatch.setattr(
-        "cvp.routers.evidence.settings",
+        "claimos.routers.evidence.settings",
         type("S", (), {"upload_dir": str(tmp_path), "crop_dir": str(tmp_path)})(),
     )
-    monkeypatch.setattr("cvp.routers.evidence.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.routers.evidence.SessionLocal", lambda: db_session)
 
     img1 = str(tmp_path / "c.jpg")
     _add_image(db_session, MATTER_ID, img1)

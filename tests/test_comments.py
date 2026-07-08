@@ -1,6 +1,6 @@
 """Tests for comments model and endpoints."""
 
-from cvp.models_comments import Comment
+from claimos.models_comments import Comment
 
 
 def test_comment_model_fields():

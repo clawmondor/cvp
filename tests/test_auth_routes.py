@@ -9,11 +9,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_auth  # ensure auth tables are registered on Base.metadata  # noqa: F401
-from cvp.auth import hash_password
-from cvp.config import settings
-from cvp.models import Base
-from cvp.models_auth import Group, User
+import claimos.models_auth  # ensure auth tables are registered on Base.metadata  # noqa: F401
+from claimos.auth import hash_password
+from claimos.config import settings
+from claimos.models import Base
+from claimos.models_auth import Group, User
 
 
 @pytest.fixture
@@ -50,8 +50,8 @@ def seeded_db(db_session):
 
 @pytest.fixture
 def client(seeded_db):
-    from cvp.db import get_db
-    from cvp.main import app
+    from claimos.db import get_db
+    from claimos.main import app
 
     def override_get_db():
         try:
@@ -66,7 +66,7 @@ def client(seeded_db):
 
 
 def test_splash_page(client, monkeypatch):
-    from cvp.config import settings
+    from claimos.config import settings
 
     monkeypatch.setattr(settings, "auto_login_user_id", "")
     resp = client.get("/", follow_redirects=False)
@@ -123,9 +123,9 @@ def mfa_client(db_session):
     """Client with a user that has MFA enabled. Patches jwt_secret and mfa_encryption_key."""
     from unittest.mock import patch
 
-    from cvp.db import get_db
-    from cvp.main import app
-    from cvp.services.mfa import encrypt_secret
+    from claimos.db import get_db
+    from claimos.main import app
+    from claimos.services.mfa import encrypt_secret
 
     group = Group(id="g2", name="MFA Group", kind="internal")
     db_session.add(group)

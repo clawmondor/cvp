@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from cvp.main import app
+from claimos.main import app
 
 
 def test_healthz_returns_200():

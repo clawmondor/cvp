@@ -8,8 +8,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_vision  # noqa: F401
-from cvp.models import Base, Category, EvidenceFile, Item, ItemCrop, Matter
+import claimos.models_vision  # noqa: F401
+from claimos.models import Base, Category, EvidenceFile, Item, ItemCrop, Matter
 
 
 @pytest.fixture
@@ -41,7 +41,7 @@ def _make_jpeg(path):
 
 
 def test_delete_removes_evidence_file_from_disk(db, matter, tmp_path):
-    from cvp.services.evidence_cleanup import delete_evidence_file
+    from claimos.services.evidence_cleanup import delete_evidence_file
 
     img = tmp_path / "photo.jpg"
     _make_jpeg(img)
@@ -63,7 +63,7 @@ def test_delete_removes_evidence_file_from_disk(db, matter, tmp_path):
 
 
 def test_delete_cascades_to_orphan_item_and_crop(db, matter, tmp_path):
-    from cvp.services.evidence_cleanup import delete_evidence_file
+    from claimos.services.evidence_cleanup import delete_evidence_file
 
     img = tmp_path / "photo2.jpg"
     _make_jpeg(img)
@@ -120,7 +120,7 @@ def test_delete_cascades_to_orphan_item_and_crop(db, matter, tmp_path):
 
 def test_delete_keeps_item_with_crop_from_other_file(db, matter, tmp_path):
 
-    from cvp.services.evidence_cleanup import delete_evidence_file
+    from claimos.services.evidence_cleanup import delete_evidence_file
 
     img1 = tmp_path / "photo_a.jpg"
     img2 = tmp_path / "photo_b.jpg"

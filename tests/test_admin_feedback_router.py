@@ -6,12 +6,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_auth  # noqa: F401
-import cvp.models_feedback  # noqa: F401
-from cvp.dependencies import CurrentUser, require_active_user, require_system_admin
-from cvp.models import Base
-from cvp.models_auth import Group, User
-from cvp.models_feedback import Feedback
+import claimos.models_auth  # noqa: F401
+import claimos.models_feedback  # noqa: F401
+from claimos.dependencies import CurrentUser, require_active_user, require_system_admin
+from claimos.models import Base
+from claimos.models_auth import Group, User
+from claimos.models_feedback import Feedback
 
 
 def _session():
@@ -26,8 +26,8 @@ def _session():
 
 @pytest.fixture
 def admin_client():
-    from cvp.db import get_db
-    from cvp.main import app
+    from claimos.db import get_db
+    from claimos.main import app
 
     db = _session()
     g = Group(id="g1", name="Internal", kind="internal")
@@ -77,8 +77,8 @@ def admin_client():
 
 @pytest.fixture
 def nonadmin_client():
-    from cvp.db import get_db
-    from cvp.main import app
+    from claimos.db import get_db
+    from claimos.main import app
 
     db = _session()
     g = Group(id="g1", name="Internal", kind="internal")
@@ -284,8 +284,8 @@ def test_admin_submit_rejects_html_body(admin_client):
 def test_admin_submit_as_self_without_group_uses_internal_group():
     """system_admin with no group_id can submit on behalf of themselves
     and the feedback snapshots the internal group."""
-    from cvp.db import get_db
-    from cvp.main import app
+    from claimos.db import get_db
+    from claimos.main import app
 
     db = _session()
     internal = Group(id="g_internal", name="Internal", kind="internal")
@@ -376,7 +376,7 @@ def test_change_status_also_stamps_admin_cursor(admin_client):
 
 
 def test_count_admin_unread_drops_after_admin_views(admin_client):
-    from cvp.routers.feedback import count_admin_unread
+    from claimos.routers.feedback import count_admin_unread
 
     client, db = admin_client
     db.add(Feedback(id="fA4", author_user_id="u1", author_group_id="g1", page_url="/x", body="b"))

@@ -8,8 +8,8 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from cvp.models import Base, Category, Item, Matter, Room
-from cvp.services.csv_export import CSV_HEADERS, _dollars, generate_csv
+from claimos.models import Base, Category, Item, Matter, Room
+from claimos.services.csv_export import CSV_HEADERS, _dollars, generate_csv
 
 
 @pytest.fixture()
@@ -23,8 +23,8 @@ def db_session(tmp_path):
 @pytest.fixture()
 def matter_with_items(db_session, tmp_path, monkeypatch):
     """Seed one matter, one room, one category, and a mix of items."""
-    monkeypatch.setattr("cvp.config.settings.export_dir", str(tmp_path / "exports"))
-    monkeypatch.setattr("cvp.services.csv_export.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.config.settings.export_dir", str(tmp_path / "exports"))
+    monkeypatch.setattr("claimos.services.csv_export.SessionLocal", lambda: db_session)
 
     cat = Category(
         id=21, name="Electronics, TVs and displays", useful_life_years=7, acv_floor_pct=0.20

@@ -9,10 +9,10 @@ from PIL import Image
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-import cvp.dependencies as deps
-from cvp.db import get_db
-from cvp.dependencies import CurrentUser, require_active_user
-from cvp.models import Base, Category, EvidenceFile, Item, ItemCrop, Matter
+import claimos.dependencies as deps
+from claimos.db import get_db
+from claimos.dependencies import CurrentUser, require_active_user
+from claimos.models import Base, Category, EvidenceFile, Item, ItemCrop, Matter
 
 
 @pytest.fixture(scope="module")
@@ -69,7 +69,7 @@ def db_engine(tmp_base):
 
 @pytest.fixture(scope="module")
 def client(tmp_base, db_engine):
-    import cvp.routers.crops as crops_mod
+    import claimos.routers.crops as crops_mod
 
     Session = sessionmaker(bind=db_engine)
 
@@ -97,8 +97,8 @@ def client(tmp_base, db_engine):
 
     with (
         patch.object(crops_mod, "SessionLocal", Session),
-        patch("cvp.config.settings.upload_dir", str(tmp_base / "uploads")),
-        patch("cvp.config.settings.crop_dir", str(tmp_base / "crops")),
+        patch("claimos.config.settings.upload_dir", str(tmp_base / "uploads")),
+        patch("claimos.config.settings.crop_dir", str(tmp_base / "crops")),
         patch.object(deps, "_check_matter_access", return_value=True),
     ):
         with TestClient(app) as c:

@@ -1,6 +1,6 @@
 """The full-scan progress fragment must expose a completion contract for app.js."""
 
-from cvp.routers.vision import templates
+from claimos.routers.vision import templates
 
 
 def _render(**kw):

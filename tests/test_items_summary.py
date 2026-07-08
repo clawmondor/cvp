@@ -8,14 +8,14 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import cvp.models_vision  # noqa: F401
-from cvp.db import get_db
-from cvp.dependencies import CurrentUser
-from cvp.main import app
-from cvp.models import Base, Category, Item, Matter
-from cvp.models_auth import User
-from cvp.routers.items import compute_items_totals
-from cvp.services import access_cache
+import claimos.models_vision  # noqa: F401
+from claimos.db import get_db
+from claimos.dependencies import CurrentUser
+from claimos.main import app
+from claimos.models import Base, Category, Item, Matter
+from claimos.models_auth import User
+from claimos.routers.items import compute_items_totals
+from claimos.services import access_cache
 
 MATTER_ID = "m-totals"
 
@@ -129,7 +129,7 @@ def client(db_session, monkeypatch):
     )
     db_session.commit()
 
-    import cvp.routers.items as items_router
+    import claimos.routers.items as items_router
 
     async def mock_viewer():
         return CurrentUser(
@@ -146,7 +146,7 @@ def client(db_session, monkeypatch):
     dep = inspect.signature(items_router.get_items_summary).parameters["user"].default.dependency
     app.dependency_overrides[dep] = mock_viewer
     app.dependency_overrides[get_db] = override_get_db
-    monkeypatch.setattr("cvp.routers.items.SessionLocal", lambda: db_session)
+    monkeypatch.setattr("claimos.routers.items.SessionLocal", lambda: db_session)
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()

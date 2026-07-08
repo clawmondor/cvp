@@ -5,8 +5,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from cvp.models import Base, EvidenceFile, Matter
-from cvp.services.pagination import paginate_by_cursor
+from claimos.models import Base, EvidenceFile, Matter
+from claimos.services.pagination import paginate_by_cursor
 
 
 @pytest.fixture

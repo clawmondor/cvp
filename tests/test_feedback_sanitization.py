@@ -1,6 +1,6 @@
 """Tests for feedback-router sanitization helpers."""
 
-from cvp.routers.feedback import _clean_page_url
+from claimos.routers.feedback import _clean_page_url
 
 
 def test_accepts_simple_path():

@@ -6,8 +6,8 @@ from alembic.config import Config as AlembicConfig
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from cvp.models import Base, Category
-from cvp.seed import seed_categories
+from claimos.models import Base, Category
+from claimos.seed import seed_categories
 
 
 @pytest.fixture
@@ -57,7 +57,7 @@ def test_seed_is_idempotent_on_double_run(
 
     # Patch settings so that migrations/env.py picks up the test URL when it
     # reads `settings.database_url` at runtime.
-    import cvp.config as config_module
+    import claimos.config as config_module
 
     monkeypatch.setattr(config_module.settings, "database_url", db_url)
 
