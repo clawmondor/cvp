@@ -7,10 +7,10 @@ function initTabs() {
     function activate(name) {
         links.forEach(link => {
             const active = link.dataset.tab === name;
-            link.classList.toggle('border-indigo-600', active);
-            link.classList.toggle('text-indigo-600', active);
+            link.classList.toggle('border-primary', active);
+            link.classList.toggle('text-primary', active);
             link.classList.toggle('border-transparent', !active);
-            link.classList.toggle('text-gray-500', !active);
+            link.classList.toggle('text-neutral-500', !active);
         });
         panels.forEach(panel => {
             panel.classList.toggle('hidden', panel.dataset.panel !== name);
@@ -83,7 +83,7 @@ function showCropPanel(itemId, cropId) {
   if (!panel) return;
   panel.querySelectorAll('[id^="crop-panel-"]').forEach(el => el.classList.add('hidden'));
   panel.querySelectorAll('[id^="crop-tab-"]').forEach(el => {
-    el.classList.remove('border-violet-500');
+    el.classList.remove('border-primary-light');
     el.classList.add('border-transparent');
   });
   const target = document.getElementById('crop-panel-' + cropId);
@@ -91,7 +91,7 @@ function showCropPanel(itemId, cropId) {
   const tab = document.getElementById('crop-tab-' + cropId);
   if (tab) {
     tab.classList.remove('border-transparent');
-    tab.classList.add('border-violet-500');
+    tab.classList.add('border-primary-light');
   }
 }
 
@@ -101,7 +101,7 @@ function showEditCrop(itemId, cropId) {
     el.classList.add('hidden');
   });
   document.querySelectorAll('[id^="edit-crop-tab-"]').forEach(function(el) {
-    el.classList.remove('border-violet-500');
+    el.classList.remove('border-primary-light');
     el.classList.add('border-transparent');
   });
   var panel = document.getElementById('edit-crop-panel-' + cropId);
@@ -109,7 +109,7 @@ function showEditCrop(itemId, cropId) {
   var tab = document.getElementById('edit-crop-tab-' + cropId);
   if (tab) {
     tab.classList.remove('border-transparent');
-    tab.classList.add('border-violet-500');
+    tab.classList.add('border-primary-light');
   }
 }
 
@@ -193,10 +193,10 @@ function initEvidenceUpload() {
     }
 
     function stateClass(state) {
-        if (state === 'done') return 'text-green-600';
-        if (state === 'failed') return 'text-red-600 cursor-pointer underline';
-        if (state === 'uploading') return 'text-blue-600';
-        return 'text-gray-400';
+        if (state === 'done') return 'text-success-emphasis';
+        if (state === 'failed') return 'text-error cursor-pointer underline';
+        if (state === 'uploading') return 'text-primary';
+        return 'text-neutral-400';
     }
 
     function setRowState(row, state, message) {
@@ -280,14 +280,14 @@ function initEvidenceUpload() {
     });
     zone.addEventListener('dragover', function (e) {
         e.preventDefault();
-        zone.classList.add('border-indigo-500', 'bg-indigo-50');
+        zone.classList.add('border-primary-light', 'bg-primary-subtle');
     });
     zone.addEventListener('dragleave', function () {
-        zone.classList.remove('border-indigo-500', 'bg-indigo-50');
+        zone.classList.remove('border-primary-light', 'bg-primary-subtle');
     });
     zone.addEventListener('drop', function (e) {
         e.preventDefault();
-        zone.classList.remove('border-indigo-500', 'bg-indigo-50');
+        zone.classList.remove('border-primary-light', 'bg-primary-subtle');
         enqueueDrop(e.dataTransfer.files);
     });
 
@@ -318,17 +318,17 @@ function startRename(roomId) {
     input.value = currentName;
     input.required = true;
     input.maxLength = 100;
-    input.className = 'rounded-sm border border-indigo-400 px-2 py-0.5 text-sm focus:outline-hidden focus:ring-1 focus:ring-indigo-500 flex-1';
+    input.className = 'rounded-sm border border-primary-light px-2 py-0.5 text-sm focus:outline-hidden focus:ring-1 focus:ring-primary-light flex-1';
 
     var save = document.createElement('button');
     save.type = 'submit';
     save.textContent = 'Save';
-    save.className = 'rounded-sm px-2 py-0.5 text-xs bg-indigo-600 text-white hover:bg-indigo-500';
+    save.className = 'rounded-sm px-2 py-0.5 text-xs bg-primary text-white hover:bg-primary-light';
 
     var cancel = document.createElement('button');
     cancel.type = 'button';
     cancel.textContent = 'Cancel';
-    cancel.className = 'rounded-sm px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100';
+    cancel.className = 'rounded-sm px-2 py-0.5 text-xs text-neutral-500 hover:bg-neutral-100';
     cancel.addEventListener('click', function () { location.reload(); });
 
     form.appendChild(input);
@@ -444,8 +444,8 @@ document.addEventListener('htmx:afterRequest', function (e) {
     if (!btn) return;
     btn.disabled = true;
     btn.textContent = 'Searched';
-    btn.classList.remove('bg-violet-600', 'hover:bg-violet-700', 'transition');
-    btn.classList.add('bg-gray-400', 'cursor-not-allowed');
+    btn.classList.remove('bg-primary', 'hover:bg-primary-strong', 'transition');
+    btn.classList.add('bg-neutral-400', 'cursor-not-allowed');
 });
 
 // ── Bulk evidence actions ────────────────────────────────────────────────

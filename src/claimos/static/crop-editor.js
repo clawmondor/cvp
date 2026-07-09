@@ -250,14 +250,14 @@
 
     function updateSidebar() {
       if (selectedIdx === null) {
-        sidebar.innerHTML = '<p class="text-xs text-gray-400">Click a box to select it.</p>';
+        sidebar.innerHTML = '<p class="text-xs text-neutral-400">Click a box to select it.</p>';
         return;
       }
       var box = boxes[selectedIdx];
       sidebar.innerHTML = '';
 
       var title = document.createElement('p');
-      title.className = 'text-xs font-semibold text-gray-700 mb-2';
+      title.className = 'text-xs font-semibold text-neutral-700 mb-2';
       title.textContent = '#' + (selectedIdx + 1) + ' ' + box.description;
       sidebar.appendChild(title);
 
@@ -265,7 +265,7 @@
       grid.className = 'grid grid-cols-2 gap-1 text-xs';
       [['Left', 'left', IMG_W], ['Upper', 'upper', IMG_H], ['Right', 'right', IMG_W], ['Lower', 'lower', IMG_H]].forEach(function (f) {
         var lbl = document.createElement('label');
-        lbl.className = 'text-gray-500 self-center';
+        lbl.className = 'text-neutral-500 self-center';
         lbl.textContent = f[0];
         var inp = document.createElement('input');
         inp.id = 'ce-' + f[1] + '-' + EF_ID;
@@ -281,11 +281,11 @@
 
       var errEl = document.createElement('p');
       errEl.id = 'ce-err-' + EF_ID;
-      errEl.className = 'mt-1 text-xs text-red-500 hidden';
+      errEl.className = 'mt-1 text-xs text-error hidden';
       sidebar.appendChild(errEl);
 
       var resetBtn = document.createElement('button');
-      resetBtn.className = 'mt-2 text-xs text-indigo-500 hover:underline';
+      resetBtn.className = 'mt-2 text-xs text-primary-light hover:underline';
       resetBtn.textContent = 'Reset to Claude bbox';
       resetBtn.addEventListener('click', function () {
         window['ceReset_' + EF_ID.replace(/-/g, '_')]();
@@ -390,7 +390,7 @@
 
     drawToggleBtn.addEventListener('click', function () {
       drawMode = !drawMode;
-      drawToggleBtn.classList.toggle('bg-emerald-600', drawMode);
+      drawToggleBtn.classList.toggle('bg-success-emphasis', drawMode);
       drawToggleBtn.classList.toggle('text-white', drawMode);
       drawToggleBtn.textContent = drawMode ? 'Drawing… click + drag a box' : 'Draw scan region';
       canvas.style.cursor = drawMode ? 'crosshair' : '';
