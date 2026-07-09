@@ -8,27 +8,26 @@ description: >-
   mockup-driven slice (see CLAUDE.md) — do not introduce new colors, fonts, or
   radii here without that effort.
 colors:
-  # Interaction / brand (Tailwind indigo)
+  # Interaction / brand (Tailwind indigo) — names match theme.css `@theme`
   primary: "#4f46e5"          # indigo-600 — primary buttons, active states, links
-  primary-hover: "#6366f1"    # indigo-500 — hover, focus rings, active borders
-  primary-active: "#4338ca"   # indigo-700 — pressed
+  primary-light: "#6366f1"    # indigo-500 — hover, focus rings, active borders
+  primary-strong: "#4338ca"   # indigo-700 — pressed
   primary-subtle: "#eef2ff"   # indigo-50  — tinted backgrounds
   on-primary: "#ffffff"
   # primary tints
   primary-tint: "#e0e7ff"        # indigo-100
   primary-tint-strong: "#c7d2fe" # indigo-200
-  # Surfaces & neutrals (Tailwind gray)
+  # Surfaces & neutral ramp (Tailwind gray)
   surface: "#ffffff"          # cards, nav, panels
-  surface-muted: "#f9fafb"    # gray-50  — page background
-  surface-sunken: "#f3f4f6"   # gray-100 — inset / hover fills
-  border: "#e5e7eb"           # gray-200 — default hairlines, dividers
-  border-strong: "#d1d5db"    # gray-300 — input borders
-  text: "#111827"             # gray-900 — headings, primary text
-  text-secondary: "#4b5563"   # gray-600 — secondary text
-  text-muted: "#6b7280"       # gray-500 — metadata, captions (most common)
-  text-subtle: "#9ca3af"      # gray-400 — placeholders, disabled
-  # neutral — add the missing body-text tier
-  text-strong-alt: "#374151"     # gray-700 (secondary heading / dense body text)
+  neutral-50: "#f9fafb"       # gray-50  — page background
+  neutral-100: "#f3f4f6"      # gray-100 — inset / hover fills
+  neutral-200: "#e5e7eb"      # gray-200 — default hairlines, dividers
+  neutral-300: "#d1d5db"      # gray-300 — input borders
+  neutral-400: "#9ca3af"      # gray-400 — placeholders, disabled
+  neutral-500: "#6b7280"      # gray-500 — metadata, captions (most common)
+  neutral-600: "#4b5563"      # gray-600 — secondary text
+  neutral-700: "#374151"      # gray-700 — secondary heading / dense body text
+  neutral-900: "#111827"      # gray-900 — headings, primary text
   # Semantic (Tailwind green / red / amber)
   success: "#15803d"          # green-700
   success-surface: "#f0fdf4"  # green-50
@@ -38,7 +37,7 @@ colors:
   # success ramp
   success-surface-strong: "#dcfce7" # green-100
   success-border: "#bbf7d0"         # green-200
-  success-icon: "#16a34a"           # green-600 (success icons / hover)
+  success-emphasis: "#16a34a"       # green-600 (success icons / hover)
   success-strong: "#166534"         # green-800
   # error ramp
   error-surface-strong: "#fee2e2"   # red-100
@@ -49,16 +48,16 @@ colors:
   warning-surface: "#fffbeb"        # amber-50  (replaces prior yellow-100 value)
   warning-surface-strong: "#fef3c7" # amber-100
   warning-border: "#fde68a"         # amber-200
-  warning-icon: "#d97706"           # amber-600
+  warning-emphasis: "#d97706"       # amber-600
   warning-strong: "#92400e"         # amber-800
   # Admin chrome (dark surface — Tailwind slate)
-  admin-surface: "#1e293b"        # slate-800 — admin sidebar background
-  admin-surface-hover: "#334155"  # slate-700 — nav item hover
-  admin-on-surface: "#cbd5e1"     # slate-300 — nav item text
-  admin-on-surface-strong: "#ffffff"
+  admin-800: "#1e293b"        # slate-800 — admin sidebar background
+  admin-700: "#334155"        # slate-700 — nav item hover
+  admin-300: "#cbd5e1"        # slate-300 — nav item text
+  on-admin-surface-strong: "#ffffff"
   # admin chrome extra steps
-  admin-on-surface-dim: "#94a3b8"   # slate-400
-  admin-surface-light: "#475569"    # slate-600
+  admin-400: "#94a3b8"        # slate-400
+  admin-600: "#475569"        # slate-600
 typography:
   # System sans stack (Tailwind default — no web font is loaded)
   display:
@@ -135,26 +134,26 @@ components:
     rounded: "{rounded.md}"
     padding: 6px 12px
   button-primary-hover:
-    backgroundColor: "{colors.primary-hover}"
+    backgroundColor: "{colors.primary-light}"
   button-secondary:
     # Ghost / text button — secondary actions are text links, not filled
     backgroundColor: transparent
-    textColor: "{colors.text-muted}"
+    textColor: "{colors.neutral-500}"
     typography: "{typography.body-sm}"
     padding: 6px 12px
   button-secondary-hover:
-    textColor: "{colors.text}"
+    textColor: "{colors.neutral-900}"
   input:
     backgroundColor: "{colors.surface}"
-    textColor: "{colors.text}"
-    borderColor: "{colors.border-strong}"
+    textColor: "{colors.neutral-900}"
+    borderColor: "{colors.neutral-300}"
     rounded: "{rounded.md}"
     padding: 8px 12px
   input-focus:
-    borderColor: "{colors.primary-hover}"
+    borderColor: "{colors.primary-light}"
   card:
     backgroundColor: "{colors.surface}"
-    borderColor: "{colors.border}"
+    borderColor: "{colors.neutral-200}"
     rounded: "{rounded.lg}"
     padding: 16px
   badge-success:
@@ -177,16 +176,16 @@ components:
     padding: 2px 8px
   nav:
     backgroundColor: "{colors.surface}"
-    borderColor: "{colors.border}"
-    textColor: "{colors.text}"
+    borderColor: "{colors.neutral-200}"
+    textColor: "{colors.neutral-900}"
     height: 56px
   admin-sidebar:
-    backgroundColor: "{colors.admin-surface}"
-    textColor: "{colors.admin-on-surface}"
+    backgroundColor: "{colors.admin-800}"
+    textColor: "{colors.admin-300}"
     width: 224px
   admin-sidebar-item-hover:
-    backgroundColor: "{colors.admin-surface-hover}"
-    textColor: "{colors.admin-on-surface-strong}"
+    backgroundColor: "{colors.admin-700}"
+    textColor: "{colors.on-admin-surface-strong}"
 ---
 
 # ClaimOS Design System
@@ -212,7 +211,7 @@ There are **three surfaces**, and they are deliberately different:
   ground. This is what the `colors`/`typography`/`components` primary tokens
   describe.
 - **Admin chrome (dark)** — the admin area uses a dark `slate` sidebar
-  (`admin-surface` tokens) with light text. It is a distinct navigational shell,
+  (`admin-*` tokens) with light text. It is a distinct navigational shell,
   not a theme variant of the app UI.
 - **Print report (PDF)** — the WeasyPrint-rendered report is its own typographic
   world: **Arial/Helvetica** body and **Courier New** for every monetary figure,
@@ -224,30 +223,39 @@ There are **three surfaces**, and they are deliberately different:
 The app palette is a single **indigo** interaction color over a **warm-neutral
 gray** foundation, plus three semantic accents.
 
+`src/claimos/styles/theme.css` `@theme` is the **structural source of
+truth** for these color tokens — it defines the closed token set that Tailwind
+compiles into `app.css`. This document mirrors those same tokens (names and
+hex values) for humans; if the two ever disagree, `theme.css` wins and this
+file should be updated to match.
+
 - **Primary (`#4f46e5`, indigo-600):** the one interaction color — primary
-  buttons, links, active states. Hover lifts to indigo-500, pressed drops to
-  indigo-700, `primary-subtle` (indigo-50) tints selected backgrounds, and
-  `primary-tint`/`primary-tint-strong` (indigo-100/200) round out the tint
-  ramp for larger tinted fills and borders.
-- **Neutrals (gray):** `surface` white for cards and nav; `surface-muted`
-  (gray-50) for the page ground; `border`/`border-strong` (gray-200/300) for
-  hairlines and inputs; a five-step text ramp from `text` (gray-900) down to
-  `text-subtle` (gray-400), now including `text-strong-alt` (gray-700) for
-  secondary headings and dense body text between `text` and `text-secondary`.
-  `text-muted` (gray-500) is the single most common color in the app —
-  metadata and secondary copy.
+  buttons, links, active states. Hover lifts to `primary-light` (indigo-500),
+  pressed drops to `primary-strong` (indigo-700), `primary-subtle` (indigo-50)
+  tints selected backgrounds, and `primary-tint`/`primary-tint-strong`
+  (indigo-100/200) round out the tint ramp for larger tinted fills and
+  borders.
+- **Neutrals (gray):** `surface` white for cards and nav; a nine-step
+  `neutral-50`…`neutral-900` ramp (gray-50 through gray-900) covers
+  backgrounds, hairlines, and text. `neutral-50`/`neutral-100` are page ground
+  and inset/hover fills; `neutral-200`/`neutral-300` are default hairlines and
+  input borders; `neutral-900` down to `neutral-400` form the text ramp
+  (headings to placeholders/disabled), with `neutral-700` for secondary
+  headings and dense body text and `neutral-500` — the single most common
+  color in the app — for metadata and secondary copy.
 - **Semantics:** `success` green, `error` red, `warning` amber, each with a
   full ramp — a tinted `-surface`, a stronger `-surface-strong`, a `-border`
-  step, and a darker `-strong` (error also has `-strongest`, warning also has
-  `-icon`) — for badges, banners, and borders at different emphasis levels.
-  Warning consolidates onto amber; there is no separate yellow token. There is
-  no emerald, violet, or blue accent in the palette — those fold into primary
-  (indigo) or the green/red/amber semantics above.
-- **Admin surface (slate):** the dark sidebar — `admin-surface` (slate-800)
-  ground, `admin-surface-hover` (slate-700) hover, `admin-on-surface`
-  (slate-300) text going to white when active, plus two extra chrome steps for
-  secondary use: `admin-on-surface-dim` (slate-400) for de-emphasized text and
-  `admin-surface-light` (slate-600) for lighter chrome fills.
+  step, and a darker `-strong` (error also has `-strongest`, success and
+  warning also have `-emphasis`) — for badges, banners, and borders at
+  different emphasis levels. Warning consolidates onto amber; there is no
+  separate yellow token. There is no emerald, violet, or blue accent in the
+  palette — those fold into primary (indigo) or the green/red/amber semantics
+  above.
+- **Admin surface (slate):** the dark sidebar — `admin-800` (slate-800)
+  ground, `admin-700` (slate-700) hover, `admin-300` (slate-300) text going to
+  white when active, plus two extra chrome steps for secondary use: `admin-400`
+  (slate-400) for de-emphasized text and `admin-600` (slate-600) for lighter
+  chrome fills.
 
 ## Typography
 
@@ -316,7 +324,7 @@ do not mix sharp and heavily-rounded corners.
 - **Do** treat warning as amber (never yellow) and success as green (never
   emerald) — there is no separate info/blue or violet accent; those fold into
   primary.
-- **Do** default to `body-sm` (14px) for controls and copy; use `text-muted`
+- **Do** default to `body-sm` (14px) for controls and copy; use `neutral-500`
   (gray-500) for secondary text.
 - **Don't** use drop shadows to build hierarchy — layer surfaces and borders
   instead (flat design).

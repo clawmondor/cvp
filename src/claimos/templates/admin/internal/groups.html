@@ -1,46 +1,46 @@
 {% extends "admin/base.html" %}
 {% block title %}External Groups{% endblock %}
 {% block sidebar %}
-<a href="/admin/internal/" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
-<a href="/admin/internal/users" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
-<a href="/admin/internal/claims" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
-<a href="/admin/internal/groups" class="block px-3 py-2 rounded-sm text-sm bg-slate-700 text-white">External Groups</a>
+<a href="/admin/internal/" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Dashboard</a>
+<a href="/admin/internal/users" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Users</a>
+<a href="/admin/internal/claims" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Claims</a>
+<a href="/admin/internal/groups" class="block px-3 py-2 rounded-sm text-sm bg-admin-700 text-white">External Groups</a>
 {% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold text-gray-900 mb-6">External Groups</h1>
+<h1 class="text-2xl font-bold text-neutral-900 mb-6">External Groups</h1>
 
-<div class="bg-white shadow-sm rounded-lg mb-6">
-  <div class="px-6 py-4 border-b border-gray-200">
+<div class="bg-surface shadow-sm rounded-lg mb-6">
+  <div class="px-6 py-4 border-b border-neutral-200">
     <h2 class="text-base font-semibold">Create External Group</h2>
   </div>
   <form method="POST" action="/admin/internal/groups" class="px-6 py-4 flex gap-4">
     <div>
-      <label class="block text-sm font-medium text-gray-700">Name</label>
-      <input type="text" name="name" required class="mt-1 border border-gray-300 rounded-sm px-3 py-2 text-sm" />
+      <label class="block text-sm font-medium text-neutral-700">Name</label>
+      <input type="text" name="name" required class="mt-1 border border-neutral-300 rounded-sm px-3 py-2 text-sm" />
     </div>
     <div class="flex items-end">
-      <button type="submit" class="bg-indigo-700 text-white px-4 py-2 rounded-sm text-sm hover:bg-indigo-600">Create Group</button>
+      <button type="submit" class="bg-primary-strong text-white px-4 py-2 rounded-sm text-sm hover:bg-primary">Create Group</button>
     </div>
   </form>
 </div>
 
-<div class="bg-white shadow-sm rounded-lg">
-  <table class="min-w-full divide-y divide-gray-200">
-    <thead class="bg-gray-50">
+<div class="bg-surface shadow-sm rounded-lg">
+  <table class="min-w-full divide-y divide-neutral-200">
+    <thead class="bg-neutral-50">
       <tr>
-        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Name</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
       </tr>
     </thead>
-    <tbody class="bg-white divide-y divide-gray-200">
+    <tbody class="bg-surface divide-y divide-neutral-200">
       {% for g in groups %}
       <tr>
-        <td class="px-6 py-4 text-sm"><a href="/admin/internal/groups/{{ g.id }}" class="text-indigo-700 hover:underline">{{ g.name }}</a></td>
-        <td class="px-6 py-4 text-sm">{% if g.is_active %}<span class="text-green-700">Active</span>{% else %}<span class="text-red-600">Inactive</span>{% endif %}</td>
+        <td class="px-6 py-4 text-sm"><a href="/admin/internal/groups/{{ g.id }}" class="text-primary-strong hover:underline">{{ g.name }}</a></td>
+        <td class="px-6 py-4 text-sm">{% if g.is_active %}<span class="text-success">Active</span>{% else %}<span class="text-error">Inactive</span>{% endif %}</td>
       </tr>
       {% else %}
       <tr>
-        <td colspan="2" class="px-6 py-4 text-sm text-gray-400 italic">No external groups yet.</td>
+        <td colspan="2" class="px-6 py-4 text-sm text-neutral-400 italic">No external groups yet.</td>
       </tr>
       {% endfor %}
     </tbody>

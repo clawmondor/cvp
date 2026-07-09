@@ -6,39 +6,39 @@
         class="space-y-2">
     <textarea name="body" rows="4" required maxlength="{{ feedback_body_max }}"
               placeholder="Tell us what's working, what's not, what you'd like to see…"
-              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-hidden"></textarea>
+              class="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-light focus:outline-hidden"></textarea>
     <input type="hidden" name="page_url" value="" data-feedback-page-url />
     <div class="flex justify-end">
       <button type="submit"
-              class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">
+              class="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-light">
         Send feedback
       </button>
     </div>
   </form>
 
   <div id="feedback-panel-body" class="space-y-2">
-    <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500">My feedback</h4>
+    <h4 class="text-xs font-semibold uppercase tracking-wide text-neutral-500">My feedback</h4>
     {% if not threads %}
-    <p class="text-sm text-gray-500">No feedback yet.</p>
+    <p class="text-sm text-neutral-500">No feedback yet.</p>
     {% else %}
-    <ul class="divide-y divide-gray-100 border border-gray-100 rounded-md">
+    <ul class="divide-y divide-neutral-100 border border-neutral-100 rounded-md">
       {% for fb in threads %}
-      <li class="p-2 hover:bg-gray-50 cursor-pointer"
+      <li class="p-2 hover:bg-neutral-50 cursor-pointer"
           data-feedback-open="{{ fb.id }}">
         <div class="flex items-center justify-between">
           {% set pill = {
-            'pending':   'bg-gray-100 text-gray-900',
-            'reviewing': 'bg-indigo-100 text-indigo-700',
-            'backlog':   'bg-amber-100 text-amber-800',
-            'canceled':  'bg-red-100 text-red-800',
-            'done':      'bg-green-100 text-green-800',
+            'pending':   'bg-neutral-100 text-neutral-900',
+            'reviewing': 'bg-primary-tint text-primary-strong',
+            'backlog':   'bg-warning-surface-strong text-warning-strong',
+            'canceled':  'bg-error-surface-strong text-error-strongest',
+            'done':      'bg-success-surface-strong text-success-strong',
           } %}
           <span class="inline-flex items-center rounded-full {{ pill[fb.status] }} px-2 py-0.5 text-xs font-medium">
             {{ fb.status }}
           </span>
-          <span class="text-xs text-gray-500">{{ fb.created_at.strftime('%b %d') }}</span>
+          <span class="text-xs text-neutral-500">{{ fb.created_at.strftime('%b %d') }}</span>
         </div>
-        <p class="mt-1 text-sm text-gray-900 line-clamp-2">{{ fb.body[:80] }}{% if fb.body|length > 80 %}…{% endif %}</p>
+        <p class="mt-1 text-sm text-neutral-900 line-clamp-2">{{ fb.body[:80] }}{% if fb.body|length > 80 %}…{% endif %}</p>
       </li>
       {% endfor %}
     </ul>

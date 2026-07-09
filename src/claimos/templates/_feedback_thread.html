@@ -1,53 +1,53 @@
 <div class="space-y-4" id="feedback-thread-{{ feedback.id }}">
   {% set pill = {
-    'pending':   'bg-gray-100 text-gray-900',
-    'reviewing': 'bg-indigo-100 text-indigo-700',
-    'backlog':   'bg-amber-100 text-amber-800',
-    'canceled':  'bg-red-100 text-red-800',
-    'done':      'bg-green-100 text-green-800',
+    'pending':   'bg-neutral-100 text-neutral-900',
+    'reviewing': 'bg-primary-tint text-primary-strong',
+    'backlog':   'bg-warning-surface-strong text-warning-strong',
+    'canceled':  'bg-error-surface-strong text-error-strongest',
+    'done':      'bg-success-surface-strong text-success-strong',
   } %}
 
   <div class="flex items-center gap-2">
     <span class="inline-flex items-center rounded-full {{ pill[feedback.status] }} px-2 py-0.5 text-xs font-medium">
       {{ feedback.status }}
     </span>
-    <span class="text-xs text-gray-500">{{ feedback.created_at.strftime('%b %d, %Y %H:%M') }}</span>
-    <span class="text-xs text-gray-400">·</span>
-    <a href="{{ feedback.page_url }}" class="text-xs text-indigo-600 hover:underline" rel="noopener noreferrer">{{ feedback.page_url }}</a>
+    <span class="text-xs text-neutral-500">{{ feedback.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+    <span class="text-xs text-neutral-400">·</span>
+    <a href="{{ feedback.page_url }}" class="text-xs text-primary hover:underline" rel="noopener noreferrer">{{ feedback.page_url }}</a>
   </div>
 
-  <div class="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
-    <p class="font-medium text-gray-900">{{ users[feedback.author_user_id].display_name if feedback.author_user_id in users else 'Unknown' }}</p>
+  <div class="rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm">
+    <p class="font-medium text-neutral-900">{{ users[feedback.author_user_id].display_name if feedback.author_user_id in users else 'Unknown' }}</p>
     {% if feedback.deleted_at %}
       {% if feedback.deleted_by_user_id == feedback.author_user_id %}
-      <p class="italic text-gray-400">Removed by author</p>
+      <p class="italic text-neutral-400">Removed by author</p>
       {% else %}
-      <p class="italic text-gray-400">Removed by admin</p>
+      <p class="italic text-neutral-400">Removed by admin</p>
       {% endif %}
     {% else %}
-    <p class="mt-1 whitespace-pre-wrap text-gray-900">{{ feedback.body }}</p>
+    <p class="mt-1 whitespace-pre-wrap text-neutral-900">{{ feedback.body }}</p>
     {% endif %}
   </div>
 
   <div class="space-y-2">
     {% for c in comments %}
-    <div class="rounded-md border border-gray-100 p-2 text-sm">
+    <div class="rounded-md border border-neutral-100 p-2 text-sm">
       <div class="flex items-center justify-between">
-        <span class="font-medium text-gray-900">{{ users[c.author_user_id].display_name if c.author_user_id in users else 'Unknown' }}</span>
-        <span class="text-xs text-gray-500">{{ c.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+        <span class="font-medium text-neutral-900">{{ users[c.author_user_id].display_name if c.author_user_id in users else 'Unknown' }}</span>
+        <span class="text-xs text-neutral-500">{{ c.created_at.strftime('%b %d, %Y %H:%M') }}</span>
       </div>
       {% if c.deleted_at %}
         {% if c.deleted_by_user_id == c.author_user_id %}
-        <p class="italic text-gray-400">Removed by author</p>
+        <p class="italic text-neutral-400">Removed by author</p>
         {% else %}
-        <p class="italic text-gray-400">Removed by admin</p>
+        <p class="italic text-neutral-400">Removed by admin</p>
         {% endif %}
       {% else %}
-      <p class="mt-1 whitespace-pre-wrap text-gray-900">{{ c.body }}</p>
+      <p class="mt-1 whitespace-pre-wrap text-neutral-900">{{ c.body }}</p>
       {% endif %}
       {% if not c.deleted_at and (c.author_user_id == current_user.id or current_user.system_role == 'system_admin') %}
       <button type="button"
-              class="mt-1 text-xs text-red-600 hover:underline"
+              class="mt-1 text-xs text-error hover:underline"
               data-feedback-delete-comment="{{ c.id }}">Delete</button>
       {% endif %}
     </div>
@@ -60,21 +60,21 @@
         class="flex gap-2">
     <textarea name="body" rows="2" required maxlength="{{ comment_body_max }}"
               placeholder="Reply…"
-              class="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-hidden"></textarea>
+              class="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-light focus:outline-hidden"></textarea>
     <button type="submit"
-            class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">Post</button>
+            class="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-light">Post</button>
   </form>
 
   {% if is_admin_view %}
-  <div class="rounded-md border border-gray-200 p-3">
-    <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Status</h4>
+  <div class="rounded-md border border-neutral-200 p-3">
+    <h4 class="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-2">Status</h4>
     <div class="flex flex-wrap gap-2">
       {% for status in allowed_statuses %}
       <form method="post" action="/admin/system/feedback/{{ feedback.id }}/status" class="inline">
         <input type="hidden" name="status" value="{{ status }}" />
         <button type="submit"
                 class="rounded-md px-3 py-1 text-xs font-medium
-                       {% if status == feedback.status %}bg-indigo-600 text-white{% else %}bg-white border border-gray-300 text-gray-700 hover:bg-gray-50{% endif %}">
+                       {% if status == feedback.status %}bg-primary text-white{% else %}bg-surface border border-neutral-300 text-neutral-700 hover:bg-neutral-50{% endif %}">
           {{ status }}
         </button>
       </form>
@@ -83,7 +83,7 @@
   </div>
   {% if not feedback.deleted_at %}
   <button type="button"
-          class="text-xs text-red-600 hover:underline"
+          class="text-xs text-error hover:underline"
           data-feedback-delete="{{ feedback.id }}">Delete feedback</button>
   {% endif %}
   {% endif %}

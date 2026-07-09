@@ -1,35 +1,35 @@
 {% extends "admin/base.html" %}
 {% block title %}Claims — {{ group.name }}{% endblock %}
 {% block sidebar %}
-<a href="/admin/org/?group_id={{ group.id }}" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
-<a href="/admin/org/users?group_id={{ group.id }}" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
-<a href="/admin/org/claims?group_id={{ group.id }}" class="block px-3 py-2 rounded-sm text-sm bg-green-700 text-white">Claims</a>
-<a href="/admin/org/profile?group_id={{ group.id }}" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Profile</a>
+<a href="/admin/org/?group_id={{ group.id }}" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Dashboard</a>
+<a href="/admin/org/users?group_id={{ group.id }}" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Users</a>
+<a href="/admin/org/claims?group_id={{ group.id }}" class="block px-3 py-2 rounded-sm text-sm bg-success text-white">Claims</a>
+<a href="/admin/org/profile?group_id={{ group.id }}" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Profile</a>
 {% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold text-gray-900 mb-6">Claims — {{ group.name }}</h1>
-<div class="bg-white shadow-sm rounded-lg">
-  <table class="min-w-full divide-y divide-gray-200">
-    <thead class="bg-gray-50">
+<h1 class="text-2xl font-bold text-neutral-900 mb-6">Claims — {{ group.name }}</h1>
+<div class="bg-surface shadow-sm rounded-lg">
+  <table class="min-w-full divide-y divide-neutral-200">
+    <thead class="bg-neutral-50">
       <tr>
-        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Insured</th>
-        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Delivery</th>
-        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Access</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Insured</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Delivery</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Access</th>
       </tr>
     </thead>
-    <tbody class="bg-white divide-y divide-gray-200">
+    <tbody class="bg-surface divide-y divide-neutral-200">
       {% for m in claims %}
       <tr>
-        <td class="px-6 py-4 text-sm text-gray-900">{{ m.insured_name }}</td>
-        <td class="px-6 py-4 text-sm text-gray-500">{{ m.status }}</td>
-        <td class="px-6 py-4 text-sm text-gray-500">{{ m.target_delivery_date or '—' }}</td>
+        <td class="px-6 py-4 text-sm text-neutral-900">{{ m.insured_name }}</td>
+        <td class="px-6 py-4 text-sm text-neutral-500">{{ m.status }}</td>
+        <td class="px-6 py-4 text-sm text-neutral-500">{{ m.target_delivery_date or '—' }}</td>
         <td class="px-6 py-4 text-sm">
-          <a href="/admin/org/claims/{{ m.id }}/access?group_id={{ group.id }}" class="text-green-700 hover:underline">Manage access</a>
+          <a href="/admin/org/claims/{{ m.id }}/access?group_id={{ group.id }}" class="text-success hover:underline">Manage access</a>
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="4" class="px-6 py-4 text-sm text-gray-500">No claims for this organization.</td></tr>
+      <tr><td colspan="4" class="px-6 py-4 text-sm text-neutral-500">No claims for this organization.</td></tr>
       {% endfor %}
     </tbody>
   </table>

@@ -1,43 +1,43 @@
 {% extends "admin/base.html" %}
 {% block title %}User: {{ target.email }}{% endblock %}
 {% block sidebar %}
-<a href="/admin/org/?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
-<a href="/admin/org/users?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded-sm text-sm bg-green-700 text-white">Users</a>
-<a href="/admin/org/claims?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
-<a href="/admin/org/profile?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Profile</a>
+<a href="/admin/org/?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Dashboard</a>
+<a href="/admin/org/users?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded-sm text-sm bg-success text-white">Users</a>
+<a href="/admin/org/claims?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Claims</a>
+<a href="/admin/org/profile?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Profile</a>
 {% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold text-gray-900 mb-6">{{ target.email }}</h1>
-<div class="bg-white shadow-sm rounded-lg p-6 mb-6">
+<h1 class="text-2xl font-bold text-neutral-900 mb-6">{{ target.email }}</h1>
+<div class="bg-surface shadow-sm rounded-lg p-6 mb-6">
   <dl class="grid grid-cols-2 gap-4">
     <div>
-      <dt class="text-sm text-gray-500">Display Name</dt>
-      <dd class="text-sm font-medium text-gray-900">{{ target.display_name }}</dd>
+      <dt class="text-sm text-neutral-500">Display Name</dt>
+      <dd class="text-sm font-medium text-neutral-900">{{ target.display_name }}</dd>
     </div>
     <div>
-      <dt class="text-sm text-gray-500">Role</dt>
-      <dd class="text-sm font-medium text-gray-900">{{ target.system_role }}</dd>
+      <dt class="text-sm text-neutral-500">Role</dt>
+      <dd class="text-sm font-medium text-neutral-900">{{ target.system_role }}</dd>
     </div>
     <div>
-      <dt class="text-sm text-gray-500">Status</dt>
+      <dt class="text-sm text-neutral-500">Status</dt>
       <dd class="text-sm font-medium">
-        {% if target.is_active %}<span class="text-green-700">Active</span>{% else %}<span class="text-red-600">Inactive</span>{% endif %}
+        {% if target.is_active %}<span class="text-success">Active</span>{% else %}<span class="text-error">Inactive</span>{% endif %}
       </dd>
     </div>
     <div>
-      <dt class="text-sm text-gray-500">Organization</dt>
-      <dd class="text-sm font-medium text-gray-900">{% if group %}{{ group.name }}{% else %}—{% endif %}</dd>
+      <dt class="text-sm text-neutral-500">Organization</dt>
+      <dd class="text-sm font-medium text-neutral-900">{% if group %}{{ group.name }}{% else %}—{% endif %}</dd>
     </div>
   </dl>
 </div>
 <div class="flex gap-3">
   {% if target.is_active %}
   <form method="POST" action="/admin/org/users/{{ target.id }}/deactivate?group_id={{ group.id if group else '' }}">
-    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-sm text-sm hover:bg-red-700">Deactivate</button>
+    <button type="submit" class="bg-error text-white px-4 py-2 rounded-sm text-sm hover:bg-error-strong">Deactivate</button>
   </form>
   {% else %}
   <form method="POST" action="/admin/org/users/{{ target.id }}/activate?group_id={{ group.id if group else '' }}">
-    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-sm text-sm hover:bg-green-700">Activate</button>
+    <button type="submit" class="bg-success-emphasis text-white px-4 py-2 rounded-sm text-sm hover:bg-success">Activate</button>
   </form>
   {% endif %}
 </div>
