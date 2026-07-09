@@ -2,7 +2,12 @@
 """Fail if any Jinja template uses a color/type utility not in DESIGN.md's tokens."""
 
 from __future__ import annotations
-import glob, re, sys, collections
+
+import collections
+import glob
+import re
+import sys
+
 import yaml
 
 TEMPLATES = "src/claimos/templates/**/*.html"
