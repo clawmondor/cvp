@@ -44,22 +44,22 @@
       <div>
         <label for="firm_name" class="block text-sm font-medium text-neutral-700">Firm name</label>
         <input type="text" name="firm_name" id="firm_name" value="{{ claim.firm_name }}"
-               class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light" />
+               class="input mt-1 w-full" />
       </div>
       <div>
         <label for="firm_file_number" class="block text-sm font-medium text-neutral-700">Firm file number</label>
         <input type="text" name="firm_file_number" id="firm_file_number" value="{{ claim.firm_file_number }}"
-               class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light" />
+               class="input mt-1 w-full" />
       </div>
       <div>
         <label for="attorney_name" class="block text-sm font-medium text-neutral-700">Attorney name</label>
         <input type="text" name="attorney_name" id="attorney_name" value="{{ claim.attorney_name }}"
-               class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light" />
+               class="input mt-1 w-full" />
       </div>
       <div>
         <label for="attorney_email" class="block text-sm font-medium text-neutral-700">Attorney email</label>
         <input type="email" name="attorney_email" id="attorney_email" value="{{ claim.attorney_email }}"
-               class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light" />
+               class="input mt-1 w-full" />
       </div>
     </div>
   </fieldset>
@@ -70,18 +70,18 @@
       <div class="sm:col-span-2">
         <label for="policyholder_name" class="block text-sm font-medium text-neutral-700">Policyholder name</label>
         <input type="text" name="policyholder_name" id="policyholder_name" value="{{ claim.policyholder_name }}"
-               class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light" />
+               class="input mt-1 w-full" />
       </div>
       <div class="sm:col-span-2">
         <label for="loss_location" class="block text-sm font-medium text-neutral-700">Loss location (full address)</label>
         <input type="text" name="loss_location" id="loss_location" value="{{ claim.loss_location }}"
-               class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light" />
+               class="input mt-1 w-full" />
       </div>
       <div>
         <label for="loss_event" class="block text-sm font-medium text-neutral-700">Loss event</label>
         <input type="text" name="loss_event" id="loss_event" value="{{ claim.loss_event }}"
                list="loss_event_options"
-               class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light" />
+               class="input mt-1 w-full" />
         <datalist id="loss_event_options">
           {% for e in loss_events %}<option value="{{ e }}">{% endfor %}
         </datalist>
@@ -89,7 +89,7 @@
       <div>
         <label for="loss_type" class="block text-sm font-medium text-neutral-700">Loss type</label>
         <select name="loss_type" id="loss_type"
-                class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light">
+                class="input mt-1 w-full">
           {% for lt in loss_types %}
           <option value="{{ lt }}" {% if claim.loss_type == lt %}selected{% endif %}>
             {{ lt | replace('_', ' ') | title }}
@@ -101,13 +101,13 @@
         <label for="loss_date" class="block text-sm font-medium text-neutral-700">Loss date</label>
         <input type="date" name="loss_date" id="loss_date"
                value="{{ claim.loss_date.isoformat() if claim.loss_date else '' }}"
-               class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light" />
+               class="input mt-1 w-full" />
       </div>
       <div>
         <label for="target_delivery_date" class="block text-sm font-medium text-neutral-700">Target delivery date</label>
         <input type="date" name="target_delivery_date" id="target_delivery_date"
                value="{{ claim.target_delivery_date.isoformat() if claim.target_delivery_date else '' }}"
-               class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light" />
+               class="input mt-1 w-full" />
       </div>
     </div>
   </fieldset>
@@ -118,24 +118,24 @@
       <div>
         <label for="carrier" class="block text-sm font-medium text-neutral-700">Carrier</label>
         <input type="text" name="carrier" id="carrier" value="{{ claim.carrier }}"
-               class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light" />
+               class="input mt-1 w-full" />
       </div>
       <div>
         <label for="policy_number" class="block text-sm font-medium text-neutral-700">Policy number</label>
         <input type="text" name="policy_number" id="policy_number" value="{{ claim.policy_number }}"
-               class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light" />
+               class="input mt-1 w-full" />
       </div>
       <div>
         <label for="claim_number" class="block text-sm font-medium text-neutral-700">Claim number</label>
         <input type="text" name="claim_number" id="claim_number" value="{{ claim.claim_number }}"
-               class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light" />
+               class="input mt-1 w-full" />
       </div>
       <div>
         <label for="coverage_c_limit_dollars" class="block text-sm font-medium text-neutral-700">Coverage C limit ($)</label>
         <input type="number" name="coverage_c_limit_dollars" id="coverage_c_limit_dollars"
                min="0" step="0.01"
                value="{{ '{:.2f}'.format(claim.coverage_c_limit / 100) }}"
-               class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light" />
+               class="input mt-1 w-full" />
       </div>
     </div>
   </fieldset>
@@ -143,7 +143,7 @@
   <fieldset class="space-y-4">
     <legend class="text-sm font-semibold text-neutral-900 border-b border-neutral-200 pb-1 w-full">Internal notes</legend>
     <textarea name="internal_notes" id="internal_notes" rows="4"
-              class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-xs focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light">{{ claim.internal_notes }}</textarea>
+              class="input mt-1 w-full">{{ claim.internal_notes }}</textarea>
   </fieldset>
 
   <div class="flex items-center gap-3 pt-2">

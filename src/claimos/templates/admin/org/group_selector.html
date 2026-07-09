@@ -9,7 +9,7 @@
 <div class="grid grid-cols-3 gap-4">
   {% for g in groups %}
   <a href="/admin/org/?group_id={{ g.id }}"
-     class="block bg-surface rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow border border-transparent hover:border-success-border">
+     class="card block p-6 hover:shadow-md transition-shadow border border-transparent hover:border-success-border">
     <p class="text-base font-semibold text-neutral-900">{{ g.name }}</p>
     <p class="text-xs text-neutral-400 mt-1">{{ g.kind }}</p>
   </a>
