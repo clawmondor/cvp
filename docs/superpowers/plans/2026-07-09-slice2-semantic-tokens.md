@@ -322,11 +322,15 @@ for fp in glob.glob("src/claimos/static/*.js"):
     s = open(fp).read(); orig = s
     s = re.sub(r'(?<![\w-])bg-white(?![\w-])', 'bg-surface', s)
     for shade, tok in MAP.items():
-        s = re.sub(rf'(?<![\w-]){re.escape(shade)}(?![\w-])', tok, s)
+        s = re.sub(rf'(?<!\w){re.escape(shade)}(?![\w-])', tok, s)
     if s != orig:
         open(fp, "w").write(s); total += 1; print("migrated", fp)
 print("files changed:", total)
 ```
+NOTE: the lookbehind is `(?<!\w)` (NOT `(?<![\w-])`). Family-shade tokens are always
+preceded by a property hyphen (`bg-indigo-600`), so `(?<![\w-])` would forbid the hyphen and
+match nothing (bug caught in Task 2). `(?<!\w)` allows the hyphen; the trailing `(?![\w-])`
+still keeps `indigo-50` from matching inside `indigo-500`.
 
 - [ ] **Step 2: Run it**
 
