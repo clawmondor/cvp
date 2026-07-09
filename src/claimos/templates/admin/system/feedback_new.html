@@ -1,38 +1,38 @@
 {% extends "admin/base.html" %}
 {% block title %}New Feedback{% endblock %}
 {% block sidebar %}
-<a href="/admin/system/" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
-<a href="/admin/system/users" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
-<a href="/admin/system/groups" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Groups</a>
-<a href="/admin/system/claims" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
-<a href="/admin/system/feedback" class="block px-3 py-2 rounded-sm text-sm bg-slate-700 text-white">
-  Feedback{% if unread_count %} <span class="ml-1 inline-flex items-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs">{{ unread_count }}</span>{% endif %}
+<a href="/admin/system/" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Dashboard</a>
+<a href="/admin/system/users" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Users</a>
+<a href="/admin/system/groups" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Groups</a>
+<a href="/admin/system/claims" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Claims</a>
+<a href="/admin/system/feedback" class="block px-3 py-2 rounded-sm text-sm bg-admin-700 text-white">
+  Feedback{% if unread_count %} <span class="ml-1 inline-flex items-center rounded-full bg-error px-1.5 py-0.5 text-xs">{{ unread_count }}</span>{% endif %}
 </a>
-<a href="/admin/system/audit" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Audit Log</a>
-<a href="/admin/vision-models" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Vision Models</a>
+<a href="/admin/system/audit" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Audit Log</a>
+<a href="/admin/vision-models" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Vision Models</a>
 {% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold text-gray-900 mb-4">New feedback</h1>
-<form method="post" action="/admin/system/feedback/new-as" class="space-y-3 bg-white p-4 rounded-sm shadow-xs max-w-2xl">
+<h1 class="text-2xl font-bold text-neutral-900 mb-4">New feedback</h1>
+<form method="post" action="/admin/system/feedback/new-as" class="space-y-3 bg-surface p-4 rounded-sm shadow-xs max-w-2xl">
   <div>
-    <label class="block text-xs font-medium text-gray-600">Author</label>
-    <select name="author_user_id" required class="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm">
+    <label class="block text-xs font-medium text-neutral-600">Author</label>
+    <select name="author_user_id" required class="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1 text-sm">
       {% for u in users %}
       <option value="{{ u.id }}" {% if u.id == user.id %}selected{% endif %}>{{ u.email }} — {{ u.display_name }}</option>
       {% endfor %}
     </select>
   </div>
   <div>
-    <label class="block text-xs font-medium text-gray-600">Page URL</label>
-    <input type="text" name="page_url" value="/" class="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm" />
+    <label class="block text-xs font-medium text-neutral-600">Page URL</label>
+    <input type="text" name="page_url" value="/" class="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1 text-sm" />
   </div>
   <div>
-    <label class="block text-xs font-medium text-gray-600">Body</label>
+    <label class="block text-xs font-medium text-neutral-600">Body</label>
     <textarea name="body" rows="6" required maxlength="{{ feedback_body_max }}"
-              class="mt-1 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"></textarea>
+              class="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1 text-sm"></textarea>
   </div>
   <div class="flex justify-end">
-    <button type="submit" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">Create</button>
+    <button type="submit" class="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-light">Create</button>
   </div>
 </form>
 {% endblock %}

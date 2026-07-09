@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="h-full bg-gray-100">
+<html lang="en" class="h-full bg-neutral-100">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -12,19 +12,19 @@
 <body class="h-full">
   <div class="min-h-full flex flex-col">
     <!-- Top nav -->
-    <nav class="bg-slate-800 text-white">
+    <nav class="bg-admin-800 text-white">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-14 items-center justify-between">
           <div class="flex items-center gap-6">
-            <a href="/dashboard" class="text-sm font-semibold text-slate-300 hover:text-white">ClaimOS</a>
-            <span class="text-slate-600">/</span>
+            <a href="/dashboard" class="text-sm font-semibold text-admin-300 hover:text-white">ClaimOS</a>
+            <span class="text-admin-600">/</span>
             <span class="text-sm font-semibold text-white">{{ panel_title }}</span>
           </div>
           <div class="flex items-center gap-4">
             {% if user %}
-            <span class="text-sm text-slate-400">{{ user.email }}</span>
+            <span class="text-sm text-admin-400">{{ user.email }}</span>
             <form method="POST" action="/api/auth/logout" class="inline">
-              <button type="submit" class="text-sm text-slate-400 hover:text-white">Sign out</button>
+              <button type="submit" class="text-sm text-admin-400 hover:text-white">Sign out</button>
             </form>
             {% endif %}
           </div>
@@ -34,15 +34,15 @@
 
     <!-- Breadcrumbs -->
     {% if breadcrumbs %}
-    <div class="bg-white border-b border-gray-200">
+    <div class="bg-surface border-b border-neutral-200">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <nav class="flex h-10 items-center gap-2 text-sm text-gray-500">
+        <nav class="flex h-10 items-center gap-2 text-sm text-neutral-500">
           {% for crumb in breadcrumbs %}
           {% if not loop.last %}
-          <a href="{{ crumb.url }}" class="hover:text-gray-700">{{ crumb.label }}</a>
-          <span class="text-gray-300">/</span>
+          <a href="{{ crumb.url }}" class="hover:text-neutral-700">{{ crumb.label }}</a>
+          <span class="text-neutral-300">/</span>
           {% else %}
-          <span class="text-gray-900 font-medium">{{ crumb.label }}</span>
+          <span class="text-neutral-900 font-medium">{{ crumb.label }}</span>
           {% endif %}
           {% endfor %}
         </nav>
@@ -52,7 +52,7 @@
 
     <div class="flex flex-1">
       <!-- Sidebar -->
-      <aside class="w-56 bg-slate-800 min-h-full flex-shrink-0">
+      <aside class="w-56 bg-admin-800 min-h-full flex-shrink-0">
         <nav class="px-3 py-4 space-y-1">
           {% block sidebar %}{% endblock %}
         </nav>

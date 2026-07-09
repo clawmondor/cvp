@@ -1,22 +1,22 @@
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-  <div class="max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-sm bg-white p-6 shadow-xl">
+  <div class="max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-sm bg-surface p-6 shadow-xl">
     <div class="mb-3 flex items-center justify-between">
       <h2 class="text-lg font-semibold">Add a vision model</h2>
-      <button data-clear-element="add-modal" class="text-gray-500">✕</button>
+      <button data-clear-element="add-modal" class="text-neutral-500">✕</button>
     </div>
     {% if not catalog %}
-      <p class="text-sm text-gray-500">No new models available — every vision-capable model from OpenRouter is already added.</p>
+      <p class="text-sm text-neutral-500">No new models available — every vision-capable model from OpenRouter is already added.</p>
     {% endif %}
     <table class="w-full text-sm">
-      <thead><tr class="border-b text-left text-xs uppercase text-gray-500">
+      <thead><tr class="border-b text-left text-xs uppercase text-neutral-500">
         <th class="py-2">Name</th><th>Slug</th><th>Per-image</th><th>Ctx</th><th></th>
       </tr></thead>
       <tbody>
         {% for m in catalog %}
         <tr class="border-b">
-          <td class="py-2">{{ m.name }}{% if m.is_recommended %} <span class="text-amber-600">★</span>{% endif %}</td>
+          <td class="py-2">{{ m.name }}{% if m.is_recommended %} <span class="text-warning-emphasis">★</span>{% endif %}</td>
           <td class="font-mono text-xs">{{ m.id }}</td>
-          <td>{% if m.image_price %}${{ m.image_price }}{% else %}<span class="text-gray-400">?</span>{% endif %}</td>
+          <td>{% if m.image_price %}${{ m.image_price }}{% else %}<span class="text-neutral-400">?</span>{% endif %}</td>
           <td>{{ m.context_length or "" }}</td>
           <td>
             <form hx-post="/admin/vision-models" hx-target="body" hx-swap="outerHTML">
@@ -26,7 +26,7 @@
                 <option value="gemini_normalized_1000" {% if m.suggested_adapter == "gemini_normalized_1000" %}selected{% endif %}>gemini_normalized_1000</option>
                 <option value="none" {% if m.suggested_adapter == "none" %}selected{% endif %}>none (no cropping)</option>
               </select>
-              <button class="ml-2 rounded-sm bg-indigo-600 px-2 py-0.5 text-xs text-white">Add</button>
+              <button class="ml-2 rounded-sm bg-primary px-2 py-0.5 text-xs text-white">Add</button>
             </form>
           </td>
         </tr>

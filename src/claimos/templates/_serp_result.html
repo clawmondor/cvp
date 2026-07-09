@@ -2,32 +2,32 @@
 
   {# ── Formatted results grid ─────────────────────────────────────────── #}
   {% if display_results %}
-    <div class="divide-y divide-gray-100">
+    <div class="divide-y divide-neutral-100">
       {% for result in display_results %}
       <div class="flex items-center gap-3 py-2">
 
         {# Thumbnail #}
         {% if result.thumbnail %}
           <img src="{{ result.thumbnail }}" alt=""
-               class="w-12 h-12 object-contain rounded-sm flex-shrink-0 bg-gray-50 border border-gray-100" />
+               class="w-12 h-12 object-contain rounded-sm flex-shrink-0 bg-neutral-50 border border-neutral-100" />
         {% else %}
-          <div class="w-12 h-12 rounded-sm flex-shrink-0 bg-gray-100 border border-gray-200"></div>
+          <div class="w-12 h-12 rounded-sm flex-shrink-0 bg-neutral-100 border border-neutral-200"></div>
         {% endif %}
 
         <div class="flex-1 min-w-0">
           {% if result.link %}
             <a href="{{ result.link }}" target="_blank" rel="noopener noreferrer"
-               class="font-medium text-indigo-600 hover:underline truncate block leading-snug">
+               class="font-medium text-primary hover:underline truncate block leading-snug">
               {{ result.title or "Untitled" }}
             </a>
           {% else %}
-            <span class="font-medium text-gray-900 truncate block leading-snug">
+            <span class="font-medium text-neutral-900 truncate block leading-snug">
               {{ result.title or "Untitled" }}
             </span>
           {% endif %}
 
           {% if result.source %}
-            <div class="flex items-center gap-1 mt-0.5 text-gray-400">
+            <div class="flex items-center gap-1 mt-0.5 text-neutral-400">
               {% if result.source_icon %}
                 <img src="{{ result.source_icon }}" alt=""
                      class="w-4 h-4 object-contain flex-shrink-0" />
@@ -37,7 +37,7 @@
           {% endif %}
 
           {% if result.price_cents %}
-            <span class="mt-0.5 text-green-700 font-medium">
+            <span class="mt-0.5 text-success font-medium">
               ${{ "%.2f" % (result.price_cents / 100) }}
             </span>
           {% endif %}
@@ -54,7 +54,7 @@
           <input type="hidden" name="rcv_unit_cents" value="{{ result.price_cents }}">
           {% endif %}
           <button type="submit"
-                  class="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 rounded-sm transition whitespace-nowrap">
+                  class="text-xs bg-success-emphasis hover:bg-success text-white px-2 py-1.5 rounded-sm transition whitespace-nowrap">
             Use this
           </button>
         </form>
@@ -64,26 +64,26 @@
     </div>
 
   {% else %}
-    <p class="text-gray-400 italic">No results found.</p>
+    <p class="text-neutral-400 italic">No results found.</p>
   {% endif %}
 
   {# ── Raw response toggle ─────────────────────────────────────────────── #}
   <details class="mt-3">
-    <summary class="cursor-pointer text-gray-400 hover:text-gray-600 select-none py-1">
+    <summary class="cursor-pointer text-neutral-400 hover:text-neutral-600 select-none py-1">
       Show raw response
     </summary>
     <div class="mt-2 space-y-3">
       <div>
-        <p class="font-semibold text-gray-600 mb-1">Request URL</p>
-        <pre class="bg-gray-50 border border-gray-200 rounded-sm p-2 overflow-x-auto text-gray-900 whitespace-pre-wrap break-all text-xs">{{ s.request_url }}</pre>
+        <p class="font-semibold text-neutral-600 mb-1">Request URL</p>
+        <pre class="bg-neutral-50 border border-neutral-200 rounded-sm p-2 overflow-x-auto text-neutral-900 whitespace-pre-wrap break-all text-xs">{{ s.request_url }}</pre>
       </div>
       <div>
-        <p class="font-semibold text-gray-600 mb-1">Response <span class="text-gray-400">(HTTP {{ s.status_code }})</span></p>
-        <pre class="bg-gray-50 border border-gray-200 rounded-sm p-2 overflow-x-auto overflow-y-auto text-gray-900 max-h-64 text-xs">{{ s.response_json | pretty_json }}</pre>
+        <p class="font-semibold text-neutral-600 mb-1">Response <span class="text-neutral-400">(HTTP {{ s.status_code }})</span></p>
+        <pre class="bg-neutral-50 border border-neutral-200 rounded-sm p-2 overflow-x-auto overflow-y-auto text-neutral-900 max-h-64 text-xs">{{ s.response_json | pretty_json }}</pre>
       </div>
     </div>
   </details>
 
-  <p class="text-gray-400 mt-1">Searched {{ s.ran_at.strftime('%b %d, %Y %H:%M:%S') }}</p>
+  <p class="text-neutral-400 mt-1">Searched {{ s.ran_at.strftime('%b %d, %Y %H:%M:%S') }}</p>
 
 </div>

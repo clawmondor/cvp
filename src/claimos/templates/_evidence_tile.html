@@ -1,4 +1,4 @@
-<div data-file-card class="evidence-tile group relative rounded-lg border border-gray-200 bg-white overflow-hidden shadow-xs">
+<div data-file-card class="evidence-tile group relative rounded-lg border border-neutral-200 bg-surface overflow-hidden shadow-xs">
   {% if f.kind == "image" %}
   <img src="/files/{{ f.stored_path }}"
        alt="{{ f.filename }}"
@@ -6,23 +6,23 @@
        decoding="async"
        class="h-32 w-full object-cover">
   {% elif f.kind == "pdf" %}
-  <div class="flex h-32 items-center justify-center bg-red-50 text-4xl">📄</div>
+  <div class="flex h-32 items-center justify-center bg-error-surface text-4xl">📄</div>
   {% elif f.kind == "video" %}
-  <div class="flex h-32 items-center justify-center bg-indigo-50 text-4xl">🎬</div>
+  <div class="flex h-32 items-center justify-center bg-primary-subtle text-4xl">🎬</div>
   {% else %}
-  <div class="flex h-32 items-center justify-center bg-gray-50 text-4xl">📎</div>
+  <div class="flex h-32 items-center justify-center bg-neutral-50 text-4xl">📎</div>
   {% endif %}
 
   <div class="px-2 py-1.5">
-    <p class="truncate text-xs font-medium text-gray-700" title="{{ f.filename }}">{{ f.filename }}</p>
-    <p class="text-xs text-gray-400">{{ (f.size_bytes / 1024) | round(1) }} KB</p>
+    <p class="truncate text-xs font-medium text-neutral-700" title="{{ f.filename }}">{{ f.filename }}</p>
+    <p class="text-xs text-neutral-400">{{ (f.size_bytes / 1024) | round(1) }} KB</p>
     {% if f.kind == "image" and item_groups_flat is defined %}
       {% include "_evidence_group_select.html" %}
     {% endif %}
     {% if f.kind == "image" %}
       {% if f.scanned %}
       <button data-toggle-crop-editor="{{ f.id }}"
-              class="mt-1 rounded-sm border border-indigo-200 px-1.5 py-0.5 text-xs text-indigo-600 hover:bg-indigo-50">
+              class="mt-1 rounded-sm border border-primary-tint-strong px-1.5 py-0.5 text-xs text-primary hover:bg-primary-subtle">
         Edit crops
       </button>
       {% else %}
@@ -33,12 +33,12 @@
             class="mt-1">
         <input type="hidden" name="evidence_file_ids" value="{{ f.id }}">
         <button type="submit"
-                class="rounded-sm border border-indigo-200 px-1.5 py-0.5 text-xs text-indigo-600 hover:bg-indigo-50">
+                class="rounded-sm border border-primary-tint-strong px-1.5 py-0.5 text-xs text-primary hover:bg-primary-subtle">
           Scan Now
         </button>
       </form>
       {% if scan_errors is defined and f.id in scan_errors %}
-      <p class="mt-0.5 truncate text-xs text-red-600"
+      <p class="mt-0.5 truncate text-xs text-error"
          title="{{ scan_errors[f.id] }}">
         Scan failed: {{ scan_errors[f.id][:60] }}
       </p>
@@ -53,7 +53,7 @@
     hx-target="closest .evidence-tile"
     hx-swap="outerHTML"
     hx-confirm="Delete {{ f.filename }}?"
-    class="absolute right-1 top-1 hidden rounded-sm bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white opacity-90 group-hover:block hover:bg-red-700">
+    class="absolute right-1 top-1 hidden rounded-sm bg-error px-1.5 py-0.5 text-xs font-semibold text-white opacity-90 group-hover:block hover:bg-error-strong">
     ✕
   </button>
 </div>

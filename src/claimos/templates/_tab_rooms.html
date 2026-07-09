@@ -1,15 +1,15 @@
 <div class="space-y-4">
   <div class="flex items-center justify-between">
-    <h3 class="text-sm font-semibold text-gray-700">Rooms ({{ rooms | length }})</h3>
+    <h3 class="text-sm font-semibold text-neutral-700">Rooms ({{ rooms | length }})</h3>
     <form id="add-room-form"
           hx-post="/api/claims/{{ claim.id }}/rooms"
           hx-target="#rooms-list"
           hx-swap="beforeend"
           class="flex items-center gap-2">
       <input name="name" placeholder="Room name" required maxlength="100"
-             class="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500">
+             class="rounded-md border border-neutral-300 px-3 py-1.5 text-sm focus:border-primary-light focus:outline-hidden focus:ring-1 focus:ring-primary-light">
       <button type="submit"
-              class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">
+              class="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-light">
         Add room
       </button>
     </form>
@@ -19,7 +19,7 @@
     {% for room in rooms %}
     {% include "_room_li.html" %}
     {% else %}
-    <li id="rooms-empty" class="text-sm text-gray-400 italic">No rooms yet — add one above.</li>
+    <li id="rooms-empty" class="text-sm text-neutral-400 italic">No rooms yet — add one above.</li>
     {% endfor %}
   </ul>
 </div>

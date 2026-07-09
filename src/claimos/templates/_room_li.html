@@ -1,10 +1,10 @@
 <li id="room-{{ room.id }}"
-    class="group flex items-center justify-between rounded-md border border-gray-200 bg-white px-4 py-2.5 shadow-xs">
-  <span id="room-name-{{ room.id }}" class="text-sm font-medium text-gray-900">{{ room.name }}</span>
+    class="group flex items-center justify-between rounded-md border border-neutral-200 bg-surface px-4 py-2.5 shadow-xs">
+  <span id="room-name-{{ room.id }}" class="text-sm font-medium text-neutral-900">{{ room.name }}</span>
   <div class="flex items-center gap-2">
     <button
       data-rename-room-id="{{ room.id }}"
-      class="hidden rounded-sm px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100 group-hover:inline-flex">
+      class="hidden rounded-sm px-2 py-0.5 text-xs text-neutral-500 hover:bg-neutral-100 group-hover:inline-flex">
       Rename
     </button>
     <button
@@ -12,7 +12,7 @@
       hx-target="#room-{{ room.id }}"
       hx-swap="outerHTML"
       hx-confirm="Delete room '{{ room.name }}'? Items in this room will become unassigned."
-      class="hidden rounded-sm px-2 py-0.5 text-xs text-red-600 hover:bg-red-50 group-hover:inline-flex">
+      class="hidden rounded-sm px-2 py-0.5 text-xs text-error hover:bg-error-surface group-hover:inline-flex">
       Delete
     </button>
   </div>

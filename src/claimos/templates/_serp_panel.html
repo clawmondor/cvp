@@ -1,13 +1,13 @@
 <tr id="serp-panel-{{ item.id }}">
-  <td colspan="13" class="px-4 py-4 bg-indigo-50 border-b border-indigo-100">
+  <td colspan="13" class="px-4 py-4 bg-primary-subtle border-b border-primary-tint">
     <div class="flex items-center justify-between mb-3">
-      <h4 class="text-xs font-semibold text-indigo-700">Google Lens — {{ item.description }}</h4>
+      <h4 class="text-xs font-semibold text-primary-strong">Google Lens — {{ item.description }}</h4>
       <button data-serp-panel-close="{{ item.id }}"
-              class="text-xs text-gray-400 hover:text-gray-600">✕ Close</button>
+              class="text-xs text-neutral-400 hover:text-neutral-600">✕ Close</button>
     </div>
 
     {% if not item.crops %}
-      <p class="text-xs text-gray-400 italic">No crop available. Re-scan this evidence image to enable Lens search.</p>
+      <p class="text-xs text-neutral-400 italic">No crop available. Re-scan this evidence image to enable Lens search.</p>
     {% else %}
 
       {# Multiple crops: show selector strip #}
@@ -17,9 +17,9 @@
         <button data-show-crop-panel-item="{{ item.id }}" data-show-crop-panel-crop="{{ crop.id }}"
                 id="crop-tab-{{ crop.id }}"
                 class="border-2 rounded-sm overflow-hidden focus:outline-hidden
-                       {% if loop.first %}border-indigo-500{% else %}border-transparent hover:border-indigo-200{% endif %}">
+                       {% if loop.first %}border-primary-light{% else %}border-transparent hover:border-primary-tint-strong{% endif %}">
           <img src="/crops/{{ crop.crop_path }}" alt="Crop {{ loop.index }}"
-               class="w-16 h-16 object-contain bg-white" />
+               class="w-16 h-16 object-contain bg-surface" />
         </button>
         {% endfor %}
       </div>
@@ -33,8 +33,8 @@
         {# Crop thumbnail #}
         <div class="flex-shrink-0">
           <img src="/crops/{{ crop.crop_path }}" alt="{{ item.description }}"
-               class="w-32 h-32 object-contain rounded-sm border border-gray-200 bg-white shadow-xs" />
-          <p class="mt-1 text-xs text-gray-400 text-center">
+               class="w-32 h-32 object-contain rounded-sm border border-neutral-200 bg-surface shadow-xs" />
+          <p class="mt-1 text-xs text-neutral-400 text-center">
             {{ crop.bbox_right - crop.bbox_left }}×{{ crop.bbox_lower - crop.bbox_upper }}px
           </p>
         </div>
@@ -55,23 +55,23 @@
                       data-lens-btn
                       {% if latest_by_crop.get(crop.id) %}disabled{% endif %}
                       class="text-xs px-3 py-1.5 rounded-sm transition text-white
-                             {% if latest_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %}">
+                             {% if latest_by_crop.get(crop.id) %}bg-neutral-400 cursor-not-allowed{% else %}bg-primary hover:bg-primary-strong{% endif %}">
                 {% if latest_by_crop.get(crop.id) %}Searched{% else %}Search Google Lens{% endif %}
               </button>
             {% else %}
               <input type="url" name="image_url"
                      placeholder="Paste public URL to crop image (or set PUBLIC_BASE_URL)"
-                     class="flex-1 text-xs border border-gray-300 rounded-sm px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-indigo-500" />
+                     class="flex-1 text-xs border border-neutral-300 rounded-sm px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-primary-light" />
               <button type="submit"
                       data-lens-btn
                       {% if latest_by_crop.get(crop.id) %}disabled{% endif %}
                       class="text-xs px-3 py-1.5 rounded-sm transition text-white
-                             {% if latest_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %}">
+                             {% if latest_by_crop.get(crop.id) %}bg-neutral-400 cursor-not-allowed{% else %}bg-primary hover:bg-primary-strong{% endif %}">
                 {% if latest_by_crop.get(crop.id) %}Searched{% else %}Search{% endif %}
               </button>
             {% endif %}
             <svg id="lens-spinner-{{ crop.id }}"
-                 class="htmx-indicator animate-spin h-4 w-4 text-indigo-500"
+                 class="htmx-indicator animate-spin h-4 w-4 text-primary-light"
                  xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
@@ -85,7 +85,7 @@
               {% set item_id = item.id %}
               {% include "_serp_result.html" %}
             {% else %}
-              <p class="text-xs text-gray-400 italic">No search run yet.</p>
+              <p class="text-xs text-neutral-400 italic">No search run yet.</p>
             {% endif %}
           </div>
         </div>

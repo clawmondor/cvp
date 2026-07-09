@@ -11,10 +11,10 @@
   data-claim-id="{{ claim_id }}"
   data-items-created="{{ items_created }}"
   {% endif %}
-  class="rounded-lg border {% if status == 'error' %}border-red-200 bg-red-50{% elif status == 'done' %}border-green-200 bg-green-50{% else %}border-indigo-200 bg-indigo-50{% endif %} p-4 space-y-2">
+  class="rounded-lg border {% if status == 'error' %}border-error-border bg-error-surface{% elif status == 'done' %}border-success-border bg-success-surface{% else %}border-primary-tint-strong bg-primary-subtle{% endif %} p-4 space-y-2">
 
   <div class="flex items-center justify-between text-sm font-medium
-    {% if status == 'error' %}text-red-700{% elif status == 'done' %}text-green-700{% else %}text-indigo-700{% endif %}">
+    {% if status == 'error' %}text-error-strong{% elif status == 'done' %}text-success{% else %}text-primary-strong{% endif %}">
     {% if status == "running" %}
     <span>Scanning… {{ progress }} / {{ total }} images</span>
     <span class="animate-pulse">●</span>
@@ -28,13 +28,13 @@
   </div>
 
   {% if status == "running" %}
-  <div class="w-full rounded-full bg-indigo-100 h-2">
-    <div class="h-2 rounded-full bg-indigo-500 transition-all" style="width: {{ pct }}%"></div>
+  <div class="w-full rounded-full bg-primary-tint h-2">
+    <div class="h-2 rounded-full bg-primary-light transition-all" style="width: {{ pct }}%"></div>
   </div>
   {% endif %}
 
   {% if errors %}
-  <ul class="text-xs text-red-600 space-y-0.5 list-disc list-inside">
+  <ul class="text-xs text-error space-y-0.5 list-disc list-inside">
     {% for err in errors %}
     <li>{{ err }}</li>
     {% endfor %}
@@ -42,9 +42,9 @@
   {% endif %}
 
   {% if status != "running" %}
-  <p class="text-xs text-gray-500">
+  <p class="text-xs text-neutral-500">
     Switch to the <strong>Items</strong> tab to review and confirm draft items.
-    <a href="#items" class="text-indigo-600 hover:underline" data-reload-on-click>Reload page →</a>
+    <a href="#items" class="text-primary hover:underline" data-reload-on-click>Reload page →</a>
   </p>
   {% endif %}
 
