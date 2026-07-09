@@ -38,6 +38,7 @@ colors:
   # success ramp
   success-surface-strong: "#dcfce7" # green-100
   success-border: "#bbf7d0"         # green-200
+  success-icon: "#16a34a"           # green-600 (success icons / hover)
   success-strong: "#166534"         # green-800
   # error ramp
   error-surface-strong: "#fee2e2"   # red-100
