@@ -42,6 +42,17 @@ jobs:
       - name: Run pytest
         run: uv run pytest
 
+  css:
+    name: css-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Tailwind CSS
+        run: |
+          bash scripts/fetch-tailwind.sh
+          bash scripts/build-css.sh --minify
+          test -s src/claimos/static/app.css
+
   secrets:
     name: secrets-scan
     runs-on: ubuntu-latest
