@@ -1,0 +1,19 @@
+/* source(none) disables Tailwind v4's automatic whole-repo content detection so
+   class names mentioned only in docs/specs/comments don't leak into the stylesheet.
+   Content is scoped explicitly to the server-rendered templates below. */
+@import "tailwindcss" source(none);
+
+/* Scan the server-rendered templates AND the static JS (which injects utility
+   classes at runtime via className/classList) so only used utilities are emitted. */
+@source "../templates/**/*.html";
+@source "../static/*.js";
+
+/* v3→v4 parity: v4 defaults an un-colored `border` to currentColor;
+   the templates assume v3's gray-200 default. */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-gray-200, currentColor);
+  }
+}

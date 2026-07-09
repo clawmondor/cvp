@@ -10,22 +10,22 @@
         <div class="col-span-3">
           <label class="text-xs font-medium text-gray-600">Description</label>
           <input name="description" value="{{ item.description }}" required maxlength="255"
-                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                 class="mt-0.5 block w-full rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500">
         </div>
         <div class="col-span-2">
           <label class="text-xs font-medium text-gray-600">Brand</label>
           <input name="brand" value="{{ item.brand or '' }}" maxlength="100"
-                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+                 class="mt-0.5 block w-full rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-hidden">
         </div>
         <div class="col-span-2">
           <label class="text-xs font-medium text-gray-600">Model</label>
           <input name="model_num" value="{{ item.model or '' }}" maxlength="100"
-                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+                 class="mt-0.5 block w-full rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-hidden">
         </div>
         <div class="col-span-1">
           <label class="text-xs font-medium text-gray-600">Room</label>
           <select name="room_id"
-                  class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+                  class="mt-0.5 block w-full rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-hidden">
             <option value="">— unassigned —</option>
             {% for room in rooms %}
             <option value="{{ room.id }}" {% if item.room_id == room.id %}selected{% endif %}>{{ room.name }}</option>
@@ -36,7 +36,7 @@
           <label class="text-xs font-medium text-gray-600">Group</label>
           <select name="item_group_id"
                   data-item-group-select="{{ item.id }}"
-                  class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+                  class="mt-0.5 block w-full rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-hidden">
             <option value="" {% if not item.item_group_id %}selected{% endif %}>— none —</option>
             {% for g in item_groups %}
             <option value="{{ g.id }}" {% if item.item_group_id == g.id %}selected{% endif %}>{{ g.name }}</option>
@@ -48,7 +48,7 @@
         <div class="col-span-2">
           <label class="text-xs font-medium text-gray-600">Category</label>
           <select name="category_id" required
-                  class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+                  class="mt-0.5 block w-full rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-hidden">
             {% for cat in categories %}
             <option value="{{ cat.id }}" {% if item.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
             {% endfor %}
@@ -61,17 +61,17 @@
         <div class="col-span-1">
           <label class="text-xs font-medium text-gray-600">Qty</label>
           <input name="quantity" type="number" min="1" value="{{ item.quantity }}"
-                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+                 class="mt-0.5 block w-full rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-hidden">
         </div>
         <div class="col-span-2">
           <label class="text-xs font-medium text-gray-600">Age (years)</label>
           <input name="age_years" type="number" min="0" step="0.5" value="{{ item.age_years }}"
-                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+                 class="mt-0.5 block w-full rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-hidden">
         </div>
         <div class="col-span-2">
           <label class="text-xs font-medium text-gray-600">Condition</label>
           <select name="condition"
-                  class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+                  class="mt-0.5 block w-full rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-hidden">
             {% for cond in conditions %}
             <option value="{{ cond }}" {% if item.condition == cond %}selected{% endif %}>{{ cond.replace("_", " ").title() }}</option>
             {% endfor %}
@@ -81,31 +81,31 @@
           <label class="text-xs font-medium text-gray-600">RCV / unit ($)</label>
           <input name="rcv_unit_dollars" type="number" min="0" step="0.01"
                  value="{{ "%.2f" % (item.rcv_unit_cents / 100) }}"
-                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none font-mono">
+                 class="mt-0.5 block w-full rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-hidden font-mono">
         </div>
         <div class="col-span-2">
           <label class="text-xs font-medium text-gray-600">Notes</label>
           <input name="notes" value="{{ item.notes }}" maxlength="500"
-                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+                 class="mt-0.5 block w-full rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-hidden">
         </div>
         <div class="col-span-1 flex flex-col justify-end pb-0.5">
           <label class="flex items-center gap-1.5 cursor-pointer select-none">
             <input type="checkbox" name="confirmed" value="true"
                    {% if item.confirmed %}checked{% endif %}
-                   class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                   class="h-4 w-4 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500">
             <span class="text-xs font-medium text-gray-600">Confirmed</span>
           </label>
         </div>
         <div class="col-span-2 flex gap-2">
           <button type="submit"
-                  class="w-full rounded bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">
+                  class="w-full rounded-sm bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">
             Save
           </button>
           <button type="button"
                   hx-get="/api/items/{{ item.id }}/view"
                   hx-target="#item-row-{{ item.id }}"
                   hx-swap="outerHTML"
-                  class="w-full rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50">
+                  class="w-full rounded-sm border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50">
             Cancel
           </button>
         </div>
@@ -117,18 +117,18 @@
           <label class="text-xs font-medium text-gray-600">Retailer</label>
           <input name="source_retailer" value="{{ item.source_retailer or '' }}" maxlength="100"
                  placeholder="e.g. Amazon, Home Depot"
-                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+                 class="mt-0.5 block w-full rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-hidden">
         </div>
         <div class="col-span-7">
           <label class="text-xs font-medium text-gray-600">Source URL</label>
           <input name="source_url" type="url" value="{{ item.source_url or '' }}"
                  placeholder="https://..."
-                 class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm font-mono focus:border-indigo-500 focus:outline-none">
+                 class="mt-0.5 block w-full rounded-sm border border-gray-300 px-2 py-1 text-sm font-mono focus:border-indigo-500 focus:outline-hidden">
         </div>
         <div class="col-span-3">
           <label class="text-xs font-medium text-gray-600">Match type</label>
           <select name="match_type"
-                  class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
+                  class="mt-0.5 block w-full rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-hidden">
             {% for mt in [("exact", "Exact"), ("nearest_comparable", "Nearest comparable"), ("category_average", "Category average")] %}
             <option value="{{ mt[0] }}" {% if item.match_type == mt[0] %}selected{% endif %}>{{ mt[1] }}</option>
             {% endfor %}
@@ -147,13 +147,13 @@
             <input name="acv_override_dollars" type="number" min="0" step="0.01"
                    value="{{ "%.2f" % (item.acv_override_cents / 100) if item.acv_override_cents is not none else "" }}"
                    placeholder="Leave blank to use computed ACV"
-                   class="mt-0.5 block w-full rounded border border-amber-200 px-2 py-1 text-sm focus:border-amber-600 focus:outline-none font-mono">
+                   class="mt-0.5 block w-full rounded-sm border border-amber-200 px-2 py-1 text-sm focus:border-amber-600 focus:outline-hidden font-mono">
           </div>
           <div>
             <label class="text-xs font-medium text-gray-600">Override reason (required)</label>
             <input name="acv_override_reason" value="{{ item.acv_override_reason or '' }}"
                    placeholder="e.g. Appraised value per attached report"
-                   class="mt-0.5 block w-full rounded border border-amber-200 px-2 py-1 text-sm focus:border-amber-600 focus:outline-none">
+                   class="mt-0.5 block w-full rounded-sm border border-amber-200 px-2 py-1 text-sm focus:border-amber-600 focus:outline-hidden">
           </div>
         </div>
       </details>
@@ -184,7 +184,7 @@
         <button type="button"
                 data-show-edit-crop-item="{{ item.id }}" data-show-edit-crop-crop="{{ crop.id }}"
                 id="edit-crop-tab-{{ crop.id }}"
-                class="border-2 rounded overflow-hidden focus:outline-none
+                class="border-2 rounded-sm overflow-hidden focus:outline-hidden
                        {% if loop.first %}border-indigo-500{% else %}border-transparent hover:border-indigo-200{% endif %}">
           <img src="/crops/{{ crop.crop_path }}{% if crop.crop_updated_at %}?v={{ crop.crop_updated_at.timestamp() | int }}{% endif %}" alt="Crop {{ loop.index }}"
                class="w-14 h-14 object-contain bg-white" />
@@ -199,7 +199,7 @@
 
         <div class="flex-shrink-0">
           <img src="/crops/{{ crop.crop_path }}{% if crop.crop_updated_at %}?v={{ crop.crop_updated_at.timestamp() | int }}{% endif %}" alt="{{ item.description }}"
-               class="w-28 h-28 object-contain rounded border border-gray-200 bg-white shadow-sm" />
+               class="w-28 h-28 object-contain rounded-sm border border-gray-200 bg-white shadow-xs" />
           <p class="mt-1 text-xs text-gray-400 text-center">
             {{ crop.bbox_right - crop.bbox_left }}×{{ crop.bbox_lower - crop.bbox_upper }}px
           </p>
@@ -219,18 +219,18 @@
               <button type="submit"
                       data-lens-btn
                       {% if latest_by_crop.get(crop.id) %}disabled{% endif %}
-                      class="text-xs px-3 py-1.5 rounded text-white
+                      class="text-xs px-3 py-1.5 rounded-sm text-white
                              {% if latest_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %}">
                 {% if latest_by_crop.get(crop.id) %}Searched{% else %}Search Google Lens{% endif %}
               </button>
             {% else %}
               <input type="url" name="image_url"
                      placeholder="Paste public URL to crop image"
-                     class="flex-1 text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                     class="flex-1 text-xs border border-gray-300 rounded-sm px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-indigo-500" />
               <button type="submit"
                       data-lens-btn
                       {% if latest_by_crop.get(crop.id) %}disabled{% endif %}
-                      class="text-xs px-3 py-1.5 rounded text-white
+                      class="text-xs px-3 py-1.5 rounded-sm text-white
                              {% if latest_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %}">
                 {% if latest_by_crop.get(crop.id) %}Searched{% else %}Search{% endif %}
               </button>

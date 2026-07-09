@@ -1,18 +1,18 @@
 {% extends "admin/base.html" %}
 {% block title %}Feedback Detail{% endblock %}
 {% block sidebar %}
-<a href="/admin/system/" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
-<a href="/admin/system/users" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
-<a href="/admin/system/groups" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Groups</a>
-<a href="/admin/system/claims" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
-<a href="/admin/system/feedback" class="block px-3 py-2 rounded text-sm bg-slate-700 text-white">
+<a href="/admin/system/" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
+<a href="/admin/system/users" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
+<a href="/admin/system/groups" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Groups</a>
+<a href="/admin/system/claims" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
+<a href="/admin/system/feedback" class="block px-3 py-2 rounded-sm text-sm bg-slate-700 text-white">
   Feedback{% if unread_count %} <span class="ml-1 inline-flex items-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs">{{ unread_count }}</span>{% endif %}
 </a>
-<a href="/admin/system/audit" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Audit Log</a>
-<a href="/admin/vision-models" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Vision Models</a>
+<a href="/admin/system/audit" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Audit Log</a>
+<a href="/admin/vision-models" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Vision Models</a>
 {% endblock %}
 {% block content %}
-<div class="bg-white rounded shadow-sm p-4">
+<div class="bg-white rounded-sm shadow-xs p-4">
   {{ thread_html | safe }}
 </div>
 {% endblock %}

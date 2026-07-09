@@ -148,7 +148,22 @@ Copy the printed UUID into `.env` as `AUTO_LOGIN_USER_ID` to bypass login during
 
 > Once logged in as System Admin, all subsequent users are created and invited through the admin panel at `/admin/system/users`. See [docs/RBAC.md](docs/RBAC.md) for the invite flow and role hierarchy.
 
-### 7. Start the development server
+### 7. Build the CSS
+
+Styling is compiled by the Tailwind v4 standalone CLI (no Node/npm required). `src/claimos/static/app.css` is generated and gitignored — it does not exist on a fresh checkout until you build it.
+
+```bash
+bash scripts/fetch-tailwind.sh   # one-time: downloads the pinned Tailwind v4 binary to bin/tailwindcss
+uv run css                       # builds src/claimos/static/app.css once
+```
+
+During development, run the watcher in a second terminal alongside `uv run dev` so CSS rebuilds automatically as you edit templates or `src/claimos/styles/theme.css`:
+
+```bash
+uv run css --watch
+```
+
+### 8. Start the development server
 
 ```bash
 uv run dev
@@ -272,6 +287,9 @@ data/                  # gitignored — created at runtime
 | `uv run ruff check .` | Lint |
 | `uv run ruff format .` | Format |
 | `uv run backup` | Archive `./data/` to `./backups/<timestamp>.tar.gz` |
+| `bash scripts/fetch-tailwind.sh` | One-time: download the pinned Tailwind v4 standalone CLI binary |
+| `uv run css` | Build `src/claimos/static/app.css` once |
+| `uv run css --watch` | Rebuild CSS on template/theme changes (run alongside `uv run dev`) |
 
 ---
 
@@ -436,7 +454,7 @@ uv run python skills/qa/runner.py --suite auth
 | Language | Python 3.11+ |
 | Web framework | FastAPI |
 | Templates | Jinja2 (server-rendered) |
-| Frontend | HTMX + Tailwind CSS via CDN (no build step) |
+| Frontend | HTMX + Tailwind CSS v4 (standalone CLI build, no Node) |
 | Database | SQLite via SQLAlchemy 2.x |
 | Migrations | Alembic |
 | PDF rendering | WeasyPrint |

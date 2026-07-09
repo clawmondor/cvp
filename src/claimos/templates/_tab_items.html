@@ -13,7 +13,7 @@
   </div>
 
   <!-- Add item form -->
-  <details id="add-item-details" class="rounded-lg border border-gray-200 bg-white shadow-sm">
+  <details id="add-item-details" class="rounded-lg border border-gray-200 bg-white shadow-xs">
     <summary class="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 select-none">
       <span>+ Add item</span>
     </summary>
@@ -27,12 +27,12 @@
           <div class="col-span-4">
             <label class="text-xs font-medium text-gray-600">Description <span class="text-red-600">*</span></label>
             <input name="description" required maxlength="255" placeholder="e.g. 65″ Samsung QLED TV"
-                   class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                   class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500">
           </div>
           <div class="col-span-2">
             <label class="text-xs font-medium text-gray-600">Category <span class="text-red-600">*</span></label>
             <select name="category_id" required
-                    class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+                    class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-hidden">
               {% for cat in categories %}
               <option value="{{ cat.id }}">{{ cat.name }}</option>
               {% endfor %}
@@ -41,7 +41,7 @@
           <div class="col-span-2">
             <label class="text-xs font-medium text-gray-600">Room</label>
             <select name="room_id"
-                    class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+                    class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-hidden">
               <option value="">— unassigned —</option>
               {% for room in rooms %}
               <option value="{{ room.id }}">{{ room.name }}</option>
@@ -51,17 +51,17 @@
           <div class="col-span-1">
             <label class="text-xs font-medium text-gray-600">Qty</label>
             <input name="quantity" type="number" min="1" value="1"
-                   class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+                   class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-hidden">
           </div>
           <div class="col-span-1">
             <label class="text-xs font-medium text-gray-600">Age (yr)</label>
             <input name="age_years" type="number" min="0" step="0.5" value="0"
-                   class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+                   class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-hidden">
           </div>
           <div class="col-span-1">
             <label class="text-xs font-medium text-gray-600">Condition</label>
             <select name="condition"
-                    class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+                    class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-hidden">
               <option value="excellent">Excellent</option>
               <option value="above_average">Above avg</option>
               <option value="average" selected>Average</option>
@@ -71,7 +71,7 @@
           <div class="col-span-1">
             <label class="text-xs font-medium text-gray-600">RCV/unit ($)</label>
             <input name="rcv_unit_dollars" type="number" min="0" step="0.01" value="0"
-                   class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm font-mono focus:border-indigo-500 focus:outline-none">
+                   class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm font-mono focus:border-indigo-500 focus:outline-hidden">
           </div>
         </div>
         <div class="flex justify-end">
@@ -85,7 +85,7 @@
   </details>
 
   <!-- Items table -->
-  <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+  <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-xs">
     <table class="min-w-full divide-y divide-gray-200">
       <thead class="bg-gray-50">
         <tr>

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sign In — ClaimOS</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/app.css" />
 </head>
 <body class="h-full">
   <div class="flex min-h-full flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -14,7 +14,7 @@
       </h2>
     </div>
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <div class="bg-white py-8 px-4 shadow-sm sm:rounded-lg sm:px-10">
         {% if error %}
         <div class="mb-4 rounded-md bg-red-50 p-4">
           <p class="text-sm text-red-700">{{ error }}</p>
@@ -30,16 +30,16 @@
           <div>
             <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
             <input id="email" name="email" type="email" autocomplete="email" required
-                   class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm" />
+                   class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-indigo-500 sm:text-sm" />
           </div>
           <div>
             <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
             <input id="password" name="password" type="password" autocomplete="current-password" required
-                   class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm" />
+                   class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-indigo-500 sm:text-sm" />
           </div>
           <div>
             <button type="submit"
-                    class="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                    class="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
               Sign in
             </button>
           </div>

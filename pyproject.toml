@@ -32,6 +32,7 @@ dev = [
 
 [project.scripts]
 dev = "claimos.main:run_dev"
+css = "claimos.css_build:main"
 seed = "claimos.seed:main"
 seed-auth = "claimos.seed_auth:main"
 bootstrap-admin = "claimos.bootstrap_admin:main"

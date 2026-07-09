@@ -29,6 +29,13 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY . .
 RUN uv sync --frozen --no-dev
 
+# Build the Tailwind stylesheet (standalone binary, no Node)
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && bash scripts/fetch-tailwind.sh \
+    && bash scripts/build-css.sh --minify \
+    && test -s src/claimos/static/app.css
+
 EXPOSE 8000
 
 # proxy-headers needed because we sit behind Cloudflare + Railway's edge

@@ -9,7 +9,7 @@
     {% if item.crops and item.crops[0].crop_path %}
     <div class="relative group/thumb inline-block" style="width:96px;height:96px;">
       <img src="/crops/{{ item.crops[0].crop_path }}{% if item.crops[0].crop_updated_at %}?v={{ item.crops[0].crop_updated_at.timestamp() | int }}{% endif %}" alt="{{ item.description }}"
-           class="object-contain rounded border border-gray-200 bg-white"
+           class="object-contain rounded-sm border border-gray-200 bg-white"
            style="width:96px;height:96px;">
       <button type="button"
               data-toggle-crop-editor="{{ item.crops[0].evidence_file_id }}"
@@ -17,12 +17,12 @@
               aria-label="Edit crop for {{ item.description }}"
               class="absolute inset-x-0 bottom-0 flex items-center justify-center py-1
                      bg-black/50 opacity-0 group-hover/thumb:opacity-100
-                     transition-opacity rounded-b text-white text-xs font-medium border-0 cursor-pointer">
+                     transition-opacity rounded-b-sm text-white text-xs font-medium border-0 cursor-pointer">
         Edit crop
       </button>
     </div>
     {% else %}
-    <div class="rounded border border-gray-100 bg-gray-50" style="width:96px;height:96px;"></div>
+    <div class="rounded-sm border border-gray-100 bg-gray-50" style="width:96px;height:96px;"></div>
     {% endif %}
   </td>
   <td class="px-3 py-2 max-w-xs">
@@ -59,7 +59,7 @@
   <td class="whitespace-nowrap px-3 py-2 text-right font-mono text-xs">
     {% if item.acv_override_cents is not none %}
     <span class="font-medium text-amber-600">${{ "%.2f" % (item.acv_total_cents / 100) }}</span>
-    <span class="ml-1 rounded bg-amber-100 px-1 py-0.5 text-xs text-amber-700" title="{{ item.acv_override_reason }}">★</span>
+    <span class="ml-1 rounded-sm bg-amber-100 px-1 py-0.5 text-xs text-amber-700" title="{{ item.acv_override_reason }}">★</span>
     {% else %}
     <span class="font-medium text-gray-900">${{ "%.2f" % (item.acv_total_cents / 100) }}</span>
     {% endif %}
@@ -69,7 +69,7 @@
             hx-target="#item-row-{{ item.id }}"
             hx-swap="outerHTML"
             title="{{ 'Confirmed — click to un-confirm' if item.confirmed else 'Draft — click to confirm' }}"
-            class="rounded px-1.5 py-0.5 text-xs font-medium {% if item.confirmed %}bg-green-100 text-green-700 hover:bg-green-200{% else %}bg-gray-100 text-gray-500 hover:bg-gray-200{% endif %}">
+            class="rounded-sm px-1.5 py-0.5 text-xs font-medium {% if item.confirmed %}bg-green-100 text-green-700 hover:bg-green-200{% else %}bg-gray-100 text-gray-500 hover:bg-gray-200{% endif %}">
       {{ "✓" if item.confirmed else "draft" }}
     </button>
   </td>
@@ -78,12 +78,12 @@
       <button hx-get="/api/items/{{ item.id }}/edit"
               hx-target="#item-row-{{ item.id }}"
               hx-swap="outerHTML"
-              class="rounded px-2 py-0.5 text-xs text-indigo-600 hover:bg-indigo-50">Edit</button>
+              class="rounded-sm px-2 py-0.5 text-xs text-indigo-600 hover:bg-indigo-50">Edit</button>
       <button hx-delete="/api/items/{{ item.id }}"
               hx-target="#item-row-{{ item.id }}"
               hx-swap="outerHTML"
               hx-confirm="Delete this item?"
-              class="rounded px-2 py-0.5 text-xs text-red-600 hover:bg-red-50">Del</button>
+              class="rounded-sm px-2 py-0.5 text-xs text-red-600 hover:bg-red-50">Del</button>
     </div>
   </td>
 </tr>

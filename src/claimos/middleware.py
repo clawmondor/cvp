@@ -24,9 +24,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Request-ID"] = str(uuid.uuid4())
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' https://unpkg.com https://cdn.tailwindcss.com"
+            "script-src 'self' https://unpkg.com"
             " https://claimos.cmondor.com https://static.cloudflareinsights.com; "
-            "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
+            "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: https://*.gstatic.com; "
             "connect-src 'self'"
         )

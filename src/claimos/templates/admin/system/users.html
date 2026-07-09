@@ -1,15 +1,15 @@
 {% extends "admin/base.html" %}
 {% block title %}Users{% endblock %}
 {% block sidebar %}
-<a href="/admin/system/" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
-<a href="/admin/system/users" class="block px-3 py-2 rounded text-sm bg-slate-700 text-white">Users</a>
-<a href="/admin/system/groups" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Groups</a>
-<a href="/admin/system/claims" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
-<a href="/admin/system/feedback" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">
+<a href="/admin/system/" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
+<a href="/admin/system/users" class="block px-3 py-2 rounded-sm text-sm bg-slate-700 text-white">Users</a>
+<a href="/admin/system/groups" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Groups</a>
+<a href="/admin/system/claims" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
+<a href="/admin/system/feedback" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">
   Feedback{% if unread_count %} <span class="ml-1 inline-flex items-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs">{{ unread_count }}</span>{% endif %}
 </a>
-<a href="/admin/system/audit" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Audit Log</a>
-<a href="/admin/vision-models" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Vision Models</a>
+<a href="/admin/system/audit" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Audit Log</a>
+<a href="/admin/vision-models" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Vision Models</a>
 {% endblock %}
 {% block content %}
 <div class="flex items-center justify-between mb-6">
@@ -23,22 +23,22 @@
 </div>
 {% endif %}
 
-<div class="bg-white shadow rounded-lg mb-6">
+<div class="bg-white shadow-sm rounded-lg mb-6">
   <div class="px-6 py-4 border-b border-gray-200">
     <h2 class="text-base font-semibold text-gray-900">Create Invite</h2>
   </div>
   <form method="POST" action="/admin/system/users/invite" class="px-6 py-4 grid grid-cols-2 gap-4">
     <div>
       <label class="block text-sm font-medium text-gray-700">Email</label>
-      <input type="email" name="email" required class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+      <input type="email" name="email" required class="mt-1 block w-full border border-gray-300 rounded-sm px-3 py-2 text-sm" />
     </div>
     <div>
       <label class="block text-sm font-medium text-gray-700">Display Name</label>
-      <input type="text" name="display_name" required class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+      <input type="text" name="display_name" required class="mt-1 block w-full border border-gray-300 rounded-sm px-3 py-2 text-sm" />
     </div>
     <div>
       <label class="block text-sm font-medium text-gray-700">Role</label>
-      <select name="system_role" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm">
+      <select name="system_role" class="mt-1 block w-full border border-gray-300 rounded-sm px-3 py-2 text-sm">
         <option value="internal_user">Internal User</option>
         <option value="internal_admin">Internal Admin</option>
         <option value="system_admin">System Admin</option>
@@ -46,19 +46,19 @@
     </div>
     <div>
       <label class="block text-sm font-medium text-gray-700">Group</label>
-      <select name="group_id" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm">
+      <select name="group_id" class="mt-1 block w-full border border-gray-300 rounded-sm px-3 py-2 text-sm">
         {% for g in groups %}
         <option value="{{ g.id }}">{{ g.name }} ({{ g.kind }})</option>
         {% endfor %}
       </select>
     </div>
     <div class="col-span-2">
-      <button type="submit" class="bg-slate-700 text-white px-4 py-2 rounded text-sm hover:bg-slate-600">Create Invite</button>
+      <button type="submit" class="bg-slate-700 text-white px-4 py-2 rounded-sm text-sm hover:bg-slate-600">Create Invite</button>
     </div>
   </form>
 </div>
 
-<div class="bg-white shadow rounded-lg">
+<div class="bg-white shadow-sm rounded-lg">
   <table class="min-w-full divide-y divide-gray-200">
     <thead class="bg-gray-50">
       <tr>

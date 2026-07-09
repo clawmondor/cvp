@@ -6,7 +6,7 @@
           hx-target="#cost-estimate"
           hx-swap="outerHTML"
           hx-vals='{"count": {{ evidence_files | selectattr("kind", "equalto", "image") | list | length }}}'
-          class="rounded border px-2 py-1 text-sm">
+          class="rounded-sm border px-2 py-1 text-sm">
     {% for vm in vision_models %}
     <option value="{{ vm.slug }}" {% if vm.slug == default_vision_slug %}selected{% endif %}>
       {{ vm.display_name }}{% if vm.prompt_image_cost_cents is not none %} — ~${{ "%.4f"|format(vm.prompt_image_cost_cents / 100) }}/img{% endif %}{% if not vm.supports_bbox %} (no auto-crop){% endif %}{% if vm.recommended %} ★{% endif %}
