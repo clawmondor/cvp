@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="csrf-token" content="{{ request.cookies.get('cvp_csrf', '') }}" />
   <title>{% block title %}ClaimOS{% endblock %} — ClaimOS</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/app.css" />
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="/static/app.js" defer></script>
   <script src="/static/crop-editor.js" defer></script>
