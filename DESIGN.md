@@ -14,6 +14,9 @@ colors:
   primary-active: "#4338ca"   # indigo-700 — pressed
   primary-subtle: "#eef2ff"   # indigo-50  — tinted backgrounds
   on-primary: "#ffffff"
+  # primary tints
+  primary-tint: "#e0e7ff"        # indigo-100
+  primary-tint-strong: "#c7d2fe" # indigo-200
   # Surfaces & neutrals (Tailwind gray)
   surface: "#ffffff"          # cards, nav, panels
   surface-muted: "#f9fafb"    # gray-50  — page background
@@ -24,20 +27,46 @@ colors:
   text-secondary: "#4b5563"   # gray-600 — secondary text
   text-muted: "#6b7280"       # gray-500 — metadata, captions (most common)
   text-subtle: "#9ca3af"      # gray-400 — placeholders, disabled
+  # neutral — add the missing body-text tier
+  text-strong-alt: "#374151"     # gray-700 (secondary heading / dense body text)
   # Semantic (Tailwind green / red / amber)
   success: "#15803d"          # green-700
   success-surface: "#f0fdf4"  # green-50
   error: "#dc2626"            # red-600
   error-surface: "#fef2f2"    # red-50
   warning: "#b45309"          # amber-700
-  warning-surface: "#fef9c3"  # yellow-100
+  # success ramp
+  success-surface-strong: "#dcfce7" # green-100
+  success-border: "#bbf7d0"         # green-200
+  success-icon: "#16a34a"           # green-600 (success icons / hover)
+  success-strong: "#166534"         # green-800
+  # error ramp
+  error-surface-strong: "#fee2e2"   # red-100
+  error-border: "#fecaca"           # red-200
+  error-strong: "#b91c1c"           # red-700
+  error-strongest: "#991b1b"        # red-800
+  # warning ramp (amber; yellow is folded in)
+  warning-surface: "#fffbeb"        # amber-50  (replaces prior yellow-100 value)
+  warning-surface-strong: "#fef3c7" # amber-100
+  warning-border: "#fde68a"         # amber-200
+  warning-icon: "#d97706"           # amber-600
+  warning-strong: "#92400e"         # amber-800
   # Admin chrome (dark surface — Tailwind slate)
   admin-surface: "#1e293b"        # slate-800 — admin sidebar background
   admin-surface-hover: "#334155"  # slate-700 — nav item hover
   admin-on-surface: "#cbd5e1"     # slate-300 — nav item text
   admin-on-surface-strong: "#ffffff"
+  # admin chrome extra steps
+  admin-on-surface-dim: "#94a3b8"   # slate-400
+  admin-surface-light: "#475569"    # slate-600
 typography:
   # System sans stack (Tailwind default — no web font is loaded)
+  display:
+    fontFamily: ui-sans-serif, system-ui, sans-serif
+    fontSize: 36px            # text-4xl — hero / marquee numbers
+    fontWeight: 700
+    lineHeight: 1.05
+    letterSpacing: -0.02em
   headline-lg:
     fontFamily: ui-sans-serif, system-ui, sans-serif
     fontSize: 30px            # text-3xl — splash / marquee headings
@@ -50,6 +79,11 @@ typography:
     fontWeight: 700
     lineHeight: 1.2
     letterSpacing: -0.01em
+  title-lg:
+    fontFamily: ui-sans-serif, system-ui, sans-serif
+    fontSize: 20px            # text-xl — prominent section titles
+    fontWeight: 600
+    lineHeight: 1.3
   title:
     fontFamily: ui-sans-serif, system-ui, sans-serif
     fontSize: 18px            # text-lg — section / card titles
@@ -192,26 +226,41 @@ gray** foundation, plus three semantic accents.
 
 - **Primary (`#4f46e5`, indigo-600):** the one interaction color — primary
   buttons, links, active states. Hover lifts to indigo-500, pressed drops to
-  indigo-700, and `primary-subtle` (indigo-50) tints selected backgrounds.
+  indigo-700, `primary-subtle` (indigo-50) tints selected backgrounds, and
+  `primary-tint`/`primary-tint-strong` (indigo-100/200) round out the tint
+  ramp for larger tinted fills and borders.
 - **Neutrals (gray):** `surface` white for cards and nav; `surface-muted`
   (gray-50) for the page ground; `border`/`border-strong` (gray-200/300) for
-  hairlines and inputs; a four-step text ramp from `text` (gray-900) down to
-  `text-subtle` (gray-400). `text-muted` (gray-500) is the single most common
-  color in the app — metadata and secondary copy.
+  hairlines and inputs; a five-step text ramp from `text` (gray-900) down to
+  `text-subtle` (gray-400), now including `text-strong-alt` (gray-700) for
+  secondary headings and dense body text between `text` and `text-secondary`.
+  `text-muted` (gray-500) is the single most common color in the app —
+  metadata and secondary copy.
 - **Semantics:** `success` green, `error` red, `warning` amber, each with a
-  matching tinted `-surface` for badges and banners.
+  full ramp — a tinted `-surface`, a stronger `-surface-strong`, a `-border`
+  step, and a darker `-strong` (error also has `-strongest`, warning also has
+  `-icon`) — for badges, banners, and borders at different emphasis levels.
+  Warning consolidates onto amber; there is no separate yellow token. There is
+  no emerald, violet, or blue accent in the palette — those fold into primary
+  (indigo) or the green/red/amber semantics above.
 - **Admin surface (slate):** the dark sidebar — `admin-surface` (slate-800)
   ground, `admin-surface-hover` (slate-700) hover, `admin-on-surface`
-  (slate-300) text going to white when active.
+  (slate-300) text going to white when active, plus two extra chrome steps for
+  secondary use: `admin-on-surface-dim` (slate-400) for de-emphasized text and
+  `admin-surface-light` (slate-600) for lighter chrome fills.
 
 ## Typography
 
-System-sans throughout the app; there is no loaded web font. Roughly seven
+System-sans throughout the app; there is no loaded web font. Roughly nine
 levels, with **`body-sm` (14px)** as the workhorse for both body copy and
-controls, and **`label-sm` (12px)** for metadata and badges. Headings use tight
-tracking at 700 weight (`headline-lg`/`headline-md`); section and card titles use
-`title` at 600. Only three weights appear in practice: 400, 500 (medium), 600–700
-(semibold/bold).
+controls, and **`label-sm` (12px)** for metadata and badges. At the top,
+**`display` (36px)** is reserved for hero / marquee numbers — the largest
+figure on a page — above `headline-lg`/`headline-md`. Headings use tight
+tracking at 700 weight (`display`/`headline-lg`/`headline-md`); section and
+card titles use `title` (18px) at 600, with **`title-lg` (20px)** available for
+more prominent section titles that need to outrank `title` without reaching
+headline weight. Only three weights appear in practice: 400, 500 (medium),
+600–700 (semibold/bold).
 
 The **print report** deviates on purpose: Arial/Helvetica for prose and
 **Courier New (monospace) for all monetary figures**, so dollar amounts align in
@@ -264,6 +313,9 @@ do not mix sharp and heavily-rounded corners.
   action and active state. Everything else is neutral gray.
 - **Don't** add a second brand/accent hue or introduce new colors, fonts, or radii
   outside the deferred rebrand slice.
+- **Do** treat warning as amber (never yellow) and success as green (never
+  emerald) — there is no separate info/blue or violet accent; those fold into
+  primary.
 - **Do** default to `body-sm` (14px) for controls and copy; use `text-muted`
   (gray-500) for secondary text.
 - **Don't** use drop shadows to build hierarchy — layer surfaces and borders

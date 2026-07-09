@@ -1,7 +1,7 @@
 <tr id="vm-row-{{ r.id }}" class="border-b">
   <td class="py-2 font-medium">
     {{ r.display_name }}
-    {% if r.recommended %}<span title="Recommended" class="ml-1 text-amber-500">&#9733;</span>{% endif %}
+    {% if r.recommended %}<span title="Recommended" class="ml-1 text-amber-600">&#9733;</span>{% endif %}
   </td>
   <td class="font-mono text-xs">{{ r.slug }}</td>
   <td>
@@ -25,7 +25,7 @@
   <td class="space-x-2 text-xs">
     <button hx-post="/admin/vision-models/{{ r.id }}/refresh-pricing"
             hx-target="#vm-row-{{ r.id }}" hx-swap="outerHTML"
-            class="text-blue-600">refresh</button>
+            class="text-indigo-600">refresh</button>
     {% if not r.is_default %}
     <button hx-delete="/admin/vision-models/{{ r.id }}"
             hx-confirm="Delete {{ r.slug }}? Only allowed if no scans reference it."

@@ -27,9 +27,9 @@
           data-feedback-open="{{ fb.id }}">
         <div class="flex items-center justify-between">
           {% set pill = {
-            'pending':   'bg-gray-100 text-gray-800',
-            'reviewing': 'bg-blue-100 text-blue-800',
-            'backlog':   'bg-yellow-100 text-yellow-800',
+            'pending':   'bg-gray-100 text-gray-900',
+            'reviewing': 'bg-indigo-100 text-indigo-700',
+            'backlog':   'bg-amber-100 text-amber-800',
             'canceled':  'bg-red-100 text-red-800',
             'done':      'bg-green-100 text-green-800',
           } %}
@@ -38,7 +38,7 @@
           </span>
           <span class="text-xs text-gray-500">{{ fb.created_at.strftime('%b %d') }}</span>
         </div>
-        <p class="mt-1 text-sm text-gray-800 line-clamp-2">{{ fb.body[:80] }}{% if fb.body|length > 80 %}…{% endif %}</p>
+        <p class="mt-1 text-sm text-gray-900 line-clamp-2">{{ fb.body[:80] }}{% if fb.body|length > 80 %}…{% endif %}</p>
       </li>
       {% endfor %}
     </ul>

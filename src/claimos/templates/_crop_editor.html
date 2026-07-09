@@ -8,7 +8,7 @@
          data-img-src="/files/{{ stored_path }}">
 
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-semibold text-gray-800">Edit crops — {{ evidence_file.filename }}</h3>
+        <h3 class="text-sm font-semibold text-gray-900">Edit crops — {{ evidence_file.filename }}</h3>
         <button data-crop-editor-close="{{ evidence_file.id }}"
                 class="text-xs text-gray-400 hover:text-gray-700">✕ Close</button>
       </div>
@@ -35,12 +35,12 @@
             <p id="ce-status-{{ evidence_file.id }}" class="mt-1 text-xs text-gray-400"></p>
             <div class="mt-3 pt-2 border-t border-gray-100">
               <button id="ce-draw-toggle-{{ evidence_file.id }}"
-                      class="w-full rounded border border-emerald-500 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">
+                      class="w-full rounded border border-green-600 px-3 py-1.5 text-sm font-semibold text-green-700 hover:bg-green-50">
                 Draw scan region
               </button>
               <button id="ce-scan-region-btn-{{ evidence_file.id }}"
                       disabled
-                      class="mt-1 w-full rounded bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed">
+                      class="mt-1 w-full rounded bg-green-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed">
                 Scan this region
               </button>
               <p id="ce-region-status-{{ evidence_file.id }}" class="mt-1 text-xs text-gray-400"></p>

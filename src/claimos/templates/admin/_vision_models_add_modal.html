@@ -14,7 +14,7 @@
       <tbody>
         {% for m in catalog %}
         <tr class="border-b">
-          <td class="py-2">{{ m.name }}{% if m.is_recommended %} <span class="text-amber-500">★</span>{% endif %}</td>
+          <td class="py-2">{{ m.name }}{% if m.is_recommended %} <span class="text-amber-600">★</span>{% endif %}</td>
           <td class="font-mono text-xs">{{ m.id }}</td>
           <td>{% if m.image_price %}${{ m.image_price }}{% else %}<span class="text-gray-400">?</span>{% endif %}</td>
           <td>{{ m.context_length or "" }}</td>

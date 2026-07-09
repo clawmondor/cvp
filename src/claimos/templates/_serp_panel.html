@@ -1,7 +1,7 @@
 <tr id="serp-panel-{{ item.id }}">
-  <td colspan="13" class="px-4 py-4 bg-violet-50 border-b border-violet-100">
+  <td colspan="13" class="px-4 py-4 bg-indigo-50 border-b border-indigo-100">
     <div class="flex items-center justify-between mb-3">
-      <h4 class="text-xs font-semibold text-violet-800">Google Lens — {{ item.description }}</h4>
+      <h4 class="text-xs font-semibold text-indigo-700">Google Lens — {{ item.description }}</h4>
       <button data-serp-panel-close="{{ item.id }}"
               class="text-xs text-gray-400 hover:text-gray-600">✕ Close</button>
     </div>
@@ -17,7 +17,7 @@
         <button data-show-crop-panel-item="{{ item.id }}" data-show-crop-panel-crop="{{ crop.id }}"
                 id="crop-tab-{{ crop.id }}"
                 class="border-2 rounded overflow-hidden focus:outline-none
-                       {% if loop.first %}border-violet-500{% else %}border-transparent hover:border-violet-300{% endif %}">
+                       {% if loop.first %}border-indigo-500{% else %}border-transparent hover:border-indigo-200{% endif %}">
           <img src="/crops/{{ crop.crop_path }}" alt="Crop {{ loop.index }}"
                class="w-16 h-16 object-contain bg-white" />
         </button>
@@ -55,23 +55,23 @@
                       data-lens-btn
                       {% if latest_by_crop.get(crop.id) %}disabled{% endif %}
                       class="text-xs px-3 py-1.5 rounded transition text-white
-                             {% if latest_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-violet-600 hover:bg-violet-700{% endif %}">
+                             {% if latest_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %}">
                 {% if latest_by_crop.get(crop.id) %}Searched{% else %}Search Google Lens{% endif %}
               </button>
             {% else %}
               <input type="url" name="image_url"
                      placeholder="Paste public URL to crop image (or set PUBLIC_BASE_URL)"
-                     class="flex-1 text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-400" />
+                     class="flex-1 text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
               <button type="submit"
                       data-lens-btn
                       {% if latest_by_crop.get(crop.id) %}disabled{% endif %}
                       class="text-xs px-3 py-1.5 rounded transition text-white
-                             {% if latest_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-violet-600 hover:bg-violet-700{% endif %}">
+                             {% if latest_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %}">
                 {% if latest_by_crop.get(crop.id) %}Searched{% else %}Search{% endif %}
               </button>
             {% endif %}
             <svg id="lens-spinner-{{ crop.id }}"
-                 class="htmx-indicator animate-spin h-4 w-4 text-violet-500"
+                 class="htmx-indicator animate-spin h-4 w-4 text-indigo-500"
                  xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>

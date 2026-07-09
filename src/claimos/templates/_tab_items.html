@@ -4,7 +4,7 @@
 
   <!-- New-items banner: shown by app.js when a scan/region rescan adds items -->
   <div id="items-new-banner" data-claim-id="{{ claim.id }}"
-       class="hidden flex items-center justify-between gap-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-800">
+       class="hidden flex items-center justify-between gap-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-700">
     <span><span aria-hidden="true">✦</span> <span data-new-items-label>New items added</span></span>
     <button type="button" data-view-new-items
             class="rounded-md bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-500">
@@ -25,12 +25,12 @@
             class="space-y-3">
         <div class="grid grid-cols-12 gap-3 items-end">
           <div class="col-span-4">
-            <label class="text-xs font-medium text-gray-600">Description <span class="text-red-400">*</span></label>
+            <label class="text-xs font-medium text-gray-600">Description <span class="text-red-600">*</span></label>
             <input name="description" required maxlength="255" placeholder="e.g. 65″ Samsung QLED TV"
                    class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
           </div>
           <div class="col-span-2">
-            <label class="text-xs font-medium text-gray-600">Category <span class="text-red-400">*</span></label>
+            <label class="text-xs font-medium text-gray-600">Category <span class="text-red-600">*</span></label>
             <select name="category_id" required
                     class="mt-0.5 block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
               {% for cat in categories %}

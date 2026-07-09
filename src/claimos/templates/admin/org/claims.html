@@ -3,7 +3,7 @@
 {% block sidebar %}
 <a href="/admin/org/?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
 <a href="/admin/org/users?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
-<a href="/admin/org/claims?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm bg-emerald-700 text-white">Claims</a>
+<a href="/admin/org/claims?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm bg-green-700 text-white">Claims</a>
 <a href="/admin/org/profile?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Profile</a>
 {% endblock %}
 {% block content %}
@@ -25,7 +25,7 @@
         <td class="px-6 py-4 text-sm text-gray-500">{{ m.status }}</td>
         <td class="px-6 py-4 text-sm text-gray-500">{{ m.target_delivery_date or '—' }}</td>
         <td class="px-6 py-4 text-sm">
-          <a href="/admin/org/claims/{{ m.id }}/access?group_id={{ group.id }}" class="text-emerald-700 hover:underline">Manage access</a>
+          <a href="/admin/org/claims/{{ m.id }}/access?group_id={{ group.id }}" class="text-green-700 hover:underline">Manage access</a>
         </td>
       </tr>
       {% else %}
