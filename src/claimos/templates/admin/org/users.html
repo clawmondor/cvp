@@ -1,10 +1,10 @@
 {% extends "admin/base.html" %}
 {% block title %}Users — {{ group.name }}{% endblock %}
 {% block sidebar %}
-<a href="/admin/org/?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
-<a href="/admin/org/users?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm bg-green-700 text-white">Users</a>
-<a href="/admin/org/claims?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
-<a href="/admin/org/profile?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Profile</a>
+<a href="/admin/org/?group_id={{ group.id }}" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
+<a href="/admin/org/users?group_id={{ group.id }}" class="block px-3 py-2 rounded-sm text-sm bg-green-700 text-white">Users</a>
+<a href="/admin/org/claims?group_id={{ group.id }}" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
+<a href="/admin/org/profile?group_id={{ group.id }}" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Profile</a>
 {% endblock %}
 {% block content %}
 <div class="flex items-center justify-between mb-6">
@@ -18,7 +18,7 @@
 </div>
 {% endif %}
 
-<div class="bg-white shadow rounded-lg mb-6">
+<div class="bg-white shadow-sm rounded-lg mb-6">
   <div class="px-6 py-4 border-b border-gray-200">
     <h2 class="text-base font-semibold text-gray-900">Create Invite</h2>
   </div>
@@ -26,19 +26,19 @@
     <input type="hidden" name="group_id" value="{{ group.id }}" />
     <div>
       <label class="block text-sm font-medium text-gray-700">Email</label>
-      <input type="email" name="email" required class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+      <input type="email" name="email" required class="mt-1 block w-full border border-gray-300 rounded-sm px-3 py-2 text-sm" />
     </div>
     <div>
       <label class="block text-sm font-medium text-gray-700">Display Name</label>
-      <input type="text" name="display_name" required class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+      <input type="text" name="display_name" required class="mt-1 block w-full border border-gray-300 rounded-sm px-3 py-2 text-sm" />
     </div>
     <div class="col-span-2">
-      <button type="submit" class="bg-green-700 text-white px-4 py-2 rounded text-sm hover:bg-green-600">Create Invite</button>
+      <button type="submit" class="bg-green-700 text-white px-4 py-2 rounded-sm text-sm hover:bg-green-600">Create Invite</button>
     </div>
   </form>
 </div>
 
-<div class="bg-white shadow rounded-lg">
+<div class="bg-white shadow-sm rounded-lg">
   <table class="min-w-full divide-y divide-gray-200">
     <thead class="bg-gray-50">
       <tr>

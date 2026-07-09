@@ -1,10 +1,10 @@
 {% extends "admin/base.html" %}
 {% block title %}User: {{ target.email }}{% endblock %}
 {% block sidebar %}
-<a href="/admin/internal/" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
-<a href="/admin/internal/users" class="block px-3 py-2 rounded text-sm bg-slate-700 text-white">Users</a>
-<a href="/admin/internal/claims" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
-<a href="/admin/internal/groups" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">External Groups</a>
+<a href="/admin/internal/" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
+<a href="/admin/internal/users" class="block px-3 py-2 rounded-sm text-sm bg-slate-700 text-white">Users</a>
+<a href="/admin/internal/claims" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
+<a href="/admin/internal/groups" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">External Groups</a>
 {% endblock %}
 {% block content %}
 <h1 class="text-2xl font-bold text-gray-900 mb-6">{{ target.email }}</h1>
@@ -14,7 +14,7 @@
   <p class="mt-1 text-sm text-green-700 font-mono break-all">{{ invite_url }}</p>
 </div>
 {% endif %}
-<div class="bg-white shadow rounded-lg p-6 mb-6">
+<div class="bg-white shadow-sm rounded-lg p-6 mb-6">
   <dl class="grid grid-cols-2 gap-4">
     <div><dt class="text-sm text-gray-500">Display Name</dt><dd class="text-sm font-medium text-gray-900">{{ target.display_name }}</dd></div>
     <div><dt class="text-sm text-gray-500">Role</dt><dd class="text-sm font-medium text-gray-900">{{ target.system_role }}</dd></div>
@@ -25,16 +25,16 @@
 <div class="flex gap-3">
   {% if target.is_active %}
   <form method="POST" action="/admin/internal/users/{{ target.id }}/deactivate">
-    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700">Deactivate</button>
+    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-sm text-sm hover:bg-red-700">Deactivate</button>
   </form>
   {% else %}
   <form method="POST" action="/admin/internal/users/{{ target.id }}/activate">
-    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">Activate</button>
+    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-sm text-sm hover:bg-green-700">Activate</button>
   </form>
   {% endif %}
   {% if target.is_active %}
   <form method="POST" action="/admin/internal/users/{{ target.id }}/regenerate-invite">
-    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700">Regenerate Invite Link</button>
+    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-sm text-sm hover:bg-indigo-700">Regenerate Invite Link</button>
   </form>
   {% endif %}
 </div>

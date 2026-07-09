@@ -162,7 +162,7 @@
   {% endif %}
 
   {% if claim.coverage_c_limit and total_rcv_cents > claim.coverage_c_limit %}
-  <p class="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+  <p class="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2">
     ⚠ Total RCV exceeds the Coverage C limit by
     <strong>${{ "{:,.2f}".format((total_rcv_cents - claim.coverage_c_limit) / 100) }}</strong>.
   </p>
@@ -261,7 +261,7 @@
       Depreciation is computed using the <strong>straight-line method</strong> applied to each item's
       useful life, age, and condition. The formula is:
     </p>
-    <pre class="bg-gray-50 border border-gray-200 rounded px-4 py-3 text-xs font-mono leading-relaxed">
+    <pre class="bg-gray-50 border border-gray-200 rounded-sm px-4 py-3 text-xs font-mono leading-relaxed">
 dep_rate          = 1 / useful_life_years
 accumulated_dep   = min(dep_rate × age_years × condition_multiplier, 1 − floor_pct)
 acv_unit          = round(rcv_unit × (1 − accumulated_dep))

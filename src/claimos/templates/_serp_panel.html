@@ -16,7 +16,7 @@
         {% for crop in item.crops %}
         <button data-show-crop-panel-item="{{ item.id }}" data-show-crop-panel-crop="{{ crop.id }}"
                 id="crop-tab-{{ crop.id }}"
-                class="border-2 rounded overflow-hidden focus:outline-none
+                class="border-2 rounded-sm overflow-hidden focus:outline-hidden
                        {% if loop.first %}border-indigo-500{% else %}border-transparent hover:border-indigo-200{% endif %}">
           <img src="/crops/{{ crop.crop_path }}" alt="Crop {{ loop.index }}"
                class="w-16 h-16 object-contain bg-white" />
@@ -33,7 +33,7 @@
         {# Crop thumbnail #}
         <div class="flex-shrink-0">
           <img src="/crops/{{ crop.crop_path }}" alt="{{ item.description }}"
-               class="w-32 h-32 object-contain rounded border border-gray-200 bg-white shadow-sm" />
+               class="w-32 h-32 object-contain rounded-sm border border-gray-200 bg-white shadow-xs" />
           <p class="mt-1 text-xs text-gray-400 text-center">
             {{ crop.bbox_right - crop.bbox_left }}×{{ crop.bbox_lower - crop.bbox_upper }}px
           </p>
@@ -54,18 +54,18 @@
               <button type="submit"
                       data-lens-btn
                       {% if latest_by_crop.get(crop.id) %}disabled{% endif %}
-                      class="text-xs px-3 py-1.5 rounded transition text-white
+                      class="text-xs px-3 py-1.5 rounded-sm transition text-white
                              {% if latest_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %}">
                 {% if latest_by_crop.get(crop.id) %}Searched{% else %}Search Google Lens{% endif %}
               </button>
             {% else %}
               <input type="url" name="image_url"
                      placeholder="Paste public URL to crop image (or set PUBLIC_BASE_URL)"
-                     class="flex-1 text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                     class="flex-1 text-xs border border-gray-300 rounded-sm px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-indigo-500" />
               <button type="submit"
                       data-lens-btn
                       {% if latest_by_crop.get(crop.id) %}disabled{% endif %}
-                      class="text-xs px-3 py-1.5 rounded transition text-white
+                      class="text-xs px-3 py-1.5 rounded-sm transition text-white
                              {% if latest_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %}">
                 {% if latest_by_crop.get(crop.id) %}Searched{% else %}Search{% endif %}
               </button>

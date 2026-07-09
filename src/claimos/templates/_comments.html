@@ -20,7 +20,7 @@
         hx-swap="innerHTML"
         class="flex gap-2 mt-2">
     <textarea name="body" rows="2" required placeholder="Add a comment..."
-              class="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"></textarea>
+              class="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-hidden"></textarea>
     <div class="flex flex-col gap-1">
       {% if current_user.group_kind == 'internal' %}
       <select name="visibility" class="rounded-md border border-gray-300 px-2 py-1 text-xs">

@@ -1,14 +1,14 @@
 {% extends "admin/base.html" %}
 {% block title %}Runtime Config{% endblock %}
 {% block sidebar %}
-<a href="/admin/system/" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
-<a href="/admin/system/users" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
-<a href="/admin/system/groups" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Groups</a>
-<a href="/admin/system/claims" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
-<a href="/admin/system/feedback" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Feedback</a>
-<a href="/admin/system/audit" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Audit Log</a>
-<a href="/admin/vision-models" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Vision Models</a>
-<a href="/admin/system/runtime-config" class="block px-3 py-2 rounded text-sm bg-slate-700 text-white">Runtime Config</a>
+<a href="/admin/system/" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
+<a href="/admin/system/users" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
+<a href="/admin/system/groups" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Groups</a>
+<a href="/admin/system/claims" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
+<a href="/admin/system/feedback" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Feedback</a>
+<a href="/admin/system/audit" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Audit Log</a>
+<a href="/admin/vision-models" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Vision Models</a>
+<a href="/admin/system/runtime-config" class="block px-3 py-2 rounded-sm text-sm bg-slate-700 text-white">Runtime Config</a>
 {% endblock %}
 {% block content %}
 <div class="space-y-4">
@@ -32,12 +32,12 @@
           value="{{ row.value }}"
           min="{{ lo }}"
           max="{{ hi }}"
-          class="mt-1 block w-32 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+          class="mt-1 block w-32 rounded-sm border border-gray-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-1 focus:ring-indigo-500">
         <span class="text-xs text-gray-400">range {{ lo }}–{{ hi }}</span>
       </label>
     {% endfor %}
     <button type="submit"
-            class="rounded bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">
+            class="rounded-sm bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500">
       Save
     </button>
   </form>

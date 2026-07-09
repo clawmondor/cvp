@@ -1,16 +1,16 @@
 {% extends "admin/base.html" %}
 {% block title %}Access: {{ claim.insured_name }}{% endblock %}
 {% block sidebar %}
-<a href="/admin/internal/" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
-<a href="/admin/internal/users" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
-<a href="/admin/internal/claims" class="block px-3 py-2 rounded text-sm bg-slate-700 text-white">Claims</a>
-<a href="/admin/internal/groups" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">External Groups</a>
+<a href="/admin/internal/" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
+<a href="/admin/internal/users" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
+<a href="/admin/internal/claims" class="block px-3 py-2 rounded-sm text-sm bg-slate-700 text-white">Claims</a>
+<a href="/admin/internal/groups" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">External Groups</a>
 {% endblock %}
 {% block content %}
 <h1 class="text-2xl font-bold text-gray-900 mb-2">Access — {{ claim.insured_name }}</h1>
 <p class="text-sm text-gray-500 mb-6">Claim ID: {{ claim.id }}</p>
 
-<div class="bg-white shadow rounded-lg mb-6">
+<div class="bg-white shadow-sm rounded-lg mb-6">
   <div class="px-6 py-4 border-b border-gray-200">
     <h2 class="text-base font-semibold text-gray-900">Current Grants</h2>
   </div>
@@ -36,14 +36,14 @@
   </table>
 </div>
 
-<div class="bg-white shadow rounded-lg">
+<div class="bg-white shadow-sm rounded-lg">
   <div class="px-6 py-4 border-b border-gray-200">
     <h2 class="text-base font-semibold text-gray-900">Grant Access</h2>
   </div>
   <form method="POST" action="/admin/internal/claims/{{ claim.id }}/access" class="px-6 py-4 grid grid-cols-2 gap-4">
     <div>
       <label class="block text-sm font-medium text-gray-700">User</label>
-      <select name="user_id" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm">
+      <select name="user_id" class="mt-1 block w-full border border-gray-300 rounded-sm px-3 py-2 text-sm">
         {% for u in all_users %}
         <option value="{{ u.id }}">{{ u.email }}</option>
         {% endfor %}
@@ -51,7 +51,7 @@
     </div>
     <div>
       <label class="block text-sm font-medium text-gray-700">Role</label>
-      <select name="role" class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm">
+      <select name="role" class="mt-1 block w-full border border-gray-300 rounded-sm px-3 py-2 text-sm">
         <option value="viewer">Viewer</option>
         <option value="editor">Editor</option>
         <option value="contributor">Contributor</option>
@@ -59,7 +59,7 @@
       </select>
     </div>
     <div class="col-span-2">
-      <button type="submit" class="bg-indigo-700 text-white px-4 py-2 rounded text-sm hover:bg-indigo-600">Grant Access</button>
+      <button type="submit" class="bg-indigo-700 text-white px-4 py-2 rounded-sm text-sm hover:bg-indigo-600">Grant Access</button>
     </div>
   </form>
 </div>

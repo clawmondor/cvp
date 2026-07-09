@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 {% block title %}Select Organization{% endblock %}
 {% block sidebar %}
-<a href="/admin/org/" class="block px-3 py-2 rounded text-sm bg-green-700 text-white">Dashboard</a>
+<a href="/admin/org/" class="block px-3 py-2 rounded-sm text-sm bg-green-700 text-white">Dashboard</a>
 {% endblock %}
 {% block content %}
 <h1 class="text-2xl font-bold text-gray-900 mb-6">Select Organization</h1>
@@ -9,7 +9,7 @@
 <div class="grid grid-cols-3 gap-4">
   {% for g in groups %}
   <a href="/admin/org/?group_id={{ g.id }}"
-     class="block bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow border border-transparent hover:border-green-200">
+     class="block bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow border border-transparent hover:border-green-200">
     <p class="text-base font-semibold text-gray-900">{{ g.name }}</p>
     <p class="text-xs text-gray-400 mt-1">{{ g.kind }}</p>
   </a>

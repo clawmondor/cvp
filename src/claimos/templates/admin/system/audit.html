@@ -2,15 +2,15 @@
 {% block title %}Audit Log{% endblock %}
 
 {% block sidebar %}
-<a href="/admin/system/" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
-<a href="/admin/system/users" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
-<a href="/admin/system/groups" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Groups</a>
-<a href="/admin/system/claims" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
-<a href="/admin/system/feedback" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">
+<a href="/admin/system/" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
+<a href="/admin/system/users" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
+<a href="/admin/system/groups" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Groups</a>
+<a href="/admin/system/claims" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
+<a href="/admin/system/feedback" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">
   Feedback{% if unread_count %} <span class="ml-1 inline-flex items-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs">{{ unread_count }}</span>{% endif %}
 </a>
-<a href="/admin/system/audit" class="block px-3 py-2 rounded text-sm bg-slate-700 text-white">Audit Log</a>
-<a href="/admin/vision-models" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Vision Models</a>
+<a href="/admin/system/audit" class="block px-3 py-2 rounded-sm text-sm bg-slate-700 text-white">Audit Log</a>
+<a href="/admin/vision-models" class="block px-3 py-2 rounded-sm text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Vision Models</a>
 {% endblock %}
 
 {% block content %}
@@ -21,33 +21,33 @@
 </div>
 
 <!-- Filter form -->
-<form method="GET" action="/admin/system/audit" class="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-4">
+<form method="GET" action="/admin/system/audit" class="bg-white rounded-lg shadow-sm p-4 mb-6 flex flex-wrap gap-4">
   <div>
     <label class="block text-xs text-gray-500 mb-1">Action prefix</label>
-    <input name="action" value="{{ filters.action }}" placeholder="e.g. item." class="border rounded px-2 py-1 text-sm w-40" />
+    <input name="action" value="{{ filters.action }}" placeholder="e.g. item." class="border rounded-sm px-2 py-1 text-sm w-40" />
   </div>
   <div>
     <label class="block text-xs text-gray-500 mb-1">User ID</label>
-    <input name="user_filter" value="{{ filters.user_filter }}" placeholder="User ID" class="border rounded px-2 py-1 text-sm w-48" />
+    <input name="user_filter" value="{{ filters.user_filter }}" placeholder="User ID" class="border rounded-sm px-2 py-1 text-sm w-48" />
   </div>
   <div>
     <label class="block text-xs text-gray-500 mb-1">Claim ID</label>
-    <input name="claim_id" value="{{ filters.claim_id }}" placeholder="Claim ID" class="border rounded px-2 py-1 text-sm w-48" />
+    <input name="claim_id" value="{{ filters.claim_id }}" placeholder="Claim ID" class="border rounded-sm px-2 py-1 text-sm w-48" />
   </div>
   <div>
     <label class="block text-xs text-gray-500 mb-1">From</label>
-    <input type="date" name="date_from" value="{{ filters.date_from }}" class="border rounded px-2 py-1 text-sm" />
+    <input type="date" name="date_from" value="{{ filters.date_from }}" class="border rounded-sm px-2 py-1 text-sm" />
   </div>
   <div>
     <label class="block text-xs text-gray-500 mb-1">To</label>
-    <input type="date" name="date_to" value="{{ filters.date_to }}" class="border rounded px-2 py-1 text-sm" />
+    <input type="date" name="date_to" value="{{ filters.date_to }}" class="border rounded-sm px-2 py-1 text-sm" />
   </div>
   <div class="flex items-end">
-    <button type="submit" class="bg-slate-700 text-white px-4 py-1 rounded text-sm hover:bg-slate-800">Filter</button>
+    <button type="submit" class="bg-slate-700 text-white px-4 py-1 rounded-sm text-sm hover:bg-slate-800">Filter</button>
   </div>
 </form>
 
-<div class="bg-white rounded-lg shadow overflow-hidden">
+<div class="bg-white rounded-lg shadow-sm overflow-hidden">
   <div class="px-4 py-3 border-b text-sm text-gray-500">{{ total }} events</div>
   <table class="min-w-full divide-y divide-gray-200 text-sm">
     <thead class="bg-gray-50">
