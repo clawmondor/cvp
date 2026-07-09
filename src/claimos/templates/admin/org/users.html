@@ -2,7 +2,7 @@
 {% block title %}Users — {{ group.name }}{% endblock %}
 {% block sidebar %}
 <a href="/admin/org/?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
-<a href="/admin/org/users?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm bg-emerald-700 text-white">Users</a>
+<a href="/admin/org/users?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm bg-green-700 text-white">Users</a>
 <a href="/admin/org/claims?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
 <a href="/admin/org/profile?group_id={{ group.id }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Profile</a>
 {% endblock %}
@@ -33,7 +33,7 @@
       <input type="text" name="display_name" required class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm" />
     </div>
     <div class="col-span-2">
-      <button type="submit" class="bg-emerald-700 text-white px-4 py-2 rounded text-sm hover:bg-emerald-600">Create Invite</button>
+      <button type="submit" class="bg-green-700 text-white px-4 py-2 rounded text-sm hover:bg-green-600">Create Invite</button>
     </div>
   </form>
 </div>
@@ -52,7 +52,7 @@
       {% for u in users %}
       <tr>
         <td class="px-6 py-4 text-sm">
-          <a href="/admin/org/users/{{ u.id }}?group_id={{ group.id }}" class="text-emerald-700 hover:underline">{{ u.email }}</a>
+          <a href="/admin/org/users/{{ u.id }}?group_id={{ group.id }}" class="text-green-700 hover:underline">{{ u.email }}</a>
         </td>
         <td class="px-6 py-4 text-sm text-gray-900">{{ u.display_name }}</td>
         <td class="px-6 py-4 text-sm text-gray-500">{{ u.system_role }}</td>

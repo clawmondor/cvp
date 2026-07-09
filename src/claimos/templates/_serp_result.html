@@ -21,7 +21,7 @@
               {{ result.title or "Untitled" }}
             </a>
           {% else %}
-            <span class="font-medium text-gray-800 truncate block leading-snug">
+            <span class="font-medium text-gray-900 truncate block leading-snug">
               {{ result.title or "Untitled" }}
             </span>
           {% endif %}
@@ -75,11 +75,11 @@
     <div class="mt-2 space-y-3">
       <div>
         <p class="font-semibold text-gray-600 mb-1">Request URL</p>
-        <pre class="bg-gray-50 border border-gray-200 rounded p-2 overflow-x-auto text-gray-800 whitespace-pre-wrap break-all text-xs">{{ s.request_url }}</pre>
+        <pre class="bg-gray-50 border border-gray-200 rounded p-2 overflow-x-auto text-gray-900 whitespace-pre-wrap break-all text-xs">{{ s.request_url }}</pre>
       </div>
       <div>
         <p class="font-semibold text-gray-600 mb-1">Response <span class="text-gray-400">(HTTP {{ s.status_code }})</span></p>
-        <pre class="bg-gray-50 border border-gray-200 rounded p-2 overflow-x-auto overflow-y-auto text-gray-800 max-h-64 text-xs">{{ s.response_json | pretty_json }}</pre>
+        <pre class="bg-gray-50 border border-gray-200 rounded p-2 overflow-x-auto overflow-y-auto text-gray-900 max-h-64 text-xs">{{ s.response_json | pretty_json }}</pre>
       </div>
     </div>
   </details>

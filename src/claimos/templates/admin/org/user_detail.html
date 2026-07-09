@@ -2,7 +2,7 @@
 {% block title %}User: {{ target.email }}{% endblock %}
 {% block sidebar %}
 <a href="/admin/org/?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
-<a href="/admin/org/users?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded text-sm bg-emerald-700 text-white">Users</a>
+<a href="/admin/org/users?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded text-sm bg-green-700 text-white">Users</a>
 <a href="/admin/org/claims?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Claims</a>
 <a href="/admin/org/profile?group_id={{ group.id if group else '' }}" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Profile</a>
 {% endblock %}
