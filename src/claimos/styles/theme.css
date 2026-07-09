@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+/* Scan the server-rendered templates so only used utilities are emitted. */
+@source "../templates/**/*.html";
+
+/* v3→v4 parity: v4 defaults an un-colored `border` to currentColor;
+   the templates assume v3's gray-200 default. */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-gray-200, currentColor);
+  }
+}

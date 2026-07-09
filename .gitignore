@@ -13,3 +13,7 @@ dist/
 .DS_Store
 .claude/
 tmp/
+
+# Tailwind build
+/bin/
+src/claimos/static/app.css
