@@ -1,4 +1,7 @@
-@import "tailwindcss";
+/* source(none) disables Tailwind v4's automatic whole-repo content detection so
+   class names mentioned only in docs/specs/comments don't leak into the stylesheet.
+   Content is scoped explicitly to the server-rendered templates below. */
+@import "tailwindcss" source(none);
 
 /* Scan the server-rendered templates so only used utilities are emitted. */
 @source "../templates/**/*.html";
