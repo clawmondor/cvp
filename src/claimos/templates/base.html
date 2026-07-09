@@ -23,14 +23,14 @@
           {% if user %}
           <a href="/profile" class="text-sm text-neutral-600 hover:text-neutral-900">{{ user.display_name or user.email }}</a>
           {% if user.system_role == "system_admin" %}
-          <a href="/admin/system/" class="text-sm text-neutral-500 hover:text-neutral-700">Admin</a>
+          <a href="/admin/system/" class="btn-secondary text-sm">Admin</a>
           {% elif user.system_role == "internal_admin" %}
-          <a href="/admin/internal/" class="text-sm text-neutral-500 hover:text-neutral-700">Admin</a>
+          <a href="/admin/internal/" class="btn-secondary text-sm">Admin</a>
           {% elif user.system_role == "external_admin" %}
-          <a href="/admin/org/" class="text-sm text-neutral-500 hover:text-neutral-700">Admin</a>
+          <a href="/admin/org/" class="btn-secondary text-sm">Admin</a>
           {% endif %}
           <form method="POST" action="/api/auth/logout" class="inline">
-            <button type="submit" class="text-sm text-neutral-500 hover:text-neutral-700">Sign out</button>
+            <button type="submit" class="btn-secondary text-sm">Sign out</button>
           </form>
           {% endif %}
         </div>
