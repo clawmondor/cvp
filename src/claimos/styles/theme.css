@@ -9,6 +9,7 @@
 @source "../static/*.js";
 
 @theme {
+  --color-*: initial;
   /* Accent (primary) */
   --color-primary-subtle: #eef2ff;
   --color-primary-tint: #e0e7ff;
