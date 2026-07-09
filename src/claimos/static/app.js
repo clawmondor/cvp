@@ -318,17 +318,17 @@ function startRename(roomId) {
     input.value = currentName;
     input.required = true;
     input.maxLength = 100;
-    input.className = 'rounded border border-indigo-400 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-1';
+    input.className = 'rounded-sm border border-indigo-400 px-2 py-0.5 text-sm focus:outline-hidden focus:ring-1 focus:ring-indigo-500 flex-1';
 
     var save = document.createElement('button');
     save.type = 'submit';
     save.textContent = 'Save';
-    save.className = 'rounded px-2 py-0.5 text-xs bg-indigo-600 text-white hover:bg-indigo-500';
+    save.className = 'rounded-sm px-2 py-0.5 text-xs bg-indigo-600 text-white hover:bg-indigo-500';
 
     var cancel = document.createElement('button');
     cancel.type = 'button';
     cancel.textContent = 'Cancel';
-    cancel.className = 'rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100';
+    cancel.className = 'rounded-sm px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100';
     cancel.addEventListener('click', function () { location.reload(); });
 
     form.appendChild(input);

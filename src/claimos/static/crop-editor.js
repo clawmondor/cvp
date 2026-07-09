@@ -273,7 +273,7 @@
         inp.value = box[f[1]];
         inp.min = '0';
         inp.max = String(f[2]);
-        inp.className = 'border rounded px-1 py-0.5 text-right';
+        inp.className = 'border rounded-sm px-1 py-0.5 text-right';
         grid.appendChild(lbl);
         grid.appendChild(inp);
       });
