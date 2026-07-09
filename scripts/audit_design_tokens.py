@@ -92,17 +92,6 @@ TW = {
 }
 HEX2TW = {v.lower(): (fam, sh) for fam, d in TW.items() for sh, v in d.items()}
 
-ALLOWED_TYPE = {
-    "text-xs",
-    "text-sm",
-    "text-base",
-    "text-lg",
-    "text-xl",
-    "text-2xl",
-    "text-3xl",
-    "text-4xl",
-}
-
 
 def allowed_colors() -> set[tuple[str, int]]:
     fm = open("DESIGN.md").read().split("---\n", 2)[1]
