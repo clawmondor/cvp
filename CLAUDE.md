@@ -111,14 +111,16 @@ When writing any user-facing text, report template content, UI copy, README, or 
 - **Tests live in `tests/` mirroring the `src/claimos/` layout.** Depreciation has near-100% coverage; routers have one happy-path integration test each; Vision is mocked.
 - **Run `ruff format .` then `ruff format --check .` before every commit.** CI enforces format; the check must show zero files would be reformatted. Line length 100.
 - **No clever tricks.** This is a prototype built by a small team. Boring code is maintainable code.
+- **All UI follows `@DESIGN.md`.** It is the source of truth for the design system — colors, typography, spacing, radii, and component styling. Any new or changed template must use the existing tokens (the indigo/gray app palette, the dark slate admin chrome, the Arial/Courier print report). Do not introduce new colors, fonts, or radii outside the deferred, mockup-driven rebrand slice.
 
 ## How to approach new work
 
 1. **Read `@docs/PRD.md` sections relevant to the task.** The PRD is the source of truth for what the product should do.
 2. **Check the build phases in PRD section 15.** Phases are ordered. If a phase is not yet complete, do not start work on a later phase.
 3. **If the task is ambiguous, ask one targeted question.** Don't guess on anything that touches the data model, depreciation, legal copy, or export formats.
-4. **Write tests for `depreciation.py` and `csv_export.py` alongside the code.** These are the parts that must be correct; everything else can be fixed later.
-5. **Stop and flag anything that conflicts with the immutable rules above.** Do not silently work around them.
+4. **When the task touches UI, read `@DESIGN.md` first.** Reuse its tokens and component patterns so new screens match what already ships. Flag (don't silently break) anything that would require a token the design system doesn't have.
+5. **Write tests for `depreciation.py` and `csv_export.py` alongside the code.** These are the parts that must be correct; everything else can be fixed later.
+6. **Stop and flag anything that conflicts with the immutable rules above.** Do not silently work around them.
 
 ## Things NOT to do
 
@@ -133,6 +135,7 @@ When writing any user-facing text, report template content, UI copy, README, or 
 
 ## Useful references
 
+- `@DESIGN.md` — the design system (tokens + prose) every UI change must follow
 - `@docs/PRD.md` — full product requirements, data model, API surface, acceptance criteria
 - `@docs/data-model.md` — schema rationale and migration history
 - `@docs/depreciation-schedule.md` — the 42-category useful-life table (source of truth for the seed script)
