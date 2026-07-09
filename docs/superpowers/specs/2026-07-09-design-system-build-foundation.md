@@ -47,13 +47,20 @@ scripts/build-css.sh             # wrapper: bin/tailwindcss -i styles/theme.css 
 This spec defines the whole architecture; it is implemented as **three independently-mergeable, parity-verified slices**. Each renders identically to the prior state. **The first implementation plan covers Slice 1 only.**
 
 ### Slice 1 — Pipeline + parity (first plan)
-Stand up the build; achieve identical rendering with **no template restyling**.
+Stand up the build; achieve identical rendering with **no restyle**. Templates are
+touched only by a **pixel-identical, scripted utility rename** (the official Tailwind
+v3→v4 renames) — no visual/design change.
 
-- Add `theme.css` importing Tailwind v4, with `@theme` set to **current** values and a **v4→v3 compatibility pass** neutralizing v4's changed defaults so output matches the current CDN, specifically:
-  - default border color: v4 `currentColor` → restore `gray-200` (v3 behavior the templates assume via bare `border`)
-  - default ring width/color: v4 `1px`/`currentColor` → restore v3 `3px` + ring color
-  - any shadow-scale / spacing-scale deltas that affect current templates (reconcile to v3 values)
-  - (Exact deltas confirmed empirically during implementation by diffing rendered pages.)
+- Add `theme.css` importing Tailwind v4 (`@import "tailwindcss";` + `@source` for the
+  template globs) and a minimal base compat rule restoring v3's default un-colored
+  border color (`gray-200`, since v4 defaults bare `border` to `currentColor`).
+- **v4 utility rename in templates (scripted, pixel-identical):** apply the official
+  v3→v4 renames for utilities the templates actually use, as whole-token substitutions:
+  `outline-none`→`outline-hidden` (76), bare `rounded`→`rounded-sm` (250),
+  `rounded-b`→`rounded-b-sm` (1), `shadow-sm`→`shadow-xs` (65), bare `shadow`→`shadow-sm`
+  (42), bare `ring`→`ring-3` (9). `rounded-md/lg/full`, `ring-1/2`, and explicit colors are
+  unaffected. These renames preserve rendering exactly — they realign class names to v4's
+  shifted scales, not the values.
 - Add `scripts/fetch-tailwind.sh` (pin a specific v4 version) and `scripts/build-css.sh`.
 - Generate `app.css`; swap CDN `<script>` → `<link href="/static/app.css">` in all shell templates listed above.
 - **Dev workflow:** keep `uv run dev` as the server; add a `uv run css` script (standalone binary `--watch`). Two processes, documented in README. (Chosen over subprocess-juggling in the Python entrypoint for simplicity.)
@@ -62,7 +69,7 @@ Stand up the build; achieve identical rendering with **no template restyling**.
 - **CSP:** remove `https://cdn.tailwindcss.com` from `script-src` and `style-src` in `middleware.py`. Keep `style-src 'unsafe-inline'` **only if** templates still rely on dynamic `style=""` (verify during implementation; drop it too if nothing needs it).
 - **.gitignore:** add `src/claimos/static/app.css` and `bin/tailwindcss`.
 - **CLAUDE.md:** update the fixed-stack line (CDN → standalone-CLI build) and the commands list (`uv run css`, build script).
-- **Parity check:** templates are unchanged, so parity is provable by diffing rendered output of representative pages before/after.
+- **Parity check:** the only template edits are the deterministic renames above, which are pixel-identical by construction; parity is corroborated by the app rendering without error, the built `app.css` containing the renamed utilities, and no CDN references remaining.
 - **Acceptance:** app styled identically with the CDN removed; `uv run dev` + `uv run css` work; Docker image builds and serves `app.css`; CI green; audit guard (from #35) still passes unchanged.
 
 ### Slice 2 — Semantic tokens (later plan)
