@@ -11,41 +11,41 @@
 @theme {
   --color-*: initial;
   /* Accent (primary) */
-  --color-primary-subtle: #eef2ff;
-  --color-primary-tint: #e0e7ff;
-  --color-primary-tint-strong: #c7d2fe;
-  --color-primary-light: #6366f1;
-  --color-primary: #4f46e5;
-  --color-primary-strong: #4338ca;
+  --color-primary-subtle: light-dark(#eef2ff, #1e1b4b);
+  --color-primary-tint: light-dark(#e0e7ff, #312e81);
+  --color-primary-tint-strong: light-dark(#c7d2fe, #3730a3);
+  --color-primary-light: light-dark(#6366f1, #a5b4fc);
+  --color-primary: light-dark(#4f46e5, #818cf8);
+  --color-primary-strong: light-dark(#4338ca, #6366f1);
   /* Neutral ramp */
-  --color-neutral-50: #f9fafb;
-  --color-neutral-100: #f3f4f6;
-  --color-neutral-200: #e5e7eb;
-  --color-neutral-300: #d1d5db;
-  --color-neutral-400: #9ca3af;
-  --color-neutral-500: #6b7280;
-  --color-neutral-600: #4b5563;
-  --color-neutral-700: #374151;
-  --color-neutral-900: #111827;
+  --color-neutral-50: light-dark(#f9fafb, #0f1115);
+  --color-neutral-100: light-dark(#f3f4f6, #17191e);
+  --color-neutral-200: light-dark(#e5e7eb, #262932);
+  --color-neutral-300: light-dark(#d1d5db, #363a44);
+  --color-neutral-400: light-dark(#9ca3af, #6b7280);
+  --color-neutral-500: light-dark(#6b7280, #9aa1ac);
+  --color-neutral-600: light-dark(#4b5563, #b6bcc6);
+  --color-neutral-700: light-dark(#374151, #d2d7de);
+  --color-neutral-900: light-dark(#111827, #f2f4f7);
   /* Status */
-  --color-success-surface: #f0fdf4;
-  --color-success-surface-strong: #dcfce7;
-  --color-success-border: #bbf7d0;
-  --color-success-emphasis: #16a34a;
-  --color-success: #15803d;
-  --color-success-strong: #166534;
-  --color-error-surface: #fef2f2;
-  --color-error-surface-strong: #fee2e2;
-  --color-error-border: #fecaca;
-  --color-error: #dc2626;
-  --color-error-strong: #b91c1c;
-  --color-error-strongest: #991b1b;
-  --color-warning-surface: #fffbeb;
-  --color-warning-surface-strong: #fef3c7;
-  --color-warning-border: #fde68a;
-  --color-warning-emphasis: #d97706;
-  --color-warning: #b45309;
-  --color-warning-strong: #92400e;
+  --color-success-surface: light-dark(#f0fdf4, #052e16);
+  --color-success-surface-strong: light-dark(#dcfce7, #14532d);
+  --color-success-border: light-dark(#bbf7d0, #166534);
+  --color-success-emphasis: light-dark(#16a34a, #22c55e);
+  --color-success: light-dark(#15803d, #4ade80);
+  --color-success-strong: light-dark(#166534, #86efac);
+  --color-error-surface: light-dark(#fef2f2, #450a0a);
+  --color-error-surface-strong: light-dark(#fee2e2, #7f1d1d);
+  --color-error-border: light-dark(#fecaca, #991b1b);
+  --color-error: light-dark(#dc2626, #f87171);
+  --color-error-strong: light-dark(#b91c1c, #fca5a5);
+  --color-error-strongest: light-dark(#991b1b, #fecaca);
+  --color-warning-surface: light-dark(#fffbeb, #451a03);
+  --color-warning-surface-strong: light-dark(#fef3c7, #78350f);
+  --color-warning-border: light-dark(#fde68a, #92400e);
+  --color-warning-emphasis: light-dark(#d97706, #f59e0b);
+  --color-warning: light-dark(#b45309, #fbbf24);
+  --color-warning-strong: light-dark(#92400e, #fcd34d);
   /* Admin chrome */
   --color-admin-300: #cbd5e1;
   --color-admin-400: #94a3b8;
@@ -53,7 +53,7 @@
   --color-admin-700: #334155;
   --color-admin-800: #1e293b;
   /* Surface + literals */
-  --color-surface: #ffffff;
+  --color-surface: light-dark(#ffffff, #1a1d23);
   --color-white: #ffffff;
   --color-black: #000000;
   /* Type + radius (rebrand control points; values match current) */
@@ -62,6 +62,10 @@
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
 }
+
+:root      { color-scheme: light dark; }
+:root.light { color-scheme: light; }
+:root.dark  { color-scheme: dark; }
 
 /* v3→v4 parity: v4 defaults an un-colored `border` to currentColor;
    the templates assume v3's gray-200 default. */
