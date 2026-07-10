@@ -50,6 +50,8 @@ def seeded_db(db_session):
 
 @pytest.fixture
 def client(seeded_db):
+    from unittest.mock import patch
+
     from claimos.db import get_db
     from claimos.main import app
 
@@ -60,8 +62,13 @@ def client(seeded_db):
             pass
 
     app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as c:
-        yield c
+    # CI defaults to cookie_secure=True (production). The TestClient talks to
+    # http://testserver, so a Secure auth cookie would be dropped on the return
+    # trip and any test that round-trips a login cookie would fail. Force it off
+    # so cookie-auth paths are exercised deterministically regardless of env.
+    with patch.object(settings, "cookie_secure", False):
+        with TestClient(app) as c:
+            yield c
     app.dependency_overrides.clear()
 
 
