@@ -273,6 +273,11 @@ the cookie and flips the class live. The **report/PDF is always light** (report
 preview forces `class="light"`; the PDF is separate). A rebrand supplies both
 the light and dark value per token in this one file.
 
+> **Rebranding:** to produce a re-skinned version of the app, edit the token
+> values (and optionally the `@layer components` recipes) in
+> `src/claimos/styles/theme.css`. Step-by-step instructions are in
+> `docs/REBRANDING.md`.
+
 ## Typography
 
 System-sans throughout the app; there is no loaded web font. Roughly nine
