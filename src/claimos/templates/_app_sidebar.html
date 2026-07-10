@@ -1,0 +1,41 @@
+<nav class="px-3 py-4 space-y-1 text-sm">
+  {# ── Global ─────────────────────────────────────────────── #}
+  <a href="/"
+     class="flex items-center gap-3 rounded-md px-3 py-2 font-medium
+     {% if request.url.path == '/' %}bg-primary-subtle text-primary
+     {% else %}text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900{% endif %}">
+    Dashboard
+  </a>
+  <a href="/dashboard"
+     class="flex items-center gap-3 rounded-md px-3 py-2 font-medium
+     {% if request.url.path == '/dashboard' %}bg-primary-subtle text-primary
+     {% else %}text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900{% endif %}">
+    Claims
+  </a>
+
+  {# ── Claim-scoped (only when a claim is in context) ─────── #}
+  {% if claim %}
+  <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-wider text-neutral-400">
+    Intelligence
+  </p>
+  <a href="/claims/{{ claim.id }}"
+     class="flex items-center gap-3 rounded-md px-3 py-2 font-medium
+     {% if request.url.path == '/claims/' ~ claim.id %}bg-primary-subtle text-primary
+     {% else %}text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900{% endif %}">
+    Claim Detail
+  </a>
+  {% for label, frag in [
+      ('Rooms & Groups', 'rooms'),
+      ('Evidence', 'evidence'),
+      ('Items', 'items'),
+      ('Preview', 'preview'),
+      ('Export', 'export'),
+  ] %}
+  <a href="/claims/{{ claim.id }}#{{ frag }}"
+     class="flex items-center gap-3 rounded-md px-3 py-2 text-neutral-600
+            hover:bg-neutral-200 hover:text-neutral-900">
+    {{ label }}
+  </a>
+  {% endfor %}
+  {% endif %}
+</nav>

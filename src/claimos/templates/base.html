@@ -11,16 +11,18 @@
   <script src="/static/crop-editor.js" defer></script>
 </head>
 <body class="h-full">
-  <nav class="bg-surface border-b border-neutral-200">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="flex h-14 items-center justify-between">
-        <a href="/dashboard" class="text-base font-semibold text-neutral-900">ClaimOS</a>
+  <div class="min-h-full flex flex-col">
+    {# ── Top bar ──────────────────────────────────────────── #}
+    <header class="bg-surface border-b border-neutral-200">
+      <div class="flex h-14 items-center justify-between px-4 sm:px-6">
+        <div class="flex items-center gap-2 text-sm">
+          <a href="/" class="font-semibold text-neutral-900">CLAIMOS</a>
+          <span class="text-neutral-300">/</span>
+          <span class="font-medium text-neutral-600">{% block topbar_title %}ClaimOS{% endblock %}</span>
+        </div>
         <div class="flex items-center gap-4">
           {% include "_theme_toggle.html" %}
-          <a href="/claims/new"
-             class="btn-primary rounded-md px-3 py-1.5 text-sm">
-            New claim
-          </a>
+          <a href="/claims/new" class="btn-primary rounded-md px-3 py-1.5 text-sm">New claim</a>
           {% if user %}
           <a href="/profile" class="text-sm text-neutral-600 hover:text-neutral-900">{{ user.display_name or user.email }}</a>
           {% if user.system_role == "system_admin" %}
@@ -36,12 +38,20 @@
           {% endif %}
         </div>
       </div>
+    </header>
+
+    {# ── Sidebar + content ────────────────────────────────── #}
+    <div class="flex flex-1">
+      <aside class="w-56 flex-shrink-0 bg-neutral-100 border-r border-neutral-200">
+        {% include "_app_sidebar.html" %}
+      </aside>
+      <main class="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+      </main>
     </div>
-  </nav>
-  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-    {% block content %}{% endblock %}
-  </main>
-  {% if user and request.url.path not in ("/", "/login", "/register", "/splash") %}
+  </div>
+
+  {% if user %}
   {% include "_feedback_widget.html" %}
   {% endif %}
   <div id="crop-editor-modal-root"></div>
