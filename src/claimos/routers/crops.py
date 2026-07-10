@@ -5,7 +5,6 @@ from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
 from PIL import Image
 from pydantic import BaseModel
 from sqlalchemy import or_
@@ -17,9 +16,7 @@ from claimos.dependencies import CurrentUser, require_claim_role
 from claimos.models import EvidenceFile, Item, ItemCrop
 from claimos.services.audit import get_client_ip, write_audit_log
 from claimos.services.crop import recrop_item_crop
-
-BASE_DIR = Path(__file__).parent.parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+from claimos.templating import templates
 
 router = APIRouter()
 

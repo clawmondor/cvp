@@ -1,11 +1,9 @@
 """Comment CRUD endpoints with visibility scoping."""
 
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from claimos.db import get_db
@@ -18,11 +16,9 @@ from claimos.dependencies import (
 from claimos.models import Item
 from claimos.models_auth import User
 from claimos.models_comments import Comment
+from claimos.templating import templates
 
 router = APIRouter()
-
-BASE_DIR = Path(__file__).parent.parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 EDIT_WINDOW_MINUTES = 15
 

@@ -2,12 +2,10 @@
 
 import secrets
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 import jwt
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from claimos.auth import (
@@ -24,9 +22,7 @@ from claimos.dependencies import CurrentUser, optional_user
 from claimos.models_auth import RefreshToken, User
 from claimos.services.audit import get_client_ip, write_audit_log
 from claimos.services.mfa import decrypt_secret, verify_totp_code
-
-BASE_DIR = Path(__file__).parent.parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+from claimos.templating import templates
 
 router = APIRouter()
 

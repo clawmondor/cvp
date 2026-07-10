@@ -1,11 +1,9 @@
 """User profile endpoints — password change, MFA setup."""
 
 from datetime import datetime, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from claimos.auth import hash_password, validate_password_strength, verify_password
@@ -21,9 +19,7 @@ from claimos.services.mfa import (
     generate_totp_secret,
     verify_totp_code,
 )
-
-BASE_DIR = Path(__file__).parent.parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+from claimos.templating import templates
 
 router = APIRouter()
 

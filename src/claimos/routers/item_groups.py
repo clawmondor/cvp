@@ -1,10 +1,7 @@
 """ItemGroup CRUD endpoints (the Task 6 evidence-pin endpoint will be appended here later)."""
 
-from pathlib import Path
-
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, update
 
 from claimos.db import SessionLocal
@@ -12,9 +9,7 @@ from claimos.dependencies import CurrentUser, require_claim_role
 from claimos.models import EvidenceFile, Item, ItemGroup
 from claimos.services.audit import get_client_ip, write_audit_log
 from claimos.services.item_groups import find_or_create
-
-BASE_DIR = Path(__file__).parent.parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+from claimos.templating import templates
 
 router = APIRouter()
 

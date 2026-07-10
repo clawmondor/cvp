@@ -4,7 +4,6 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, selectinload
 
@@ -38,7 +37,7 @@ from claimos.routers.admin import runtime_config as admin_runtime_config
 from claimos.routers.admin import system as admin_system
 from claimos.routers.admin import vision_models as admin_vision_models
 from claimos.services import vision_worker
-from claimos.theming import theme_class_for
+from claimos.templating import templates
 
 BASE_DIR = Path(__file__).parent
 
@@ -87,9 +86,6 @@ app.include_router(admin_org.router)
 app.include_router(admin_vision_models.router)
 app.include_router(admin_runtime_config.router)
 app.include_router(admin_feedback.router, dependencies=[Depends(require_active_user)])
-
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
-templates.env.globals["theme_class"] = theme_class_for
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

@@ -7,7 +7,6 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from claimos.config import settings
@@ -18,9 +17,7 @@ from claimos.services import runtime_config
 from claimos.services.audit import get_client_ip, write_audit_log
 from claimos.services.evidence_cleanup import delete_evidence_file
 from claimos.services.pagination import paginate_by_cursor
-
-BASE_DIR = Path(__file__).parent.parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+from claimos.templating import templates
 
 router = APIRouter()
 
