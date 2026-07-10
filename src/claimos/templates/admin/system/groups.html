@@ -19,7 +19,7 @@
       </select>
     </div>
     <div class="flex items-end">
-      <button type="submit" class="bg-admin-700 text-white px-4 py-2 rounded-sm text-sm hover:bg-admin-600">Create</button>
+      <button type="submit" class="bg-primary text-white px-4 py-2 rounded-sm text-sm hover:bg-primary-light">Create</button>
     </div>
   </form>
 </div>
@@ -35,7 +35,7 @@
     <tbody class="bg-surface divide-y divide-neutral-200">
       {% for g in groups %}
       <tr>
-        <td class="px-6 py-4 text-sm"><a href="/admin/system/groups/{{ g.id }}" class="text-admin-700 hover:underline">{{ g.name }}</a></td>
+        <td class="px-6 py-4 text-sm"><a href="/admin/system/groups/{{ g.id }}" class="text-primary hover:underline">{{ g.name }}</a></td>
         <td class="px-6 py-4 text-sm text-neutral-500">{{ g.kind }}</td>
         <td class="px-6 py-4 text-sm">{% if g.is_active %}<span class="text-success">Active</span>{% else %}<span class="text-error">Inactive</span>{% endif %}</td>
       </tr>

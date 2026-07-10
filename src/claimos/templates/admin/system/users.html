@@ -42,7 +42,7 @@
       </select>
     </div>
     <div class="col-span-2">
-      <button type="submit" class="bg-admin-700 text-white px-4 py-2 rounded-sm text-sm hover:bg-admin-600">Create Invite</button>
+      <button type="submit" class="bg-primary text-white px-4 py-2 rounded-sm text-sm hover:bg-primary-light">Create Invite</button>
     </div>
   </form>
 </div>
@@ -61,7 +61,7 @@
     <tbody class="bg-surface divide-y divide-neutral-200">
       {% for u in users %}
       <tr>
-        <td class="px-6 py-4 text-sm"><a href="/admin/system/users/{{ u.id }}" class="text-admin-700 hover:underline">{{ u.email }}</a></td>
+        <td class="px-6 py-4 text-sm"><a href="/admin/system/users/{{ u.id }}" class="text-primary hover:underline">{{ u.email }}</a></td>
         <td class="px-6 py-4 text-sm text-neutral-900">{{ u.display_name }}</td>
         <td class="px-6 py-4 text-sm text-neutral-500">{{ u.system_role }}</td>
         <td class="px-6 py-4 text-sm">

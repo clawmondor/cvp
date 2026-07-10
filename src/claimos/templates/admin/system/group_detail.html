@@ -25,7 +25,7 @@
     <tbody class="bg-surface divide-y divide-neutral-200">
       {% for m in members %}
       <tr>
-        <td class="px-6 py-4 text-sm"><a href="/admin/system/users/{{ m.id }}" class="text-admin-700 hover:underline">{{ m.email }}</a></td>
+        <td class="px-6 py-4 text-sm"><a href="/admin/system/users/{{ m.id }}" class="text-primary hover:underline">{{ m.email }}</a></td>
         <td class="px-6 py-4 text-sm text-neutral-500">{{ m.system_role }}</td>
         <td class="px-6 py-4 text-sm">{% if m.is_active %}<span class="text-success">Active</span>{% else %}<span class="text-error">Inactive</span>{% endif %}</td>
       </tr>
