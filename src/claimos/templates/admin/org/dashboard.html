@@ -11,13 +11,13 @@
 <p class="text-sm text-neutral-500 mb-6">Organization Dashboard</p>
 <div class="grid grid-cols-2 gap-6">
   <a href="/admin/org/users?group_id={{ group.id }}"
-     class="bg-surface rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
+     class="card p-6 hover:shadow-md transition-shadow">
     <p class="text-sm text-neutral-500">Users</p>
     <p class="text-3xl font-bold text-neutral-900 mt-1">{{ user_count }}</p>
     <p class="text-xs text-success-emphasis mt-2">Manage users →</p>
   </a>
   <a href="/admin/org/claims?group_id={{ group.id }}"
-     class="bg-surface rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
+     class="card p-6 hover:shadow-md transition-shadow">
     <p class="text-sm text-neutral-500">Claims</p>
     <p class="text-3xl font-bold text-neutral-900 mt-1">{{ claim_count }}</p>
     <p class="text-xs text-success-emphasis mt-2">View claims →</p>

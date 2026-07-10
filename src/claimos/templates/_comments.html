@@ -5,7 +5,7 @@
       <div class="flex items-center gap-2">
         <span class="font-medium text-neutral-900">{{ users[comment.user_id].display_name if comment.user_id in users else 'Unknown' }}</span>
         {% if comment.visibility == 'internal' %}
-        <span class="inline-flex items-center rounded-full bg-warning-surface-strong px-2 py-0.5 text-xs font-medium text-warning">Internal</span>
+        <span class="badge-warning">Internal</span>
         {% endif %}
       </div>
       <span class="text-xs text-neutral-500">{{ comment.created_at.strftime('%b %d, %Y %H:%M') }}</span>

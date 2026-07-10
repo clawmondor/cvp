@@ -299,6 +299,15 @@ do not mix sharp and heavily-rounded corners.
 
 ## Components
 
+> These atoms are now backed by real classes in `src/claimos/styles/theme.css`
+> `@layer components` — `.card`, `.input`, `.btn-primary`, `.btn-secondary`, and
+> `.badge-success/-error/-warning` — composed via `@apply` from the color tokens.
+> Each class carries only the stable core (color/font/radius/shadow/focus); size,
+> padding, and layout stay inline (except `.input`, which includes its uniform
+> padding). Divergent instances (e.g. buttons with a different hover shade) remain on
+> inline utilities by design — the classes are the standardization target for a future
+> rebrand, not a forced normalization.
+
 - **Buttons** — Primary is a filled indigo-600 button, white text, `rounded-md`,
   `6px 12px` padding, `shadow-sm`, hover indigo-500. Secondary actions are **ghost
   text links** (gray-500 → gray-900 on hover), not filled buttons. There is no
