@@ -1,5 +1,6 @@
 """Tests for the sidebar app shell and its nav partial."""
 
+import re
 import types
 
 from claimos.templating import templates
@@ -37,5 +38,11 @@ def test_sidebar_shows_claim_group_with_claim():
 
 def test_sidebar_active_state_on_dashboard():
     html = _render_sidebar("/")
-    # The Dashboard link (href="/") carries the active tokens.
-    assert "bg-primary-subtle" in html
+    # The active tokens must sit on the Dashboard anchor (href="/") specifically,
+    # not merely appear somewhere in the sidebar.
+    anchors = re.findall(r'<a\s+href="[^"]*".*?</a>', html, re.DOTALL)
+    dashboard = next(a for a in anchors if 'href="/"' in a)
+    claims = next(a for a in anchors if 'href="/dashboard"' in a)
+    assert "bg-primary-subtle" in dashboard
+    assert "text-primary" in dashboard
+    assert "bg-primary-subtle" not in claims
