@@ -74,6 +74,21 @@ def test_splash_page(client, monkeypatch):
     assert "Sign In" in resp.text
 
 
+def test_root_authenticated_shows_dashboard(client, monkeypatch):
+    # Force the cookie path (not dev auto-login) so the test is deterministic.
+    monkeypatch.setattr(settings, "auto_login_user_id", "")
+    login = client.post(
+        "/api/auth/login",
+        data={"email": "admin@test.com", "password": "correcthorse12"},
+        follow_redirects=False,
+    )
+    assert login.status_code == 303  # cookie now stored on the TestClient
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert "Dashboard" in resp.text
+    assert "coming soon" in resp.text
+
+
 def test_login_page(client):
     resp = client.get("/login")
     assert resp.status_code == 200

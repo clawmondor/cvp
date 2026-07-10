@@ -76,10 +76,13 @@ def _clear_auth_cookies(response: Response) -> None:
 
 
 @router.get("/", response_class=HTMLResponse, response_model=None)
-def splash(request: Request) -> HTMLResponse | RedirectResponse:
-    """Public splash page. In dev with auto_login, redirects to dashboard."""
-    if settings.environment == "dev" and settings.auto_login_user_id:
-        return RedirectResponse(url="/dashboard", status_code=303)
+def root(
+    request: Request,
+    user: CurrentUser | None = Depends(optional_user),
+) -> HTMLResponse:
+    """Root: authenticated users get the dashboard, anonymous users the splash."""
+    if user is not None:
+        return templates.TemplateResponse(request=request, name="home.html", context={"user": user})
     return templates.TemplateResponse(request=request, name="splash.html")
 
 
