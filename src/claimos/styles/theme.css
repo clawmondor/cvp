@@ -8,25 +8,35 @@
 @source "../templates/**/*.html";
 @source "../static/*.js";
 
+/* Self-hosted Inter (variable, latin). Served from /static/fonts, so it's covered
+   by the CSP default-src 'self' fallback — no font-src / style-src change needed. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/static/fonts/inter-var-latin.woff2") format("woff2");
+}
+
 @theme {
   --color-*: initial;
-  /* Accent (primary) */
-  --color-primary-subtle: light-dark(#eef2ff, #1e1b4b);
-  --color-primary-tint: light-dark(#e0e7ff, #312e81);
-  --color-primary-tint-strong: light-dark(#c7d2fe, #3730a3);
-  --color-primary-light: light-dark(#6366f1, #a5b4fc);
-  --color-primary: light-dark(#4f46e5, #818cf8);
-  --color-primary-strong: light-dark(#4338ca, #6366f1);
-  /* Neutral ramp */
-  --color-neutral-50: light-dark(#f9fafb, #0f1115);
-  --color-neutral-100: light-dark(#f3f4f6, #17191e);
-  --color-neutral-200: light-dark(#e5e7eb, #262932);
-  --color-neutral-300: light-dark(#d1d5db, #363a44);
-  --color-neutral-400: light-dark(#9ca3af, #6b7280);
-  --color-neutral-500: light-dark(#6b7280, #9aa1ac);
-  --color-neutral-600: light-dark(#4b5563, #b6bcc6);
-  --color-neutral-700: light-dark(#374151, #d2d7de);
-  --color-neutral-900: light-dark(#111827, #f2f4f7);
+  /* Accent (primary) — blue in light (design-system spec), teal in dark (mockup) */
+  --color-primary-subtle: light-dark(#eff6ff, #0c2925);
+  --color-primary-tint: light-dark(#dbeafe, #123a34);
+  --color-primary-tint-strong: light-dark(#bfdbfe, #155e52);
+  --color-primary-light: light-dark(#3b82f6, #5eead4);
+  --color-primary: light-dark(#2563eb, #2dd4bf);
+  --color-primary-strong: light-dark(#1d4ed8, #14b8a6);
+  /* Neutral ramp — slate in light (design-system spec), navy-gray in dark */
+  --color-neutral-50: light-dark(#f8fafc, #0a0e17);
+  --color-neutral-100: light-dark(#f1f5f9, #12161f);
+  --color-neutral-200: light-dark(#e2e8f0, #1e2531);
+  --color-neutral-300: light-dark(#cbd5e1, #2b3340);
+  --color-neutral-400: light-dark(#94a3b8, #5b6474);
+  --color-neutral-500: light-dark(#64748b, #8b94a3);
+  --color-neutral-600: light-dark(#475569, #a7b0bd);
+  --color-neutral-700: light-dark(#334155, #c6cdd8);
+  --color-neutral-900: light-dark(#0f172a, #e8ecf2);
   /* Status */
   --color-success-surface: light-dark(#f0fdf4, #052e16);
   --color-success-surface-strong: light-dark(#dcfce7, #14532d);
@@ -46,21 +56,21 @@
   --color-warning-emphasis: light-dark(#d97706, #f59e0b);
   --color-warning: light-dark(#b45309, #fbbf24);
   --color-warning-strong: light-dark(#92400e, #fcd34d);
-  /* Admin chrome */
-  --color-admin-300: #cbd5e1;
-  --color-admin-400: #94a3b8;
-  --color-admin-600: #475569;
-  --color-admin-700: #334155;
-  --color-admin-800: #1e293b;
+  /* Admin chrome — near-black navy (dark in both modes, matches mockup sidebar) */
+  --color-admin-300: #b8c0cc;
+  --color-admin-400: #8b94a3;
+  --color-admin-600: #2b3340;
+  --color-admin-700: #161c26;
+  --color-admin-800: #0b0f18;
   /* Surface + literals */
-  --color-surface: light-dark(#ffffff, #1a1d23);
+  --color-surface: light-dark(#ffffff, #161c26);
   --color-white: #ffffff;
   --color-black: #000000;
   /* Type + radius (rebrand control points; values match current) */
-  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
+  --radius-lg: 0.625rem;
 }
 
 :root      { color-scheme: light dark; }
