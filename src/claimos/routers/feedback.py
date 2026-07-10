@@ -1,11 +1,9 @@
 """User-facing feedback router (floating widget + author thread access)."""
 
 from datetime import datetime, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from claimos.db import get_db
@@ -16,12 +14,10 @@ from claimos.dependencies import (
 )
 from claimos.models_auth import Group, User
 from claimos.models_feedback import ALLOWED_STATUSES, Feedback, FeedbackComment
+from claimos.templating import templates
 from claimos.text_validation import assert_plain_text
 
 router = APIRouter()
-
-BASE_DIR = Path(__file__).parent.parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 FEEDBACK_BODY_MAX = 5000
 COMMENT_BODY_MAX = 2000

@@ -1,18 +1,13 @@
 """System-admin page for runtime-configurable settings stored in app_setting."""
 
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from claimos.db import get_db
 from claimos.dependencies import CurrentUser, require_system_admin
 from claimos.services import runtime_config
-
-BASE_DIR = Path(__file__).parent.parent.parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+from claimos.templating import templates
 
 router = APIRouter(prefix="/admin/system/runtime-config")
 

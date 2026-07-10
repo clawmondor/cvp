@@ -2,7 +2,6 @@ import uuid
 from collections import Counter, defaultdict
 from datetime import date, datetime
 from pathlib import Path
-from urllib.parse import quote_plus
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -28,10 +27,9 @@ from claimos.routers.items import compute_items_totals
 from claimos.services import runtime_config
 from claimos.services.audit import get_client_ip, should_debounce_view, write_audit_log
 from claimos.services.pagination import paginate_by_cursor
+from claimos.templating import templates
 
 BASE_DIR = Path(__file__).parent.parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
-templates.env.filters["qplus"] = quote_plus
 report_templates = Jinja2Templates(directory=BASE_DIR / "templates/report")
 
 router = APIRouter()

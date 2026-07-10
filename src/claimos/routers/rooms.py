@@ -1,19 +1,14 @@
 """Room CRUD endpoints."""
 
-from pathlib import Path
-
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import update
 
 from claimos.db import SessionLocal
 from claimos.dependencies import CurrentUser, require_claim_role
 from claimos.models import Item, Room
 from claimos.services.audit import get_client_ip, write_audit_log
-
-BASE_DIR = Path(__file__).parent.parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+from claimos.templating import templates
 
 router = APIRouter()
 

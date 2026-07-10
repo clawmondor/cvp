@@ -257,6 +257,22 @@ file should be updated to match.
   (slate-400) for de-emphasized text and `admin-600` (slate-600) for lighter
   chrome fills.
 
+### Modes (light / dark)
+
+The app supports **light and dark mode** with no template changes: every
+mode-varying color token in `theme.css` is a CSS `light-dark(<light>, <dark>)`
+value, and `color-scheme` (`:root` = follow OS; `:root.light`/`:root.dark` =
+forced) selects which. Because both a component's surface and text tokens flip
+together, `.card`/`.input`/`.btn-*`/`.badge-*` adapt automatically. `white`,
+`black`, and the `admin-*` chrome ramp are mode-independent single values.
+
+Selection is server-side (no theme flash, CSP-safe): a `theme` cookie
+(`dark`/`light`/absent) maps to a `dark`/`light`/`""` class on `<html>` via the
+`theme_class` Jinja global; a **System / Light / Dark** control in the nav sets
+the cookie and flips the class live. The **report/PDF is always light** (report
+preview forces `class="light"`; the PDF is separate). A rebrand supplies both
+the light and dark value per token in this one file.
+
 ## Typography
 
 System-sans throughout the app; there is no loaded web font. Roughly nine

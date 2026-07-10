@@ -2,12 +2,10 @@
 
 import datetime
 import uuid
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query
 from fastapi.requests import Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -17,9 +15,7 @@ from claimos.dependencies import CurrentUser, require_active_user
 from claimos.models import Claim
 from claimos.models_access import ClaimAccess
 from claimos.models_auth import Group, User
-
-BASE_DIR = Path(__file__).parent.parent.parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+from claimos.templating import templates
 
 router = APIRouter(prefix="/admin/org")
 

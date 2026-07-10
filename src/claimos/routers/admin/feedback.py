@@ -1,11 +1,9 @@
 """Admin feedback router: list, filter/sort, detail, change status, submit on behalf."""
 
 from datetime import datetime, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from claimos.db import get_db
@@ -20,12 +18,10 @@ from claimos.routers.feedback import (
     _resolve_author_group_id,
     count_admin_unread,
 )
+from claimos.templating import templates
 from claimos.text_validation import assert_plain_text
 
 router = APIRouter(prefix="/admin/system/feedback")
-
-BASE_DIR = Path(__file__).parent.parent.parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 ALLOWED_SORTS = {"created_at", "status", "group", "author"}
 

@@ -1,12 +1,10 @@
 """Admin-only catalog management for vision models."""
 
 import time
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.requests import Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from claimos.db import get_db
@@ -16,9 +14,7 @@ from claimos.models_vision import VisionModel
 from claimos.services import openrouter
 from claimos.services.audit import get_client_ip, write_audit_log
 from claimos.services.vision_models import is_recommended, suggest_adapter
-
-BASE_DIR = Path(__file__).parent.parent.parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+from claimos.templating import templates
 
 router = APIRouter(prefix="/admin/vision-models")
 

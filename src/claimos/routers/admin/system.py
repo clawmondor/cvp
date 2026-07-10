@@ -4,12 +4,10 @@ import csv
 import datetime
 import io
 import uuid
-from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException
 from fastapi.requests import Request
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from claimos.auth import generate_invite_code, hash_token
@@ -20,9 +18,7 @@ from claimos.models_audit import AuditLog
 from claimos.models_auth import Group, User
 from claimos.routers.feedback import count_admin_unread
 from claimos.services.audit import get_client_ip, write_audit_log
-
-BASE_DIR = Path(__file__).parent.parent.parent
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+from claimos.templating import templates
 
 router = APIRouter(prefix="/admin/system")
 

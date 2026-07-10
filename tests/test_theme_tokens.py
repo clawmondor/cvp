@@ -50,10 +50,15 @@ EXPECTED = {
 
 def _tokens():
     text = THEME.read_text()
-    return {
-        m.group(1): m.group(2).lower()
-        for m in re.finditer(r"--color-([a-z0-9-]+):\s*(#[0-9a-fA-F]{6})\s*;", text)
-    }
+    out = {}
+    for m in re.finditer(r"--color-([a-z0-9-]+):\s*([^;]+);", text):
+        name, val = m.group(1), m.group(2).strip()
+        ld = re.match(r"light-dark\(\s*(#[0-9a-fA-F]{6})\s*,", val)
+        if ld:
+            out[name] = ld.group(1).lower()
+        elif re.match(r"#[0-9a-fA-F]{6}$", val):
+            out[name] = val.lower()
+    return out
 
 
 def test_every_expected_token_present_with_correct_hex():

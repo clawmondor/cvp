@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="h-full bg-neutral-100">
+<html lang="en" class="h-full bg-neutral-100 {{ theme_class(request) }}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -21,6 +21,7 @@
             <span class="text-sm font-semibold text-white">{{ panel_title }}</span>
           </div>
           <div class="flex items-center gap-4">
+            {% include "_theme_toggle.html" %}
             {% if user %}
             <span class="text-sm text-admin-400">{{ user.email }}</span>
             <form method="POST" action="/api/auth/logout" class="inline">
