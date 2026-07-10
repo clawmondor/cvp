@@ -210,9 +210,12 @@ There are **three surfaces**, and they are deliberately different:
 - **App UI (light)** — the primary surface. Indigo accent on a warm-neutral gray
   ground. This is what the `colors`/`typography`/`components` primary tokens
   describe.
-- **Admin chrome (dark)** — the admin area uses a dark `slate` sidebar
-  (`admin-*` tokens) with light text. It is a distinct navigational shell,
-  not a theme variant of the app UI.
+- **Admin (shared shell)** — the admin area now uses the same `base.html`
+  topbar and theme-aware left sidebar as the rest of the app, with a
+  role-aware **Admin** sidebar group (`_admin_sidebar.html`) rendering the
+  links appropriate to the signed-in role. It is no longer a distinct dark
+  navigational shell; the `admin-*` tokens are retained but unused, pending
+  removal.
 - **Print report (PDF)** — the WeasyPrint-rendered report is its own typographic
   world: **Arial/Helvetica** body and **Courier New** for every monetary figure,
   with print-specific grays. It does not share the web palette or font by design,

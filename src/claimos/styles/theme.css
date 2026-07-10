@@ -56,7 +56,8 @@
   --color-warning-emphasis: light-dark(#d97706, #f59e0b);
   --color-warning: light-dark(#b45309, #fbbf24);
   --color-warning-strong: light-dark(#92400e, #fcd34d);
-  /* Admin chrome — near-black navy (dark in both modes, matches mockup sidebar) */
+  /* Admin chrome — DEAD after the unified-shell migration (no template references
+     these tokens anymore); retained pending a follow-up purge. */
   --color-admin-300: #b8c0cc;
   --color-admin-400: #8b94a3;
   --color-admin-600: #2b3340;
