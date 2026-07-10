@@ -18,7 +18,18 @@
         <div class="flex items-center gap-2 text-sm">
           <a href="/" class="font-semibold text-neutral-900">CLAIMOS</a>
           <span class="text-neutral-300">/</span>
-          <span class="font-medium text-neutral-600">{% block topbar_title %}ClaimOS{% endblock %}</span>
+          {% if breadcrumbs %}
+            {% for crumb in breadcrumbs %}
+              {% if not loop.last %}
+              <a href="{{ crumb.url }}" class="text-neutral-500 hover:text-neutral-700">{{ crumb.label }}</a>
+              <span class="text-neutral-300">/</span>
+              {% else %}
+              <span class="font-medium text-neutral-600">{{ crumb.label }}</span>
+              {% endif %}
+            {% endfor %}
+          {% else %}
+          <span class="font-medium text-neutral-600">{% block topbar_title %}{{ panel_title | default("ClaimOS") }}{% endblock %}</span>
+          {% endif %}
         </div>
         <div class="flex items-center gap-4">
           {% include "_theme_toggle.html" %}

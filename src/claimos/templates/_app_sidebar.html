@@ -38,4 +38,12 @@
   </a>
   {% endfor %}
   {% endif %}
+
+  {# ── Admin (only under /admin/) ─────────────────────────── #}
+  {% if request.url.path.startswith('/admin/') %}
+  <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-wider text-neutral-400">
+    Admin
+  </p>
+  {% include "_admin_sidebar.html" %}
+  {% endif %}
 </nav>

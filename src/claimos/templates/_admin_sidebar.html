@@ -1,0 +1,32 @@
+{% macro item(href, label, active, badge=0) %}
+<a href="{{ href }}"
+   class="flex items-center justify-between gap-3 rounded-md px-3 py-2 font-medium
+   {% if active %}bg-primary-subtle text-primary
+   {% else %}text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900{% endif %}">
+  <span>{{ label }}</span>
+  {% if badge %}<span class="inline-flex items-center rounded-full bg-error px-1.5 py-0.5 text-xs text-white">{{ badge }}</span>{% endif %}
+</a>
+{% endmacro %}
+
+{% set p = request.url.path %}
+{% if user and user.system_role == 'system_admin' %}
+  {{ item('/admin/system/', 'Overview', p == '/admin/system/') }}
+  {{ item('/admin/system/users', 'Users', p == '/admin/system/users') }}
+  {{ item('/admin/system/groups', 'Groups', p == '/admin/system/groups') }}
+  {{ item('/admin/system/claims', 'Claims', p == '/admin/system/claims') }}
+  {{ item('/admin/system/feedback', 'Feedback', p == '/admin/system/feedback', unread_count | default(0)) }}
+  {{ item('/admin/system/audit', 'Audit Log', p == '/admin/system/audit') }}
+  {{ item('/admin/vision-models', 'Vision Models', p == '/admin/vision-models') }}
+  {{ item('/admin/system/runtime-config', 'Runtime Config', p == '/admin/system/runtime-config') }}
+{% elif user and user.system_role == 'internal_admin' %}
+  {{ item('/admin/internal/', 'Overview', p == '/admin/internal/') }}
+  {{ item('/admin/internal/users', 'Users', p == '/admin/internal/users') }}
+  {{ item('/admin/internal/claims', 'Claims', p == '/admin/internal/claims') }}
+  {{ item('/admin/internal/groups', 'External Groups', p == '/admin/internal/groups') }}
+{% elif user and user.system_role == 'external_admin' and group %}
+  {% set q = '?group_id=' ~ group.id %}
+  {{ item('/admin/org/' ~ q, 'Overview', p == '/admin/org/') }}
+  {{ item('/admin/org/users' ~ q, 'Users', p == '/admin/org/users') }}
+  {{ item('/admin/org/claims' ~ q, 'Claims', p == '/admin/org/claims') }}
+  {{ item('/admin/org/profile' ~ q, 'Profile', p == '/admin/org/profile') }}
+{% endif %}
