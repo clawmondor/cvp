@@ -139,6 +139,7 @@ When writing any user-facing text, report template content, UI copy, README, or 
 ## Useful references
 
 - `@DESIGN.md` — the design system (tokens + prose) every UI change must follow
+- `@docs/REBRANDING.md` — how to produce a re-skinned/rebranded version (edit `src/claimos/styles/theme.css`)
 - `@docs/PRD.md` — full product requirements, data model, API surface, acceptance criteria
 - `@docs/data-model.md` — schema rationale and migration history
 - `@docs/depreciation-schedule.md` — the 42-category useful-life table (source of truth for the seed script)
