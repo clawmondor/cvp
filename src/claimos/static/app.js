@@ -682,3 +682,37 @@ document.addEventListener('change', function (e) {
     document.addEventListener('htmx:afterSettle', onSettle);
   });
 })();
+
+// Theme toggle: System / Light / Dark. Persisted in the `theme` cookie; the
+// <html> class is set server-side on load, and flipped live here. color-scheme
+// (in app.css) does the actual light/dark selection.
+(function () {
+  function applyTheme(mode) {
+    const root = document.documentElement;
+    root.classList.remove('light', 'dark');
+    if (mode === 'light' || mode === 'dark') {
+      root.classList.add(mode);
+      document.cookie = 'theme=' + mode + '; path=/; max-age=31536000; samesite=lax';
+    } else {
+      document.cookie = 'theme=; path=/; max-age=0; samesite=lax'; // system => clear
+    }
+    syncActive(mode);
+  }
+  function currentMode() {
+    if (document.documentElement.classList.contains('dark')) return 'dark';
+    if (document.documentElement.classList.contains('light')) return 'light';
+    return 'system';
+  }
+  function syncActive(mode) {
+    document.querySelectorAll('[data-theme-set]').forEach(function (b) {
+      const on = b.dataset.themeSet === mode;
+      b.classList.toggle('bg-neutral-100', on);
+      b.classList.toggle('text-neutral-900', on);
+    });
+  }
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('[data-theme-set]');
+    if (btn) applyTheme(btn.dataset.themeSet);
+  });
+  syncActive(currentMode());
+})();
