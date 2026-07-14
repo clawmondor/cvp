@@ -63,3 +63,11 @@ def test_org_dashboard_accessible(org_client):
 def test_org_users_page(org_client):
     resp = org_client.get("/admin/org/users")
     assert resp.status_code == 200
+
+
+def test_org_dashboard_uses_unified_shell(org_client):
+    resp = org_client.get("/admin/org/")
+    assert resp.status_code == 200
+    assert 'href="/dashboard"' in resp.text
+    assert 'href="/admin/org/users?group_id=eg"' in resp.text
+    assert "bg-admin-800" not in resp.text

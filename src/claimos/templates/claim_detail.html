@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}{{ claim.policyholder_name or "Claim" }}{% endblock %}
+{% block topbar_title %}{{ claim.policyholder_name or "Claim" }}{% endblock %}
 
 {% block content %}
 {# ── Page header ──────────────────────────────────────────────── #}

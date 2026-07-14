@@ -1,13 +1,5 @@
-{% extends "admin/base.html" %}
+{% extends "base.html" %}
 {% block title %}Vision Models{% endblock %}
-{% block sidebar %}
-<a href="/admin/system/" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Dashboard</a>
-<a href="/admin/system/users" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Users</a>
-<a href="/admin/system/groups" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Groups</a>
-<a href="/admin/system/claims" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Claims</a>
-<a href="/admin/system/audit" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Audit Log</a>
-<a href="/admin/vision-models" class="block px-3 py-2 rounded-sm text-sm bg-admin-700 text-white">Vision Models</a>
-{% endblock %}
 {% block content %}
 <div class="mx-auto max-w-5xl">
   <div class="mb-4 flex items-center justify-between">
@@ -40,7 +32,7 @@
     </table>
     <div class="mt-3">
       <button type="submit"
-              class="rounded-sm bg-admin-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-admin-600">
+              class="rounded-sm bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-light">
         Save default
       </button>
     </div>

@@ -96,6 +96,17 @@ def test_system_dashboard_accessible(admin_client):
     assert resp.status_code == 200
 
 
+def test_system_dashboard_uses_unified_shell(admin_client):
+    resp = admin_client.get("/admin/system/")
+    assert resp.status_code == 200
+    # Unified app sidebar (global Claims link) is present...
+    assert 'href="/dashboard"' in resp.text
+    # ...the Admin group is rendered...
+    assert 'href="/admin/system/audit"' in resp.text
+    # ...and the old dark admin chrome is gone.
+    assert "bg-admin-800" not in resp.text
+
+
 def test_system_users_page(admin_client):
     resp = admin_client.get("/admin/system/users")
     assert resp.status_code == 200

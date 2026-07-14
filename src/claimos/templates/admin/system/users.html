@@ -1,16 +1,5 @@
-{% extends "admin/base.html" %}
+{% extends "base.html" %}
 {% block title %}Users{% endblock %}
-{% block sidebar %}
-<a href="/admin/system/" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Dashboard</a>
-<a href="/admin/system/users" class="block px-3 py-2 rounded-sm text-sm bg-admin-700 text-white">Users</a>
-<a href="/admin/system/groups" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Groups</a>
-<a href="/admin/system/claims" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Claims</a>
-<a href="/admin/system/feedback" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">
-  Feedback{% if unread_count %} <span class="ml-1 inline-flex items-center rounded-full bg-error px-1.5 py-0.5 text-xs">{{ unread_count }}</span>{% endif %}
-</a>
-<a href="/admin/system/audit" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Audit Log</a>
-<a href="/admin/vision-models" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Vision Models</a>
-{% endblock %}
 {% block content %}
 <div class="flex items-center justify-between mb-6">
   <h1 class="text-2xl font-bold text-neutral-900">Users</h1>
@@ -53,7 +42,7 @@
       </select>
     </div>
     <div class="col-span-2">
-      <button type="submit" class="bg-admin-700 text-white px-4 py-2 rounded-sm text-sm hover:bg-admin-600">Create Invite</button>
+      <button type="submit" class="bg-primary text-white px-4 py-2 rounded-sm text-sm hover:bg-primary-light">Create Invite</button>
     </div>
   </form>
 </div>
@@ -72,7 +61,7 @@
     <tbody class="bg-surface divide-y divide-neutral-200">
       {% for u in users %}
       <tr>
-        <td class="px-6 py-4 text-sm"><a href="/admin/system/users/{{ u.id }}" class="text-admin-700 hover:underline">{{ u.email }}</a></td>
+        <td class="px-6 py-4 text-sm"><a href="/admin/system/users/{{ u.id }}" class="text-primary hover:underline">{{ u.email }}</a></td>
         <td class="px-6 py-4 text-sm text-neutral-900">{{ u.display_name }}</td>
         <td class="px-6 py-4 text-sm text-neutral-500">{{ u.system_role }}</td>
         <td class="px-6 py-4 text-sm">

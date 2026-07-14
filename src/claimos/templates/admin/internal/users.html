@@ -1,11 +1,5 @@
-{% extends "admin/base.html" %}
+{% extends "base.html" %}
 {% block title %}Internal Users{% endblock %}
-{% block sidebar %}
-<a href="/admin/internal/" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Dashboard</a>
-<a href="/admin/internal/users" class="block px-3 py-2 rounded-sm text-sm bg-admin-700 text-white">Users</a>
-<a href="/admin/internal/claims" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Claims</a>
-<a href="/admin/internal/groups" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">External Groups</a>
-{% endblock %}
 {% block content %}
 <div class="flex items-center justify-between mb-6">
   <h1 class="text-2xl font-bold text-neutral-900">Internal Users</h1>

@@ -210,9 +210,12 @@ There are **three surfaces**, and they are deliberately different:
 - **App UI (light)** — the primary surface. Indigo accent on a warm-neutral gray
   ground. This is what the `colors`/`typography`/`components` primary tokens
   describe.
-- **Admin chrome (dark)** — the admin area uses a dark `slate` sidebar
-  (`admin-*` tokens) with light text. It is a distinct navigational shell,
-  not a theme variant of the app UI.
+- **Admin (shared shell)** — the admin area now uses the same `base.html`
+  topbar and theme-aware left sidebar as the rest of the app, with a
+  role-aware **Admin** sidebar group (`_admin_sidebar.html`) rendering the
+  links appropriate to the signed-in role. It is no longer a distinct dark
+  navigational shell; the `admin-*` tokens are retained but unused, pending
+  removal.
 - **Print report (PDF)** — the WeasyPrint-rendered report is its own typographic
   world: **Arial/Helvetica** body and **Courier New** for every monetary figure,
   with print-specific grays. It does not share the web palette or font by design,
@@ -251,11 +254,10 @@ file should be updated to match.
   separate yellow token. There is no emerald, violet, or blue accent in the
   palette — those fold into primary (indigo) or the green/red/amber semantics
   above.
-- **Admin surface (slate):** the dark sidebar — `admin-800` (slate-800)
-  ground, `admin-700` (slate-700) hover, `admin-300` (slate-300) text going to
-  white when active, plus two extra chrome steps for secondary use: `admin-400`
-  (slate-400) for de-emphasized text and `admin-600` (slate-600) for lighter
-  chrome fills.
+- **Admin surface (`admin-*`) — retained but unused.** These tokens formerly
+  drove a dedicated dark-slate admin sidebar. Since the unified-shell migration
+  the admin area uses the shared theme-aware app sidebar, so nothing references
+  `admin-300…admin-800` anymore; they remain defined pending a follow-up purge.
 
 ### Modes (light / dark)
 
@@ -342,8 +344,9 @@ do not mix sharp and heavily-rounded corners.
   amber for caution/pending.
 - **Nav (app)** — White bar, `1px` gray-200 bottom border, 56px tall, semibold
   wordmark left, actions right.
-- **Admin sidebar** — Dark slate-800 column, slate-300 links, slate-700 hover
-  going to white text.
+- **Admin sidebar** — Uses the shared app sidebar (theme-aware `neutral-100`
+  column, `primary-subtle`/`text-primary` active) with a role-aware Admin nav
+  group (`_admin_sidebar.html`) — no longer a separate dark-slate column.
 
 ## Do's and Don'ts
 

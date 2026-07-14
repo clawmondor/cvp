@@ -1,17 +1,5 @@
-{% extends "admin/base.html" %}
+{% extends "base.html" %}
 {% block title %}Audit Log{% endblock %}
-
-{% block sidebar %}
-<a href="/admin/system/" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Dashboard</a>
-<a href="/admin/system/users" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Users</a>
-<a href="/admin/system/groups" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Groups</a>
-<a href="/admin/system/claims" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Claims</a>
-<a href="/admin/system/feedback" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">
-  Feedback{% if unread_count %} <span class="ml-1 inline-flex items-center rounded-full bg-error px-1.5 py-0.5 text-xs">{{ unread_count }}</span>{% endif %}
-</a>
-<a href="/admin/system/audit" class="block px-3 py-2 rounded-sm text-sm bg-admin-700 text-white">Audit Log</a>
-<a href="/admin/vision-models" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Vision Models</a>
-{% endblock %}
 
 {% block content %}
 <div class="flex items-center justify-between mb-6">
@@ -43,7 +31,7 @@
     <input type="date" name="date_to" value="{{ filters.date_to }}" class="border rounded-sm px-2 py-1 text-sm" />
   </div>
   <div class="flex items-end">
-    <button type="submit" class="bg-admin-700 text-white px-4 py-1 rounded-sm text-sm hover:bg-admin-800">Filter</button>
+    <button type="submit" class="bg-primary text-white px-4 py-1 rounded-sm text-sm hover:bg-primary-light">Filter</button>
   </div>
 </form>
 

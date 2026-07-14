@@ -63,6 +63,14 @@ def test_internal_dashboard_accessible(internal_client):
     assert resp.status_code == 200
 
 
+def test_internal_dashboard_uses_unified_shell(internal_client):
+    resp = internal_client.get("/admin/internal/")
+    assert resp.status_code == 200
+    assert 'href="/dashboard"' in resp.text
+    assert 'href="/admin/internal/users"' in resp.text
+    assert "bg-admin-800" not in resp.text
+
+
 def test_internal_users_page(internal_client):
     resp = internal_client.get("/admin/internal/users")
     assert resp.status_code == 200

@@ -1,16 +1,5 @@
-{% extends "admin/base.html" %}
+{% extends "base.html" %}
 {% block title %}Groups{% endblock %}
-{% block sidebar %}
-<a href="/admin/system/" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Dashboard</a>
-<a href="/admin/system/users" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Users</a>
-<a href="/admin/system/groups" class="block px-3 py-2 rounded-sm text-sm bg-admin-700 text-white">Groups</a>
-<a href="/admin/system/claims" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Claims</a>
-<a href="/admin/system/feedback" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">
-  Feedback{% if unread_count %} <span class="ml-1 inline-flex items-center rounded-full bg-error px-1.5 py-0.5 text-xs">{{ unread_count }}</span>{% endif %}
-</a>
-<a href="/admin/system/audit" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Audit Log</a>
-<a href="/admin/vision-models" class="block px-3 py-2 rounded-sm text-sm text-admin-300 hover:bg-admin-700 hover:text-white">Vision Models</a>
-{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-bold text-neutral-900 mb-6">Groups</h1>
 <div class="card mb-6">
@@ -30,7 +19,7 @@
       </select>
     </div>
     <div class="flex items-end">
-      <button type="submit" class="bg-admin-700 text-white px-4 py-2 rounded-sm text-sm hover:bg-admin-600">Create</button>
+      <button type="submit" class="bg-primary text-white px-4 py-2 rounded-sm text-sm hover:bg-primary-light">Create</button>
     </div>
   </form>
 </div>
@@ -46,7 +35,7 @@
     <tbody class="bg-surface divide-y divide-neutral-200">
       {% for g in groups %}
       <tr>
-        <td class="px-6 py-4 text-sm"><a href="/admin/system/groups/{{ g.id }}" class="text-admin-700 hover:underline">{{ g.name }}</a></td>
+        <td class="px-6 py-4 text-sm"><a href="/admin/system/groups/{{ g.id }}" class="text-primary hover:underline">{{ g.name }}</a></td>
         <td class="px-6 py-4 text-sm text-neutral-500">{{ g.kind }}</td>
         <td class="px-6 py-4 text-sm">{% if g.is_active %}<span class="text-success">Active</span>{% else %}<span class="text-error">Inactive</span>{% endif %}</td>
       </tr>

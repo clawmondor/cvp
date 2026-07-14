@@ -50,6 +50,8 @@ def seeded_db(db_session):
 
 @pytest.fixture
 def client(seeded_db):
+    from unittest.mock import patch
+
     from claimos.db import get_db
     from claimos.main import app
 
@@ -60,8 +62,13 @@ def client(seeded_db):
             pass
 
     app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as c:
-        yield c
+    # CI defaults to cookie_secure=True (production). The TestClient talks to
+    # http://testserver, so a Secure auth cookie would be dropped on the return
+    # trip and any test that round-trips a login cookie would fail. Force it off
+    # so cookie-auth paths are exercised deterministically regardless of env.
+    with patch.object(settings, "cookie_secure", False):
+        with TestClient(app) as c:
+            yield c
     app.dependency_overrides.clear()
 
 
@@ -72,6 +79,21 @@ def test_splash_page(client, monkeypatch):
     resp = client.get("/", follow_redirects=False)
     assert resp.status_code == 200
     assert "Sign In" in resp.text
+
+
+def test_root_authenticated_shows_dashboard(client, monkeypatch):
+    # Force the cookie path (not dev auto-login) so the test is deterministic.
+    monkeypatch.setattr(settings, "auto_login_user_id", "")
+    login = client.post(
+        "/api/auth/login",
+        data={"email": "admin@test.com", "password": "correcthorse12"},
+        follow_redirects=False,
+    )
+    assert login.status_code == 303  # cookie now stored on the TestClient
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert "Dashboard" in resp.text
+    assert "coming soon" in resp.text
 
 
 def test_login_page(client):

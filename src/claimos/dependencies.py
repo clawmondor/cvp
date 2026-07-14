@@ -80,13 +80,11 @@ async def _validate_csrf(request: Request, source: str | None) -> None:
     raise HTTPException(status_code=403, detail="CSRF validation failed")
 
 
-async def get_current_user(request: Request) -> CurrentUser:
-    """Extract and validate JWT from request. Raises 401 if invalid.
+def _dev_auto_login_user() -> "CurrentUser | None":
+    """In dev with AUTO_LOGIN_USER_ID set, resolve that user from the DB.
 
-    In dev environment with AUTO_LOGIN_USER_ID set, bypasses JWT validation
-    and returns the configured user directly from the database.
+    Returns None outside dev, when unconfigured, or when the user is missing.
     """
-    # Dev auto-login: skip JWT validation entirely
     if settings.environment == "dev" and settings.auto_login_user_id:
         from claimos.db import SessionLocal
         from claimos.models_auth import User
@@ -104,6 +102,18 @@ async def get_current_user(request: Request) -> CurrentUser:
                 )
         finally:
             db.close()
+    return None
+
+
+async def get_current_user(request: Request) -> CurrentUser:
+    """Extract and validate JWT from request. Raises 401 if invalid.
+
+    In dev environment with AUTO_LOGIN_USER_ID set, bypasses JWT validation
+    and returns the configured user directly from the database.
+    """
+    dev_user = _dev_auto_login_user()
+    if dev_user is not None:
+        return dev_user
 
     token, source = _extract_token(request)
     if token is None:
@@ -144,8 +154,13 @@ async def require_active_user(
 async def optional_user(request: Request) -> "CurrentUser | None":
     """Return the current user if authenticated, None otherwise.
 
-    Used for public endpoints (like /crops/) that work without auth.
+    Honors dev auto-login (same as get_current_user). Used for public
+    endpoints (like / and /crops/) that work with or without auth.
     """
+    dev_user = _dev_auto_login_user()
+    if dev_user is not None:
+        return dev_user
+
     token, source = _extract_token(request)
     if token is None:
         return None
