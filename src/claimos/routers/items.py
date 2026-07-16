@@ -404,21 +404,29 @@ def update_item(
 def confirm_item(
     request: Request,
     item_id: str,
+    background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_claim_role("approver", "items")),
 ) -> HTMLResponse:
-    return _set_item_confirmed(item_id, True, user)
+    return _set_item_confirmed(item_id, True, user, request, background_tasks)
 
 
 @router.post("/api/items/{item_id}/unconfirm", response_class=HTMLResponse)
 def unconfirm_item(
     request: Request,
     item_id: str,
+    background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_claim_role("approver", "items")),
 ) -> HTMLResponse:
-    return _set_item_confirmed(item_id, False, user)
+    return _set_item_confirmed(item_id, False, user, request, background_tasks)
 
 
-def _set_item_confirmed(item_id: str, value: bool, user: CurrentUser) -> HTMLResponse:
+def _set_item_confirmed(
+    item_id: str,
+    value: bool,
+    user: CurrentUser,
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> HTMLResponse:
     db = SessionLocal()
     try:
         item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
@@ -429,11 +437,21 @@ def _set_item_confirmed(item_id: str, value: bool, user: CurrentUser) -> HTMLRes
         item.confirmed_at = datetime.now(timezone.utc) if value else None
         db.commit()
         db.refresh(item)
+        claim_id = item.claim_id
         categories, rooms, item_groups = _get_context(item.claim_id, db)
         can_approve = _check_claim_access(db, user, item.claim_id, "approver", "items")
         html = _item_row_html(item, categories, rooms, item_groups, can_approve)
     finally:
         db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="item.confirm" if value else "item.unconfirm",
+        resource_type="item",
+        resource_id=item_id,
+        claim_id=claim_id,
+        ip_address=get_client_ip(request),
+    )
     return HTMLResponse(html)
 
 
