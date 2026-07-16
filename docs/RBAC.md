@@ -202,9 +202,8 @@ Each action requires a minimum claim role on its object type, enforced by `requi
 | item_groups | delete | manager | — |
 | comments | view | viewer | — |
 | comments | post | viewer | — |
-| reports | preview | viewer | — |
-| reports | generate (PDF) | contributor | — |
-| exports | generate (CSV) / download | **contributor** | **was manager** |
+| reports | preview (on-screen) | viewer | — |
+| exports | generate (PDF) / generate (CSV) / download | **contributor** | **was manager (CSV); PDF moved from `reports` to `exports`** |
 | audit_logs | view | viewer | — (read-only object) |
 | users | view list / sharing | contributor | — |
 | users | grant / revoke roles | manager | — (keeps role management with Lawyers/Paralegals) |
@@ -215,8 +214,10 @@ The rooms / item_groups / exports downgrades to `contributor` are required so th
 board.
 
 Note: `reports` and `exports` are tagged as distinct object types even though both live in
-`routers/exports.py` and `routers/claims.py` — PDF generation and claim preview are tagged
-`reports`; CSV generation and file download are tagged `exports`.
+`routers/exports.py` and `routers/claims.py` — `reports` is the on-screen claim-preview route only
+(`claims.py::claim_preview`); generating any downloadable deliverable — PDF export, CSV export, and
+file download — is tagged `exports`. PDF generation was previously tagged `reports`; it moved to
+`exports` because producing a PDF is an export action, the same class as CSV, not a preview.
 
 ---
 

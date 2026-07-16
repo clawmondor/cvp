@@ -17,7 +17,7 @@ def export_pdf(
     request: Request,
     claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("contributor", "reports")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "exports")),
 ) -> HTMLResponse:
     try:
         out_path = pdf_generator.generate_pdf(claim_id)
