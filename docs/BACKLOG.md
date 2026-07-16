@@ -63,3 +63,21 @@ Source for all items: `docs/superpowers/specs/2026-04-29-hosting-design.md` §12
 **Why:** The feedback feature ships a reusable plain-text validator in `src/claimos/text_validation.py`. The rest of the app's free-form text inputs do not yet use it. Adopting it project-wide closes a class of stored-XSS issues at the input layer (defense in depth alongside Jinja autoescape and the CSP `script-src` policy).
 **Cost / effort:** Low per field, but requires a small per-field audit. Candidate fields: claim name + description, item name + description, room name, profile display name, item comments (`models_comments.Comment.body`), vision model display name, any other free-form `Text`/`String` columns receiving user input. Roll out per-field so each adoption can be reviewed against the field's existing data (e.g., a claim description that already contains `<` would 400 on next edit).
 **Source:** `docs/superpowers/specs/2026-06-03-user-feedback-design.md`.
+
+---
+
+## RBAC
+
+### Firm-facing Users page
+
+**Why:** RBAC v2 (`docs/superpowers/specs/2026-07-15-rbac-v2-granular-permissions-design.md`) added the granular grant model (`role_grants` / `role_grant_claims` / `role_grant_overrides`) but deliberately shipped only minimal plumbing bolted onto the existing `/admin/org` panel — enough to assign a User Role, pick a scope, add overrides, and list/edit/revoke a member's grants, with no new visual design work. Lawyers and Paralegals managing their own firm's users deserve a dedicated, polished screen instead of the reused internal-admin-style org panel: user CRUD, role assignment, a scope picker (group-wide vs. specific claims), and — importantly — a proper **per-object override editor UI** (the override mechanism exists in the model and is enforced by the resolver, but this slice has no purpose-built UI for it beyond whatever minimal form the org panel plumbing exposes).
+**Cost / effort:** Medium-high. Needs its own spec, its own plan, and a `@DESIGN.md` pass (new screen, not a reskin) before implementation. Replaces the `/admin/org` grant screens for external_admin users only; internal admin panels are unaffected.
+**Trigger to revisit:** before onboarding a firm large enough that Lawyers/Paralegals are managing grants for more than a handful of users through the current bolted-on panel.
+**Source:** `docs/superpowers/specs/2026-07-15-rbac-v2-granular-permissions-design.md` §8, §12.
+
+### Fold internal users into RBAC v2
+
+**Why:** RBAC v2 is external-users-only by design; internal users (`system_admin`, `internal_admin`, `internal_user`, `specialist`) still resolve claim access through the legacy single-role `claim_access` table, so ClaimOS currently runs two parallel claim-access models. Unifying onto one model removes that duplication, and would let internal roles get the same object-level granularity externals have (e.g. a specialist who should upload evidence but not confirm items).
+**Cost / effort:** Medium-high. Requires defining an internal User Role registry (or extending the existing one) and a data migration from internal `claim_access` rows onto `role_grants`, analogous to the external migration in alembic revision `c9851834200b` — plus updating every route's `require_claim_role` internal-path assumptions and the admin panels that write `claim_access` today.
+**Trigger to revisit:** after the firm-facing Users page ships, or sooner if internal role needs diverge enough that the coarse single-role model becomes a real limitation.
+**Source:** `docs/superpowers/specs/2026-07-15-rbac-v2-granular-permissions-design.md` §12.
