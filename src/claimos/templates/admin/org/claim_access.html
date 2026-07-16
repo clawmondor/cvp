@@ -28,6 +28,17 @@
   </table>
 </div>
 
+{% if group and group.kind == "external" %}
+<div class="card">
+  <div class="px-6 py-4 border-b border-neutral-200">
+    <h2 class="text-base font-semibold text-neutral-900">Grant Access</h2>
+  </div>
+  <p class="px-6 py-4 text-sm text-neutral-500">
+    External users are managed via role grants; use the Roles &amp; Access panel on the user's
+    profile to grant claim access.
+  </p>
+</div>
+{% else %}
 <div class="card">
   <div class="px-6 py-4 border-b border-neutral-200">
     <h2 class="text-base font-semibold text-neutral-900">Grant Access</h2>
@@ -56,4 +67,5 @@
     </div>
   </form>
 </div>
+{% endif %}
 {% endblock %}

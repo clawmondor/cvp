@@ -40,6 +40,15 @@ def grant_access(
             detail="Cannot grant access to users outside your group",
         )
 
+    # RBAC v2: external users are resolved via role_grants, not claim_access — a
+    # claim_access row written here would be silently inert for them. Reject
+    # instead of misleading the grantor with a false "success".
+    if target_user.group and target_user.group.kind == "external":
+        raise HTTPException(
+            status_code=400,
+            detail="External users are managed via role grants; use the Roles & Access panel.",
+        )
+
     existing = (
         db.query(ClaimAccess)
         .filter(ClaimAccess.user_id == user_id, ClaimAccess.claim_id == claim_id)
