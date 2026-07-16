@@ -412,6 +412,19 @@ document.addEventListener('click', function (e) {
     if (e.target.closest('[data-print-page]')) window.print();
 });
 
+// Delegated click: data-action="confirm-item"/"unconfirm-item" → POST + swap row
+// (approver-only button; server renders it only when the current user may approve)
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-action="confirm-item"], [data-action="unconfirm-item"]');
+    if (!btn) return;
+    var itemId = btn.dataset.itemId;
+    var action = btn.dataset.action === 'confirm-item' ? 'confirm' : 'unconfirm';
+    htmx.ajax('POST', '/api/items/' + itemId + '/' + action, {
+        target: document.getElementById('item-row-' + itemId),
+        swap: 'outerHTML',
+    });
+});
+
 // Replace hx-on::after-request on add-room form (HTMX uses new Function() for hx-on, blocked by CSP)
 document.addEventListener('htmx:afterRequest', function (e) {
     if (e.detail.elt && e.detail.elt.id === 'add-room-form' && e.detail.successful) {

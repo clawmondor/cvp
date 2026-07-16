@@ -63,13 +63,20 @@
     {% endif %}
   </td>
   <td class="whitespace-nowrap px-3 py-2 text-center">
-    <button hx-post="/api/items/{{ item.id }}/toggle-confirm"
-            hx-target="#item-row-{{ item.id }}"
-            hx-swap="outerHTML"
+    {% if can_approve %}
+    <button type="button"
+            data-action="{{ 'unconfirm-item' if item.confirmed else 'confirm-item' }}"
+            data-item-id="{{ item.id }}"
             title="{{ 'Confirmed — click to un-confirm' if item.confirmed else 'Draft — click to confirm' }}"
             class="rounded-sm px-1.5 py-0.5 text-xs font-medium {% if item.confirmed %}bg-success-surface-strong text-success hover:bg-success-border{% else %}bg-neutral-100 text-neutral-500 hover:bg-neutral-200{% endif %}">
       {{ "✓" if item.confirmed else "draft" }}
     </button>
+    {% else %}
+    <span title="{{ 'Confirmed' if item.confirmed else 'Draft' }}"
+          class="rounded-sm px-1.5 py-0.5 text-xs font-medium {% if item.confirmed %}bg-success-surface-strong text-success{% else %}bg-neutral-100 text-neutral-500{% endif %}">
+      {{ "✓" if item.confirmed else "draft" }}
+    </span>
+    {% endif %}
   </td>
   <td class="whitespace-nowrap px-3 py-2 text-center">
     <div class="flex items-center gap-1 justify-center">

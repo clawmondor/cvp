@@ -11,7 +11,12 @@ from sqlalchemy.orm import selectinload
 
 from claimos.config import settings
 from claimos.db import SessionLocal
-from claimos.dependencies import CurrentUser, require_active_user, require_claim_role
+from claimos.dependencies import (
+    CurrentUser,
+    _check_claim_access,
+    require_active_user,
+    require_claim_role,
+)
 from claimos.models import (
     Category,
     Claim,
@@ -227,6 +232,7 @@ def claim_detail(
         evidence_upload_max_batch_count = runtime_config.get_int(
             db, "evidence_upload_max_batch_count"
         )
+        can_approve = _check_claim_access(db, user, claim_id, "approver", "items")
     finally:
         db.close()
 
@@ -272,6 +278,7 @@ def claim_detail(
             "evidence_upload_concurrency": evidence_upload_concurrency,
             "evidence_upload_max_file_mb": evidence_upload_max_file_mb,
             "evidence_upload_max_batch_count": evidence_upload_max_batch_count,
+            "can_approve": can_approve,
         },
     )
 
