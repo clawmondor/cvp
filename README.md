@@ -282,6 +282,7 @@ data/                  # gitignored — created at runtime
 | `uv run seed` | Populate the 42 depreciation categories (idempotent) |
 | `uv run seed-auth` | Seed initial auth data (groups, roles) |
 | `uv run bootstrap-admin` | Idempotent first-deploy System Admin bootstrap (see `docs/RUNBOOK.md`) |
+| `uv run seed-rbac-demo` | **Dev only.** Seed an RBAC v2 demo tenant (firm group, one external user per role, two claims) for manual permission testing (see [Testing RBAC v2 locally](#testing-rbac-v2-locally)) |
 | `uv run migrate-db` | One-shot data copy from a legacy CVP database into the ClaimOS schema (see [Legacy CVP / coexistence](#legacy-cvp--coexistence) below) |
 | `uv run pytest` | Run the full test suite |
 | `uv run ruff check .` | Lint |
@@ -431,6 +432,55 @@ uv run python skills/qa/runner.py
 # Run a specific suite
 uv run python skills/qa/runner.py --suite auth
 ```
+
+---
+
+## Testing RBAC v2 locally
+
+RBAC v2 gives external (firm) users **object-level** permissions driven by named User Roles (Lawyer, Paralegal, Adjuster, Claimant, Photographer, Valuator), scoped to a group with optional per-claim narrowing and per-user overrides. See **[docs/RBAC.md](docs/RBAC.md)** for the full model and the per-role expected-outcome matrix. Internal users are unchanged (legacy `claim_access`).
+
+The fastest way to see it work is the automated suite:
+
+```bash
+uv run pytest tests/test_roles.py tests/test_resolver.py \
+  tests/test_ladder_enforcement.py tests/test_item_approval.py \
+  tests/test_grants_service.py tests/test_admin_org_grants.py -v
+```
+
+To poke it by hand in the browser, seed a ready-made demo tenant:
+
+```bash
+uv run alembic upgrade head   # schema
+uv run seed                   # 42 categories (so demo items have a category)
+uv run seed-rbac-demo         # firm group + one external user per role + two claims
+```
+
+`seed-rbac-demo` prints each demo user's UUID. To browse as one of them, set it as
+`AUTO_LOGIN_USER_ID` in `.env` (this requires **`ENVIRONMENT=dev`** — note the
+`.env.example` default of `development` does **not** enable the bypass), then
+restart `uv run dev`:
+
+```bash
+# .env
+ENVIRONMENT=dev
+AUTO_LOGIN_USER_ID=<uuid printed by seed-rbac-demo>
+```
+
+Cycle the id to switch identity and confirm the boundaries the seeder prints, e.g.:
+
+- **photographer** — uploads evidence, but cannot edit items or confirm them.
+- **photog-plus** — same, plus can edit items (an `items → contributor` override).
+- **valuator** — edits items, but cannot export or confirm.
+- **adjuster** — can approve (confirm) items and export.
+- **claimant** — read-only on their one claim; the firm's *other* claim returns 403.
+- **lawyer** — external admin, full access to the firm's claims.
+
+You can also assign / revoke roles through the UI as the **lawyer**: log in (or auto-login)
+as `lawyer@demo.local` and use the **Roles & Access** section on an org member's page under
+`/admin/org`.
+
+`seed-rbac-demo` is idempotent (re-running wipes and recreates the demo tenant) and
+refuses to run when `ENVIRONMENT` looks like production, so it can't touch real data.
 
 ---
 

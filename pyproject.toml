@@ -37,6 +37,7 @@ seed = "claimos.seed:main"
 seed-auth = "claimos.seed_auth:main"
 bootstrap-admin = "claimos.bootstrap_admin:main"
 migrate-db = "claimos.migrate_db:main"
+seed-rbac-demo = "claimos.seed_rbac_demo:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -317,6 +317,12 @@ The scenarios below cover the full RBAC surface, including the RBAC v2 object-le
 them in a local dev environment with `uv run dev`. Use the System Admin panel (log in as a
 `system_admin` user) to set up accounts.
 
+> **Shortcut for local manual testing:** `uv run seed-rbac-demo` creates a ready-made external
+> firm with one user per role, two claims, and the matching grants, and prints each user's id for
+> `AUTO_LOGIN_USER_ID` (requires `ENVIRONMENT=dev`). See
+> [README → Testing RBAC v2 locally](../README.md#testing-rbac-v2-locally). Scenarios 2–7 below
+> map directly onto the users it seeds.
+
 ### Setup: Seed the required accounts
 
 Before running scenarios, create these users from the System Admin panel at `/admin/system/users`:
