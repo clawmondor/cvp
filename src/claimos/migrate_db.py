@@ -53,6 +53,19 @@ TABLE_PLAN: list[tuple[str, str, dict[str, str]]] = [
 # (already-seeded) value wins, not the migrated legacy value.
 PK_OVERRIDES: dict[str, str] = {"app_setting": "key"}
 
+# ORM tables that intentionally have NO legacy CVP source and must never appear
+# in TABLE_PLAN. These are RBAC v2 tables (see models_grants.py): they are
+# populated by a future Alembic *data migration* that converts legacy
+# `claim_access` rows into `role_grants` (+ `role_grant_claims` /
+# `role_grant_overrides`), not by this one-shot legacy-db copy. Keep this set
+# in sync with models_grants.py; it is consumed by
+# tests/test_migrate_db.py::test_table_plan_is_fk_safe_topological_order to
+# scope the "TABLE_PLAN covers exactly the ORM metadata" invariant down to the
+# tables that are actually supposed to be copied.
+NO_LEGACY_SOURCE_TABLES: frozenset[str] = frozenset(
+    {"role_grants", "role_grant_claims", "role_grant_overrides"}
+)
+
 
 def _copy_table(
     src: sa.engine.Connection,
