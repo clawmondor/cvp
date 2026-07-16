@@ -9,9 +9,12 @@ Cache key is (user_id, claim_id, minimum_role, object_type); value is bool. TTL 
 System admins short-circuit before the cache so admin grants never end up
 cached or shared with non-admins.
 
-Worst-case staleness after a role change is `_TTL_SECONDS`. Wiring of
-`invalidate_claim` / `invalidate_user` into ClaimAccess and user-role
-mutation paths is tracked as a follow-up in the spec's Backlog.
+Worst-case staleness after a role change is `_TTL_SECONDS`, bounded by where
+`invalidate_user` is (and isn't) wired in. `services/grants.py`'s
+`create_grant` and `revoke_grant` both call `invalidate_user` after their
+commit, so RBAC v2 role-grant create/revoke reflect immediately rather than
+waiting out the TTL. Legacy `claim_access` mutations (internal users) are not
+wired to invalidation and rely on the TTL to expire stale entries.
 """
 
 import time
