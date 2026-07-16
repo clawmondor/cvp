@@ -3,6 +3,17 @@
 Reads the source (legacy CVP schema, `matters`/`matter_id`) READ-ONLY and writes
 the target (ClaimOS schema, `claims`/`claim_id`). Run once at cutover after the
 target DB is at `alembic upgrade head` and seeded.
+
+Cutover ordering: `alembic upgrade head` runs BEFORE this script and applies the
+`c9851834200b` data migration (`migrate_external_claim_access`) against an EMPTY
+`claim_access` table, converting 0 rows. This script then copies legacy
+`matter_access` rows into `claim_access` (`migrate()`), verifies row-count parity
+against the legacy source (`verify_parity` / `raise_on_parity_mismatch`), and
+ONLY THEN converts the newly-copied external `claim_access` rows into
+`role_grants` (`convert_external_access`, called from `main()`). That ordering
+is required: the conversion deletes external `claim_access` rows, which would
+make the parity check fail if run first. See `convert_external_access` for
+details.
 """
 
 from __future__ import annotations
@@ -168,6 +179,33 @@ def raise_on_parity_mismatch(counts: dict[str, tuple[int, int]]) -> None:
         raise RuntimeError(f"migrate-db: row-count parity check failed for: {detail}")
 
 
+def convert_external_access(target_url: str) -> int:
+    """Convert freshly-copied external `claim_access` rows into `role_grants`.
+
+    Cutover ordering (see module docstring / README): `alembic upgrade head` runs
+    the `c9851834200b` data migration against an EMPTY `claim_access` table (0
+    rows converted), and only THEN does `migrate-db` copy legacy `matter_access`
+    rows into `claim_access` — including external users' rows. Those freshly
+    copied external rows are never converted by the alembic migration (it already
+    ran), and the RBAC v2 resolver (`dependencies._external_effective_role`) reads
+    only `role_grants` for external users, so without this step every external
+    user is locked out (403) post-cutover with an inert `claim_access` row.
+
+    This must be called AFTER `raise_on_parity_mismatch` succeeds — the
+    conversion deletes external `claim_access` rows, and the parity check
+    compares legacy `matter_access` counts against `claim_access` counts. Running
+    the conversion first would make a correct migration look like a parity
+    failure.
+    """
+    from sqlalchemy.orm import Session
+
+    from claimos.migrate_claim_access import migrate_external_claim_access
+
+    engine = sa.create_engine(target_url)
+    with Session(bind=engine) as session:
+        return migrate_external_claim_access(session)
+
+
 def main() -> None:
     source = os.environ["LEGACY_DATABASE_URL"]
     target = os.environ["DATABASE_URL"]
@@ -182,6 +220,12 @@ def main() -> None:
         print(f"  parity {table}: source={source_count} target={target_count}")
     raise_on_parity_mismatch(parity)
     print("parity check passed: source and target row counts match for all tables")
+
+    # Must run AFTER the parity check (see convert_external_access docstring):
+    # converts the just-copied external claim_access rows into role_grants so
+    # external users aren't locked out post-cutover.
+    converted = convert_external_access(target)
+    print(f"converted {converted} external claim_access row(s) to role_grants")
 
 
 if __name__ == "__main__":
