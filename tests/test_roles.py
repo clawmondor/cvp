@@ -70,3 +70,10 @@ def test_valuator_profile():
 
 def test_role_for_object_unknown_role():
     assert role_for_object("nope", "items") is None
+
+
+def test_uniform_synthetic_role():
+    from claimos.roles import role_for_object
+
+    assert role_for_object("_uniform:contributor", "items") == "contributor"
+    assert role_for_object("_uniform:contributor", "exports") == "contributor"

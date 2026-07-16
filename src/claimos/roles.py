@@ -91,6 +91,15 @@ def get_user_role(key: str) -> UserRole | None:
 
 
 def role_for_object(role_key: str, object_type: str) -> str | None:
+    """Resolve the claim role for a given object_type.
+
+    Supports the synthetic key ``"_uniform:<role>"`` — representing a single
+    role applied uniformly to every object_type (used when migrating legacy
+    single-role claim_access rows into role_grants) — in addition to real
+    registry keys.
+    """
+    if role_key.startswith("_uniform:"):
+        return role_key.split(":", 1)[1]
     role = USER_ROLES.get(role_key)
     if role is None:
         return None
