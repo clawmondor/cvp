@@ -125,7 +125,7 @@ def claim_detail(
     request: Request,
     claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer", "items")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -288,7 +288,7 @@ def update_claim(
     request: Request,
     claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager", "items")),
     firm_name: str = Form(default=""),
     attorney_name: str = Form(default=""),
     attorney_email: str = Form(default=""),
@@ -347,7 +347,7 @@ def update_claim_status(
     request: Request,
     claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager", "items")),
     status: str = Form(...),
 ) -> RedirectResponse:
     valid = {"draft", "in_review", "delivered", "archived"}
@@ -379,7 +379,9 @@ def update_claim_status(
 
 @router.get("/claims/{claim_id}/preview", response_class=HTMLResponse)
 def claim_preview(
-    request: Request, claim_id: str, user: CurrentUser = Depends(require_claim_role("viewer"))
+    request: Request,
+    claim_id: str,
+    user: CurrentUser = Depends(require_claim_role("viewer", "reports")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:

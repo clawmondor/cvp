@@ -44,7 +44,7 @@ def _get_comment_and_check_access(
 @router.get("/api/items/{item_id}/comments", response_class=HTMLResponse)
 def list_comments(
     item_id: str,
-    user: CurrentUser = Depends(require_claim_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer", "comments")),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     """List comments for an item, filtered by visibility."""
@@ -77,7 +77,7 @@ def create_comment(
     item_id: str,
     body: str = Form(...),
     visibility: str = Form("shared"),
-    user: CurrentUser = Depends(require_claim_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer", "comments")),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     """Create a comment on an item."""

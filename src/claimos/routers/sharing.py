@@ -18,7 +18,7 @@ def grant_access(
     claim_id: str,
     user_id: str = Form(...),
     role: str = Form(...),
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager", "users")),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     """Grant a user access to a claim with a specific role."""
@@ -66,7 +66,7 @@ def grant_access(
 def revoke_access(
     claim_id: str,
     target_user_id: str,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager", "users")),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     """Revoke a user's access to a claim."""
@@ -103,7 +103,7 @@ def revoke_access(
 @router.get("/api/claims/{claim_id}/access")
 def list_access(
     claim_id: str,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "users")),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     """List all users with access to a claim."""
