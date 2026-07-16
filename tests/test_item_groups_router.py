@@ -73,7 +73,7 @@ def make_client(seeded_db, monkeypatch):
     levels = {"viewer": 0, "contributor": 1, "editor": 2, "manager": 3}
 
     def _make(role: str = "manager"):
-        def fake_check(db, user, claim_id, required):
+        def fake_check(db, user, claim_id, required, object_type=None):
             return levels[role] >= levels[required]
 
         app.dependency_overrides[get_db] = override_get_db

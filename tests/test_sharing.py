@@ -81,7 +81,9 @@ def client(seeded_share_db, monkeypatch):
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[require_active_user] = mock_admin
     # Bypass RBAC checks
-    monkeypatch.setattr(deps, "_check_claim_access", lambda db, user, claim_id, role: True)
+    monkeypatch.setattr(
+        deps, "_check_claim_access", lambda db, user, claim_id, role, object_type=None: True
+    )
 
     with TestClient(app) as c:
         yield c
@@ -177,7 +179,9 @@ def test_grant_cross_tenant_blocked(seeded_share_db, monkeypatch):
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[require_active_user] = mock_ext_admin
-    monkeypatch.setattr(deps_local, "_check_claim_access", lambda db, user, claim_id, role: True)
+    monkeypatch.setattr(
+        deps_local, "_check_claim_access", lambda db, user, claim_id, role, object_type=None: True
+    )
 
     try:
         with TestClient(app) as c:
