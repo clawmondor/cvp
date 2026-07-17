@@ -627,6 +627,14 @@ document.addEventListener('change', function (e) {
     }
 });
 
+// Team: assign-role form — toggle the claim picker based on the scope select.
+document.addEventListener('change', function (e) {
+  const sel = e.target.closest('[data-role="scope-select"]');
+  if (!sel) return;
+  const picker = sel.closest('form').querySelector('[data-role="claim-picker"]');
+  if (picker) picker.hidden = sel.value !== 'claims';
+});
+
 // ---- Live items list: surface scan / region-rescan results -------------
 // Both the full-scan HTMX poll and the region-scan JSON poll converge on a
 // single document event: claimos:items-added {detail:{claimId, jobId, count}}.
