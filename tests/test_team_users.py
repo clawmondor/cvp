@@ -84,6 +84,29 @@ def test_members_list_shows_own_group_only(client):
     assert "out@other.com" not in resp.text  # different firm
 
 
+def test_member_detail_shows_grants_and_effective_matrix(client, db_session):
+    from claimos.services.grants import create_grant
+
+    create_grant(
+        db_session,
+        user_id="m1",
+        user_role="photographer",
+        scope="group",
+        claim_ids=[],
+        overrides={},
+        granted_by_id="ea",
+    )
+    resp = client.get("/team/users/m1")
+    assert resp.status_code == 200
+    assert "photographer" in resp.text  # grant listed
+    assert "Evidence" in resp.text or "evidence" in resp.text  # effective matrix row
+
+
+def test_member_detail_cross_group_is_404(client):
+    resp = client.get("/team/users/out")  # different firm
+    assert resp.status_code == 404
+
+
 def test_members_list_forbidden_for_non_admin(db_session, monkeypatch):
     # A plain external_user must not reach /team — require_external_admin rejects.
     from claimos.config import settings

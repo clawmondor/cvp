@@ -5,8 +5,12 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
 from claimos.db import get_db
-from claimos.dependencies import CurrentUser, require_active_user
+from claimos.dependencies import ROLE_HIERARCHY, CurrentUser, require_active_user
+from claimos.models import Claim
 from claimos.models_auth import Group, User
+from claimos.roles import OBJECT_TYPES, USER_ROLES
+from claimos.services.effective_permissions import group_effective_matrix
+from claimos.services.grants import list_grants
 from claimos.templating import templates
 
 router = APIRouter(prefix="/team")
@@ -33,4 +37,37 @@ def team_users(
         request=request,
         name="team/users.html",
         context={"user": user, "group": group, "members": members},
+    )
+
+
+@router.get("/users/{user_id}", response_class=HTMLResponse)
+def team_user_detail(
+    user_id: str,
+    request: Request,
+    user: CurrentUser = Depends(require_external_admin),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    target = db.get(User, user_id)
+    if target is None or target.group_id != user.group_id:
+        raise HTTPException(status_code=404, detail="Member not found")
+    grants = list_grants(db, target.id)
+    claim_grants = [g for g in grants if g.scope == "claims"]
+    effective = group_effective_matrix(db, target.id, user.group_id)
+    group_claims = (
+        db.query(Claim).filter(Claim.owner_group_id == user.group_id).order_by(Claim.id).all()
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name="team/user_detail.html",
+        context={
+            "user": user,
+            "target": target,
+            "grants": grants,
+            "claim_grants": claim_grants,
+            "effective": effective,
+            "object_types": OBJECT_TYPES,
+            "user_roles": USER_ROLES,
+            "role_levels": list(ROLE_HIERARCHY.keys()),
+            "group_claims": group_claims,
+        },
     )
