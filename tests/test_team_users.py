@@ -84,14 +84,17 @@ def test_members_list_shows_own_group_only(client):
     assert "out@other.com" not in resp.text  # different firm
 
 
-def test_members_list_forbidden_for_non_admin(db_session):
+def test_members_list_forbidden_for_non_admin(db_session, monkeypatch):
     # A plain external_user must not reach /team — require_external_admin rejects.
+    from claimos.config import settings
     from claimos.db import get_db
     from claimos.main import app
 
     def override_db():
         yield db_session
 
+    # Neutralize dev auto-login so the real auth path runs
+    monkeypatch.setattr(settings, "auto_login_user_id", "")
     app.dependency_overrides[get_db] = override_db
     client = TestClient(app, raise_server_exceptions=False)
     # No override of require_external_admin here; unauthenticated → 401/redirect.
