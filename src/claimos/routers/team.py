@@ -212,6 +212,33 @@ def team_user_detail(
     )
 
 
+@router.post("/claims/{claim_id}/grant")
+def team_grant_claim_access(
+    claim_id: str,
+    user_id: str = Form(...),
+    user_role: str = Form(...),
+    user: CurrentUser = Depends(require_external_admin),
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    claim = db.get(Claim, claim_id)
+    if claim is None or claim.owner_group_id != user.group_id:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    target = _load_own_member(db, user, user_id)
+    try:
+        create_grant(
+            db,
+            user_id=target.id,
+            user_role=user_role,
+            scope="claims",
+            claim_ids=[claim_id],
+            overrides={},
+            granted_by_id=user.id,
+        )
+    except GrantValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse(url=f"/team/claims/{claim_id}/access", status_code=303)
+
+
 @router.post("/users/{user_id}/deactivate")
 def team_deactivate(
     user_id: str,

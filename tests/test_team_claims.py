@@ -128,3 +128,43 @@ def test_claim_access_cross_group_is_404(client, db_session):
     db_session.add(Claim(id="cX", owner_group_id="og", policyholder_name="Other"))
     db_session.commit()
     assert client.get("/team/claims/cX/access").status_code == 404
+
+
+def test_grant_claim_access_creates_claim_scoped_grant(client, db_session):
+    from claimos.models import Claim
+    from claimos.models_auth import User
+
+    db_session.add(Claim(id="cA", owner_group_id="eg", policyholder_name="Rossi"))
+    db_session.add(
+        User(
+            id="val",
+            email="val@acme.com",
+            display_name="Val",
+            system_role="external_user",
+            group_id="eg",
+        )
+    )
+    db_session.commit()
+    r = client.post(
+        "/team/claims/cA/grant",
+        data={"user_id": "val", "user_role": "valuator"},
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 303)
+    from claimos.services.grants import list_grants
+
+    g = list_grants(db_session, "val")[0]
+    assert g.scope == "claims" and [c.claim_id for c in g.claims] == ["cA"]
+
+
+def test_grant_claim_access_rejects_cross_group_member(client, db_session):
+    from claimos.models import Claim
+
+    db_session.add(Claim(id="cA", owner_group_id="eg", policyholder_name="Rossi"))
+    db_session.commit()
+    r = client.post(
+        "/team/claims/cA/grant",
+        data={"user_id": "out", "user_role": "valuator"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 404
