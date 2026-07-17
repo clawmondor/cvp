@@ -28,6 +28,7 @@ def db_session():
 @pytest.fixture
 def org_client(db_session):
     from claimos.db import get_db
+    from claimos.dependencies import require_active_user
     from claimos.main import app
     from claimos.routers.admin.org import _require_org_admin_or_above
 
@@ -38,36 +39,46 @@ def org_client(db_session):
     def override_get_db():
         yield db_session
 
-    async def mock_external_admin():
+    async def mock_internal_admin():
+        # These tests exercise general panel functionality (dashboard rendering,
+        # users listing, legacy grant validation) rather than external-admin-specific
+        # access boundaries, so they run as internal_admin — the panel's remaining
+        # audience now that external_admin is redirected to /team. Cross-tenant
+        # access-boundary coverage for external_admin lives in test_admin_org_grants.py
+        # and the new test_team_redirect.py.
         from claimos.dependencies import CurrentUser
 
         return CurrentUser(
-            id="ea",
-            email="ea@test.com",
-            system_role="external_admin",
-            group_id="eg",
-            group_kind="external",
+            id="ia",
+            email="ia@test.com",
+            system_role="internal_admin",
+            group_id=None,
+            group_kind="internal",
         )
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[_require_org_admin_or_above] = mock_external_admin
+    app.dependency_overrides[_require_org_admin_or_above] = mock_internal_admin
+    # Router-level `_redirect_external_admin` depends on `require_active_user` directly
+    # (not `_require_org_admin_or_above`), so it must be overridden too or these
+    # requests 401 in any environment without dev auto-login (e.g. CI).
+    app.dependency_overrides[require_active_user] = mock_internal_admin
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
 
 
 def test_org_dashboard_accessible(org_client):
-    resp = org_client.get("/admin/org/")
+    resp = org_client.get("/admin/org/?group_id=eg")
     assert resp.status_code == 200
 
 
 def test_org_users_page(org_client):
-    resp = org_client.get("/admin/org/users")
+    resp = org_client.get("/admin/org/users?group_id=eg")
     assert resp.status_code == 200
 
 
 def test_org_dashboard_uses_unified_shell(org_client):
-    resp = org_client.get("/admin/org/")
+    resp = org_client.get("/admin/org/?group_id=eg")
     assert resp.status_code == 200
     assert 'href="/dashboard"' in resp.text
     assert 'href="/admin/org/users?group_id=eg"' in resp.text

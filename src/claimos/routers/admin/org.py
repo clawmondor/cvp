@@ -20,7 +20,20 @@ from claimos.roles import USER_ROLES
 from claimos.services.grants import GrantValidationError, create_grant, list_grants, revoke_grant
 from claimos.templating import templates
 
-router = APIRouter(prefix="/admin/org")
+
+async def _redirect_external_admin(
+    request: Request,
+    user: CurrentUser = Depends(require_active_user),
+) -> None:
+    """External admins manage their firm at /team; bounce them out of /admin/org,
+    except the firm-profile editor which stays here until /team/settings lands."""
+    if user.system_role == "external_admin" and not request.url.path.startswith(
+        "/admin/org/profile"
+    ):
+        raise HTTPException(status_code=302, headers={"Location": "/team/users"})
+
+
+router = APIRouter(prefix="/admin/org", dependencies=[Depends(_redirect_external_admin)])
 
 _CTX = {"panel_color": "emerald", "panel_title": "Organization Administration"}
 

@@ -57,9 +57,51 @@ def seed_org(db_session):
 
 @pytest.fixture
 def org_client(db_session, seed_org):
+    """Internal admin actor: exercises panel functionality that survived the
+    /team redirect (external_admin is now bounced off /admin/org/* to /team,
+    except /admin/org/profile — see test_team_redirect.py). Internal/system
+    admins remain the panel's real audience."""
     from claimos.db import get_db
+    from claimos.dependencies import require_active_user
     from claimos.main import app
     from claimos.routers.admin.org import _require_org_admin_or_above
+
+    def override_get_db():
+        yield db_session
+
+    async def mock_internal_admin():
+        from claimos.dependencies import CurrentUser
+
+        return CurrentUser(
+            id="ia",
+            email="ia@test.com",
+            system_role="internal_admin",
+            group_id=None,
+            group_kind="internal",
+        )
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[_require_org_admin_or_above] = mock_internal_admin
+    app.dependency_overrides[require_active_user] = mock_internal_admin
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def external_admin_client(db_session, seed_org):
+    """External-admin actor with the router-level /team redirect bypassed.
+
+    Real external_admin traffic never reaches these routes anymore (the
+    `_redirect_external_admin` dependency bounces it to /team first). But the
+    per-route cross-group guards inside org_assign_grant/org_revoke_grant are
+    still real defense-in-depth code, so this fixture overrides
+    `_redirect_external_admin` directly (in addition to auth) to keep
+    exercising them at the unit level.
+    """
+    from claimos.db import get_db
+    from claimos.main import app
+    from claimos.routers.admin.org import _redirect_external_admin, _require_org_admin_or_above
 
     def override_get_db():
         yield db_session
@@ -75,8 +117,12 @@ def org_client(db_session, seed_org):
             group_kind="external",
         )
 
+    async def noop_redirect() -> None:
+        return None
+
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[_require_org_admin_or_above] = mock_external_admin
+    app.dependency_overrides[_redirect_external_admin] = noop_redirect
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -94,8 +140,10 @@ def test_org_admin_assigns_group_scoped_photographer(org_client, seed_org):
     assert grants[0].scope == "group"
 
 
-def test_org_admin_cannot_grant_cross_group(org_client, seed_org):
-    resp = org_client.post(
+def test_org_admin_cannot_grant_cross_group(external_admin_client, seed_org):
+    """Defense-in-depth: even with the /team redirect bypassed, external_admin
+    still cannot grant a role to a user outside their own group."""
+    resp = external_admin_client.post(
         "/admin/org/users/outsider/grants",
         data={"user_role": "photographer", "scope": "group"},
     )
@@ -116,7 +164,9 @@ def test_org_admin_revokes_group_scoped_grant(org_client, seed_org):
     assert list_grants(seed_org.db, "member1") == []
 
 
-def test_org_admin_cannot_revoke_cross_group_grant(org_client, seed_org, db_session):
+def test_org_admin_cannot_revoke_cross_group_grant(external_admin_client, seed_org, db_session):
+    """Defense-in-depth: even with the /team redirect bypassed, external_admin
+    still cannot revoke a grant belonging to a user outside their own group."""
     from claimos.services.grants import create_grant
 
     grant = create_grant(
@@ -128,7 +178,7 @@ def test_org_admin_cannot_revoke_cross_group_grant(org_client, seed_org, db_sess
         overrides={},
         granted_by_id="other-admin",
     )
-    resp = org_client.post(f"/admin/org/grants/{grant.id}/revoke")
+    resp = external_admin_client.post(f"/admin/org/grants/{grant.id}/revoke")
     assert resp.status_code == 403
     assert len(list_grants(db_session, "outsider")) == 1
 
