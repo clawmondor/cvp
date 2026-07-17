@@ -24,6 +24,17 @@
     </div>
   </dl>
 </div>
+<div class="flex gap-3 mb-6">
+  {% if target.is_active %}
+  <form method="POST" action="/team/users/{{ target.id }}/deactivate">
+    <button type="submit" class="bg-error text-white px-4 py-2 rounded-sm text-sm hover:bg-error-strong">Deactivate</button>
+  </form>
+  {% else %}
+  <form method="POST" action="/team/users/{{ target.id }}/activate">
+    <button type="submit" class="bg-success-emphasis text-white px-4 py-2 rounded-sm text-sm hover:bg-success">Activate</button>
+  </form>
+  {% endif %}
+</div>
 
 <div class="card mb-6">
   <div class="px-6 py-4 border-b border-neutral-200">

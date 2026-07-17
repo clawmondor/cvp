@@ -124,3 +124,20 @@ def test_members_list_forbidden_for_non_admin(db_session, monkeypatch):
     resp = client.get("/team/users")
     assert resp.status_code in (401, 403)
     app.dependency_overrides.clear()
+
+
+def test_deactivate_and_activate_member(client, db_session):
+    r = client.post("/team/users/m1/deactivate", follow_redirects=False)
+    assert r.status_code in (302, 303)
+    db_session.expire_all()
+    from claimos.models_auth import User
+
+    assert db_session.get(User, "m1").is_active is False
+    client.post("/team/users/m1/activate", follow_redirects=False)
+    db_session.expire_all()
+    assert db_session.get(User, "m1").is_active is True
+
+
+def test_cannot_deactivate_cross_group_member(client):
+    r = client.post("/team/users/out/deactivate", follow_redirects=False)
+    assert r.status_code == 404
