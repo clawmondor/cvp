@@ -286,6 +286,38 @@ Within scope:
   firm-facing **Users** page is backlogged (see `docs/BACKLOG.md`).
 - Update the organization profile
 
+### Team surface (external admins) — `/team`
+
+External admins (and `system_admin`, operating on its own `group_id`) manage their
+firm from a first-class surface in the main app, not the admin area. Left nav:
+**Team → Members / Claim Access**.
+
+- **Members** (`/team/users`) — list of the firm's users; row link to detail.
+  An **Invite member** flow (`/team/users/invite`) picks a **User Role**, which
+  sets the invitee's `system_role` (Lawyer/Paralegal → `external_admin`, others →
+  `external_user`) and creates their initial grant in one step.
+- **Member detail** (`/team/users/{user_id}`) — identity + lifecycle
+  (activate/deactivate); the member's grants with **role assignment**
+  (group-wide or claim-scoped, with a claim picker shown only when scope is
+  "specific claims"); a **per-user per-grant override editor** (add/remove
+  `object_type → role` overrides on top of a grant's baseline role); and a
+  read-only **group-wide effective-permissions matrix** — the resolved role per
+  object type across the user's group-scoped grants, with claim-scoped grants
+  listed separately underneath.
+- **Claim Access** (`/team/claims`) — the firm's claims, each linking to a
+  **per-claim access view** (`/team/claims/{claim_id}/access`) showing every firm
+  member with any access to that claim and their fully-resolved role per object
+  type (group + claim-scoped grants + overrides), plus a **grant claim access**
+  action (pick a member + User Role → creates a claims-scoped grant for that
+  claim).
+
+All `/team` routes are hard-scoped to `user.group_id` (the firm) — no group
+selector, ever. External admins are redirected off `/admin/org` to `/team/users`
+(302), **except `/admin/org/profile`**, which remains their firm-profile editor
+until the backlogged `/team/settings` ships (see `docs/BACKLOG.md`). Internal and
+system admins are unaffected by this redirect and keep using `/admin/org` for
+cross-firm management.
+
 ---
 
 ## Comments Visibility

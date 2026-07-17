@@ -68,12 +68,46 @@ Source for all items: `docs/superpowers/specs/2026-04-29-hosting-design.md` §12
 
 ## RBAC
 
-### Firm-facing Users page
+### Firm-facing Users page — DONE
 
-**Why:** RBAC v2 (`docs/superpowers/specs/2026-07-15-rbac-v2-granular-permissions-design.md`) added the granular grant model (`role_grants` / `role_grant_claims` / `role_grant_overrides`) but deliberately shipped only minimal plumbing bolted onto the existing `/admin/org` panel — enough to assign a User Role, pick a scope, add overrides, and list/edit/revoke a member's grants, with no new visual design work. Lawyers and Paralegals managing their own firm's users deserve a dedicated, polished screen instead of the reused internal-admin-style org panel: user CRUD, role assignment, a scope picker (group-wide vs. specific claims), and — importantly — a proper **per-object override editor UI** (the override mechanism exists in the model and is enforced by the resolver, but this slice has no purpose-built UI for it beyond whatever minimal form the org panel plumbing exposes).
-**Cost / effort:** Medium-high. Needs its own spec, its own plan, and a `@DESIGN.md` pass (new screen, not a reskin) before implementation. Replaces the `/admin/org` grant screens for external_admin users only; internal admin panels are unaffected.
-**Trigger to revisit:** before onboarding a firm large enough that Lawyers/Paralegals are managing grants for more than a handful of users through the current bolted-on panel.
-**Source:** `docs/superpowers/specs/2026-07-15-rbac-v2-granular-permissions-design.md` §8, §12.
+**Delivered by:** the `/team` surface (`src/claimos/routers/team.py`,
+`docs/superpowers/specs/2026-07-16-team-management-page-design.md`). External
+admins (and `system_admin`) now manage their firm from a dedicated Team nav
+section — Members list/detail, role assignment with a conditional claim picker,
+a per-user per-grant override editor, a group-wide effective-permissions matrix,
+a per-claim access view with full resolution, and invite-with-role. External
+admins are redirected off `/admin/org` to `/team/users` (except the
+`/admin/org/profile` carve-out below). See `docs/RBAC.md` "Team surface
+(external admins)".
+**Source:** `docs/superpowers/specs/2026-07-15-rbac-v2-granular-permissions-design.md` §8, §12; `docs/superpowers/specs/2026-07-16-team-management-page-design.md`.
+
+### `/team/settings` firm-profile editor
+
+**Why:** The Team surface intentionally deferred the firm-profile editor. In the
+interim, external admins still edit their firm profile via `/admin/org/profile`,
+which the `/team` redirect deliberately does not intercept, so no capability is
+lost — but it's the one remaining external-admin entry point into the admin
+area. A `/team/settings` page would replace it and let the redirect carve-out be
+removed.
+**Cost / effort:** Low-medium. Mostly moving the existing profile form to a new
+route/template under `/team`; no new data model.
+**Trigger to revisit:** opportunistically, or when the `/admin/org/profile`
+carve-out becomes a maintenance nuisance.
+**Source:** `docs/superpowers/specs/2026-07-16-team-management-page-design.md` §3.6.
+
+### Unify internal/system admin cross-firm management onto `/team`
+
+**Why:** The Team surface is external-admin-facing only; internal and system
+admins still manage cross-firm users/grants via `/admin/org` with its group
+selector. Folding that onto a `/team`-style surface (with a group selector added
+back for the cross-firm case) would remove the last divergence between how
+internal and external admins manage grants, and retire the older org-panel UI
+entirely.
+**Cost / effort:** Medium. Needs a design pass for the group-selector case (the
+Team templates currently assume a single, implicit `group_id`).
+**Trigger to revisit:** after `/team/settings` ships, or when maintaining two
+parallel grant-management UIs (`/admin/org` and `/team`) becomes a real cost.
+**Source:** `docs/superpowers/specs/2026-07-16-team-management-page-design.md` §2, "Non-goals".
 
 ### Fold internal users into RBAC v2
 
