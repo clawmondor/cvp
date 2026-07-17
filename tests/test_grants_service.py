@@ -4,7 +4,15 @@ from sqlalchemy.orm import sessionmaker
 
 from claimos.models import Base, Claim
 from claimos.models_auth import Group, User
-from claimos.services.grants import GrantValidationError, create_grant, list_grants, revoke_grant
+from claimos.models_grants import RoleGrantOverride
+from claimos.services.grants import (
+    GrantValidationError,
+    add_override,
+    create_grant,
+    list_grants,
+    remove_override,
+    revoke_grant,
+)
 
 
 @pytest.fixture
@@ -142,3 +150,42 @@ def test_list_and_revoke(db):
     assert [x.id for x in list_grants(db, "ph")] == [g.id]
     revoke_grant(db, g.id)
     assert list_grants(db, "ph") == []
+
+
+def test_add_and_remove_override(db):
+    g = create_grant(
+        db,
+        user_id="ph",
+        user_role="photographer",
+        scope="group",
+        claim_ids=[],
+        overrides={},
+        granted_by_id="adm",
+    )
+    ov = add_override(db, g.id, "items", "contributor")
+    assert ov.object_type == "items" and ov.role == "contributor"
+    # upsert: same object updates, not duplicates
+    add_override(db, g.id, "items", "approver")
+    rows = db.query(RoleGrantOverride).filter(RoleGrantOverride.grant_id == g.id).all()
+    assert len(rows) == 1 and rows[0].role == "approver"
+
+    remove_override(db, g.id, "items")
+    assert db.query(RoleGrantOverride).filter(RoleGrantOverride.grant_id == g.id).count() == 0
+
+
+def test_override_validation(db):
+    g = create_grant(
+        db,
+        user_id="ph",
+        user_role="photographer",
+        scope="group",
+        claim_ids=[],
+        overrides={},
+        granted_by_id="adm",
+    )
+    with pytest.raises(GrantValidationError):
+        add_override(db, g.id, "not_an_object", "contributor")
+    with pytest.raises(GrantValidationError):
+        add_override(db, g.id, "items", "not_a_role")
+    with pytest.raises(GrantValidationError):
+        add_override(db, "missing-grant", "items", "contributor")

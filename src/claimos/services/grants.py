@@ -2,9 +2,10 @@
 
 from sqlalchemy.orm import Session
 
+from claimos.dependencies import ROLE_HIERARCHY
 from claimos.models_auth import User
 from claimos.models_grants import RoleGrant, RoleGrantClaim, RoleGrantOverride
-from claimos.roles import get_user_role
+from claimos.roles import OBJECT_TYPES, get_user_role
 from claimos.services.access_cache import invalidate_user
 
 
@@ -74,3 +75,49 @@ def revoke_grant(db: Session, grant_id: str) -> None:
     db.delete(grant)
     db.commit()
     invalidate_user(user_id)
+
+
+def add_override(db: Session, grant_id: str, object_type: str, role: str) -> RoleGrantOverride:
+    if object_type not in OBJECT_TYPES:
+        raise GrantValidationError(f"Unknown object type: {object_type}")
+    if role not in ROLE_HIERARCHY:
+        raise GrantValidationError(f"Unknown role: {role}")
+    grant = db.get(RoleGrant, grant_id)
+    if grant is None:
+        raise GrantValidationError("Grant not found")
+    existing = (
+        db.query(RoleGrantOverride)
+        .filter(
+            RoleGrantOverride.grant_id == grant_id,
+            RoleGrantOverride.object_type == object_type,
+        )
+        .first()
+    )
+    if existing is not None:
+        existing.role = role
+        override = existing
+    else:
+        override = RoleGrantOverride(grant_id=grant_id, object_type=object_type, role=role)
+        db.add(override)
+    db.commit()
+    db.refresh(override)
+    invalidate_user(grant.user_id)
+    return override
+
+
+def remove_override(db: Session, grant_id: str, object_type: str) -> None:
+    grant = db.get(RoleGrant, grant_id)
+    if grant is None:
+        return
+    row = (
+        db.query(RoleGrantOverride)
+        .filter(
+            RoleGrantOverride.grant_id == grant_id,
+            RoleGrantOverride.object_type == object_type,
+        )
+        .first()
+    )
+    if row is not None:
+        db.delete(row)
+        db.commit()
+        invalidate_user(grant.user_id)
