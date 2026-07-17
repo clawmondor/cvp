@@ -113,7 +113,7 @@ def team_invite(
         invite_expires_at=expires_at,
     )
     db.add(new_user)
-    db.commit()
+    db.flush()
 
     try:
         create_grant(
@@ -126,6 +126,7 @@ def team_invite(
             granted_by_id=user.id,
         )
     except GrantValidationError as exc:
+        db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     invite_url = str(request.base_url).rstrip("/") + f"/register/{raw_code}"

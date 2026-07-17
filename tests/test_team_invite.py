@@ -142,3 +142,25 @@ def test_invite_duplicate_email_is_400(client):
         },
     )
     assert r.status_code == 400
+
+
+def test_invite_invalid_grant_is_atomic(client, db_session):
+    """A claimant invite with scope=group is invalid (claimant is single-claim-only).
+
+    The grant validation failure must roll back the User row too, so the
+    admin can re-invite the same email without hitting "already registered".
+    """
+    r = client.post(
+        "/team/users/invite",
+        data={
+            "email": "claimant@acme.com",
+            "display_name": "Claimant Person",
+            "user_role": "claimant",
+            "scope": "group",
+        },
+    )
+    assert r.status_code == 400
+
+    from claimos.models_auth import User
+
+    assert db_session.query(User).filter(User.email == "claimant@acme.com").first() is None
