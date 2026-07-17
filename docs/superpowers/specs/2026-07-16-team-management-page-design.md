@@ -63,13 +63,12 @@ Grant/override write logic extends `src/claimos/services/grants.py`.
 ### Navigation
 
 `_app_sidebar.html` gains a **Team** section rendered only when
-`user.system_role == "external_admin"`:
+`user.system_role == "external_admin"` (and for `system_admin`, see §10):
 
 ```
 Team
   Members        → /team/users
   Claim Access   → /team/claims
-  Firm Settings  → /team/settings
 ```
 
 `base.html`'s topbar external_admin link (currently → `/admin/org`) is repointed to
@@ -79,7 +78,9 @@ simply won't be routed there).
 ### Retiring the admin path for external admins
 
 - `admin/org.py`: add a guard so an `external_admin` hitting any `/admin/org/*`
-  route is **redirected to `/team`** (302). Internal/system admins are unaffected.
+  route is **redirected to `/team`** (302), **except `/admin/org/profile`**
+  (GET + POST), which remains their firm-profile editor until the backlogged
+  `/team/settings` lands (see §3.6). Internal/system admins are unaffected.
 - The legacy `/admin/org/claims/{id}/access` external-facing grant UI is superseded
   by `/team/claims/{id}/access`; the external POST path is already blocked (RBAC v2
   I1 fix) and this slice removes external admins' route into it entirely.
@@ -148,10 +149,13 @@ answer, via `_external_effective_role` per object). Actionable:
   **claims-scoped** grant narrowed to this claim (`POST /team/claims/{claim_id}/grant`).
 - Each member row links to their member detail (3.2) to adjust.
 
-### 3.6 Firm settings — `GET/POST /team/settings`
+### 3.6 Firm settings — deferred (backlog)
 
-Port the existing `/admin/org/profile` org-profile form so external admins can edit
-their firm profile without the admin area. (Minimal: reuse the existing fields.)
+A `/team/settings` firm-profile editor is **out of scope for this slice** (backlog).
+In the interim, external admins keep editing their firm profile via
+`/admin/org/profile`, which the §2 redirect deliberately does **not** intercept, so
+no capability is lost. When the backlog item ships, `/team/settings` replaces it and
+the carve-out is removed.
 
 ---
 
@@ -172,7 +176,6 @@ All guarded by `require_external_admin` + per-target tenant checks.
 | `GET /team/claims` | Claim access list (3.4) |
 | `GET /team/claims/{claim_id}/access` | Per-claim access view (3.5) |
 | `POST /team/claims/{claim_id}/grant` | Grant a member claim-scoped access (3.5) |
-| `GET/POST /team/settings` | Firm profile (3.6) |
 
 ### Service additions
 
@@ -235,8 +238,8 @@ must pass the design-token guard test.
   still can't reach a sibling claim.
 - **Invite with role:** sets `system_role` from the role and creates the initial
   grant; single-claim role requires a claim.
-- **Nav gating:** Team section renders for external_admin only; not for
-  internal/external users or internal_admin.
+- **Nav gating:** Team section renders for external_admin (and system_admin); not
+  for external/internal users or internal_admin.
 - **Admin redirect:** external_admin hitting `/admin/org/*` → 302 to `/team`;
   internal/system admin unaffected.
 
@@ -250,8 +253,7 @@ must pass the design-token guard test.
    `/admin/org`.
 2. **Role assignment + override editor:** assign-role form + `create_grant` wiring;
    `add_override`/`remove_override` service + endpoints + override editor UI.
-3. **Invite with role + Firm settings:** invite-with-role flow; port org profile to
-   `/team/settings`.
+3. **Invite with role:** invite-with-role flow (sets system_role + initial grant).
 4. **Per-claim access:** claim list (3.4), per-claim access view (3.5), grant claim
    access.
 5. **Retire legacy UI + cleanup:** remove external admins' entry points into
@@ -266,17 +268,19 @@ Each phase produces a working, testable increment.
 - `docs/RBAC.md` — add a "Team (external admin) surface" section; note external
   admins use `/team`, internal/system admins keep `/admin/org`.
 - `docs/BACKLOG.md` — resolve the "firm-facing Users page" item; add follow-ups:
-  unify internal/system admin cross-firm management onto a `/team`-style surface;
-  fold internal users into RBAC v2 (already tracked).
+  **`/team/settings` firm-profile editor** (replaces the interim `/admin/org/profile`
+  carve-out); unify internal/system admin cross-firm management onto a `/team`-style
+  surface; fold internal users into RBAC v2 (already tracked).
 
 ---
 
 ## 10. Open questions / risks
 
-- **system_admin on `/team`:** treat as external-admin-equivalent scoped to its own
-  (internal) group, or 403? Proposed: allow but it operates on its own group (a
-  no-op for real firms); the real cross-firm tool stays `/admin/org`. Confirm during
-  review.
+- **system_admin on `/team`:** **Resolved** — `system_admin` is allowed with the
+  **same full edit capabilities** an external_admin has, operating on its own
+  `group_id` (the internal group). It is a support/parity affordance; the real
+  cross-firm tool stays `/admin/org`. The Team nav section therefore also renders for
+  `system_admin`.
 - **Override lower than baseline:** the resolver only lets an override *raise* the
   role. Adding an override ≤ baseline has no effect. Proposed: allow it but show a
   hint ("no effect — below the role's level"); do not hard-error.
