@@ -1,0 +1,144 @@
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+import claimos.models_auth  # noqa: F401
+import claimos.models_grants  # noqa: F401
+from claimos.dependencies import CurrentUser
+from claimos.models import Base
+from claimos.models_auth import Group, User
+
+
+@pytest.fixture
+def db_session():
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    s = sessionmaker(bind=engine)()
+    s.add_all(
+        [
+            Group(id="eg", name="Acme Law", kind="external"),
+            Group(id="og", name="Other Firm", kind="external"),
+            User(
+                id="ea",
+                email="ea@acme.com",
+                display_name="Ext Admin",
+                system_role="external_admin",
+                group_id="eg",
+            ),
+            User(
+                id="m1",
+                email="m1@acme.com",
+                display_name="Member One",
+                system_role="external_user",
+                group_id="eg",
+            ),
+            User(
+                id="out",
+                email="out@other.com",
+                display_name="Outsider",
+                system_role="external_user",
+                group_id="og",
+            ),
+        ]
+    )
+    s.commit()
+    yield s
+    s.close()
+
+
+def _client(db_session, role="external_admin", group_id="eg"):
+    from claimos.db import get_db
+    from claimos.main import app
+    from claimos.routers.team import require_external_admin
+
+    def override_db():
+        yield db_session
+
+    async def mock_user():
+        return CurrentUser(
+            id="ea", email="ea@acme.com", system_role=role, group_id=group_id, group_kind="external"
+        )
+
+    app.dependency_overrides[get_db] = override_db
+    app.dependency_overrides[require_external_admin] = mock_user
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def client(db_session):
+    yield from _client(db_session)
+
+
+def test_invite_form_renders(client):
+    resp = client.get("/team/users/invite")
+    assert resp.status_code == 200
+    assert "invite" in resp.text.lower()
+
+
+def test_invite_sets_system_role_and_creates_grant(client, db_session):
+    r = client.post(
+        "/team/users/invite",
+        data={
+            "email": "new@acme.com",
+            "display_name": "New Hire",
+            "user_role": "photographer",
+            "scope": "group",
+        },
+    )
+    assert r.status_code == 200
+    from claimos.models_auth import User
+    from claimos.services.grants import list_grants
+
+    u = db_session.query(User).filter(User.email == "new@acme.com").first()
+    assert u is not None and u.system_role == "external_user" and u.group_id == "eg"
+    assert list_grants(db_session, u.id)[0].user_role == "photographer"
+
+
+def test_invite_lawyer_is_external_admin(client, db_session):
+    client.post(
+        "/team/users/invite",
+        data={
+            "email": "boss@acme.com",
+            "display_name": "Boss",
+            "user_role": "lawyer",
+            "scope": "group",
+        },
+    )
+    from claimos.models_auth import User
+
+    u = db_session.query(User).filter(User.email == "boss@acme.com").first()
+    assert u.system_role == "external_admin"
+
+
+def test_invite_unknown_role_is_400(client):
+    r = client.post(
+        "/team/users/invite",
+        data={
+            "email": "x@acme.com",
+            "display_name": "X",
+            "user_role": "not-a-role",
+            "scope": "group",
+        },
+    )
+    assert r.status_code == 400
+
+
+def test_invite_duplicate_email_is_400(client):
+    r = client.post(
+        "/team/users/invite",
+        data={
+            "email": "m1@acme.com",
+            "display_name": "Dup",
+            "user_role": "photographer",
+            "scope": "group",
+        },
+    )
+    assert r.status_code == 400

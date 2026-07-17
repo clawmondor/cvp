@@ -6,6 +6,13 @@
   <a href="/team/users/invite" class="bg-success text-white px-4 py-2 rounded-sm text-sm hover:bg-success-emphasis">Invite member</a>
 </div>
 
+{% if invite_url %}
+<div class="mb-6 p-4 bg-success-surface border border-success-border rounded-lg">
+  <p class="text-sm font-medium text-success-strong">Invite link created:</p>
+  <p class="mt-1 text-sm text-success font-mono break-all">{{ invite_url }}</p>
+</div>
+{% endif %}
+
 <div class="card">
   <table class="min-w-full divide-y divide-neutral-200">
     <thead class="bg-neutral-50">
