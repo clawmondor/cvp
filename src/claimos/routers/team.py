@@ -14,7 +14,7 @@ from claimos.models import Claim
 from claimos.models_auth import Group, User
 from claimos.models_grants import RoleGrant
 from claimos.roles import OBJECT_TYPES, USER_ROLES, get_user_role
-from claimos.services.effective_permissions import group_effective_matrix
+from claimos.services.effective_permissions import claim_members_access, group_effective_matrix
 from claimos.services.grants import (
     GrantValidationError,
     add_override,
@@ -64,6 +64,32 @@ def team_claims(
         request=request,
         name="team/claims.html",
         context={"user": user, "claims": claims},
+    )
+
+
+@router.get("/claims/{claim_id}/access", response_class=HTMLResponse)
+def team_claim_access(
+    claim_id: str,
+    request: Request,
+    user: CurrentUser = Depends(require_external_admin),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    claim = db.get(Claim, claim_id)
+    if claim is None or claim.owner_group_id != user.group_id:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    rows = claim_members_access(db, user.group_id, claim_id)
+    members = db.query(User).filter(User.group_id == user.group_id).order_by(User.email).all()
+    return templates.TemplateResponse(
+        request=request,
+        name="team/claim_access.html",
+        context={
+            "user": user,
+            "claim": claim,
+            "rows": rows,
+            "object_types": OBJECT_TYPES,
+            "members": members,
+            "user_roles": USER_ROLES,
+        },
     )
 
 

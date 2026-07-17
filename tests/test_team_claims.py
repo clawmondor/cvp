@@ -89,3 +89,42 @@ def test_claims_list_shows_own_firm_claims_only(client, db_session):
     assert resp.status_code == 200
     assert "Rossi" in resp.text
     assert "Other" not in resp.text
+
+
+def test_claim_access_view_shows_resolved_roles(client, db_session):
+    from claimos.models import Claim
+    from claimos.models_auth import User
+    from claimos.services.grants import create_grant
+
+    db_session.add(Claim(id="cA", owner_group_id="eg", policyholder_name="Rossi"))
+    db_session.add(
+        User(
+            id="ph",
+            email="ph@acme.com",
+            display_name="Photog",
+            system_role="external_user",
+            group_id="eg",
+        )
+    )
+    db_session.commit()
+    create_grant(
+        db_session,
+        user_id="ph",
+        user_role="photographer",
+        scope="group",
+        claim_ids=[],
+        overrides={},
+        granted_by_id="ea",
+    )
+    resp = client.get("/team/claims/cA/access")
+    assert resp.status_code == 200
+    assert "ph@acme.com" in resp.text
+    assert "contributor" in resp.text  # photographer → contributor on evidence
+
+
+def test_claim_access_cross_group_is_404(client, db_session):
+    from claimos.models import Claim
+
+    db_session.add(Claim(id="cX", owner_group_id="og", policyholder_name="Other"))
+    db_session.commit()
+    assert client.get("/team/claims/cX/access").status_code == 404

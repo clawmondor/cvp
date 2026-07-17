@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Team — {{ claim.policyholder_name }} Access{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-neutral-900 mb-6">{{ claim.policyholder_name }} — Access</h1>
+
+<div class="card mb-6">
+  <div class="px-6 py-4 border-b border-neutral-200">
+    <h2 class="text-base font-semibold text-neutral-900">Resolved Access</h2>
+  </div>
+  <table class="min-w-full divide-y divide-neutral-200">
+    <thead class="bg-neutral-50">
+      <tr>
+        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Member</th>
+        {% for obj in object_types %}
+        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">{{ obj | replace("_", " ") | title }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody class="bg-surface divide-y divide-neutral-200">
+      {% for member, matrix in rows %}
+      <tr>
+        <td class="px-6 py-4 text-sm">
+          <a href="/team/users/{{ member.id }}" class="text-success hover:underline">{{ member.email }}</a>
+        </td>
+        {% for obj in object_types %}
+        <td class="px-6 py-4 text-sm text-neutral-500">
+          {% if matrix[obj] %}{{ matrix[obj] }}{% else %}&mdash;{% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% else %}
+      <tr><td colspan="{{ object_types | length + 1 }}" class="px-6 py-4 text-sm text-neutral-500">No members have access to this claim.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card mb-6">
+  <div class="px-6 py-4 border-b border-neutral-200">
+    <h2 class="text-base font-semibold text-neutral-900">Grant claim access</h2>
+  </div>
+  <div class="px-6 py-4">
+    <form method="POST" action="/team/claims/{{ claim.id }}/grant" class="flex flex-wrap items-end gap-4">
+      <div>
+        <label class="block text-sm text-neutral-500 mb-1" for="grant-claim-user-id">Member</label>
+        <select id="grant-claim-user-id" name="user_id" class="border border-neutral-300 rounded-sm text-sm px-3 py-2">
+          {% for member in members %}
+          <option value="{{ member.id }}">{{ member.email }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-neutral-500 mb-1" for="grant-claim-user-role">Role</label>
+        <select id="grant-claim-user-role" name="user_role" class="border border-neutral-300 rounded-sm text-sm px-3 py-2">
+          {% for role_key in user_roles %}
+          <option value="{{ role_key }}">{{ role_key }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="bg-primary text-white px-4 py-2 rounded-sm text-sm hover:bg-primary-strong">Grant access</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
