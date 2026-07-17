@@ -53,6 +53,20 @@ def _load_own_grant(db: Session, user: CurrentUser, grant_id: str) -> RoleGrant:
     return grant
 
 
+@router.get("/claims", response_class=HTMLResponse)
+def team_claims(
+    request: Request,
+    user: CurrentUser = Depends(require_external_admin),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    claims = db.query(Claim).filter(Claim.owner_group_id == user.group_id).order_by(Claim.id).all()
+    return templates.TemplateResponse(
+        request=request,
+        name="team/claims.html",
+        context={"user": user, "claims": claims},
+    )
+
+
 @router.get("/users", response_class=HTMLResponse)
 def team_users(
     request: Request,
