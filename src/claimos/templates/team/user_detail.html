@@ -67,6 +67,45 @@
           </form>
         </td>
       </tr>
+      <tr>
+        <td colspan="4" class="px-6 py-4 bg-neutral-50">
+          <h4 class="text-sm font-semibold text-neutral-900 mb-2">Per-object overrides</h4>
+          {% if grant.overrides %}
+          <ul class="mb-3">
+            {% for o in grant.overrides %}
+            <li class="flex items-center gap-3 text-sm text-neutral-700 mb-1">
+              <span>{{ o.object_type | replace("_", " ") | title }}: {{ o.role }}</span>
+              <form method="POST" action="/team/grants/{{ grant.id }}/overrides/{{ o.object_type }}/remove">
+                <button type="submit" class="text-error hover:text-error-strong text-sm">Remove</button>
+              </form>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="text-sm text-neutral-500 mb-3">No overrides on this grant.</p>
+          {% endif %}
+          <form method="POST" action="/team/grants/{{ grant.id }}/overrides" class="flex flex-wrap items-end gap-4">
+            <div>
+              <label class="block text-sm text-neutral-500 mb-1" for="override-object-type-{{ grant.id }}">Object type</label>
+              <select id="override-object-type-{{ grant.id }}" name="object_type" class="border border-neutral-300 rounded-sm text-sm px-3 py-2">
+                {% for obj in object_types %}
+                <option value="{{ obj }}">{{ obj | replace("_", " ") | title }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-neutral-500 mb-1" for="override-role-{{ grant.id }}">Role</label>
+              <select id="override-role-{{ grant.id }}" name="role" class="border border-neutral-300 rounded-sm text-sm px-3 py-2">
+                {% for role_key in role_levels %}
+                <option value="{{ role_key }}">{{ role_key }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="bg-primary text-white px-4 py-2 rounded-sm text-sm hover:bg-primary-strong">Add override</button>
+          </form>
+          <p class="text-xs text-neutral-500 mt-2">Overrides only raise a role above the assigned role's level.</p>
+        </td>
+      </tr>
       {% else %}
       <tr><td colspan="4" class="px-6 py-4 text-sm text-neutral-500">No role grants yet.</td></tr>
       {% endfor %}

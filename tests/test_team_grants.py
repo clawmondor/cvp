@@ -141,3 +141,50 @@ def test_revoke_cross_group_grant_is_403(client, db_session):
     )
     r = client.post(f"/team/grants/{g.id}/revoke", follow_redirects=False)
     assert r.status_code == 403
+
+
+def test_add_and_remove_override_via_endpoint(client, db_session):
+    from claimos.services.grants import create_grant
+
+    g = create_grant(
+        db_session,
+        user_id="m1",
+        user_role="photographer",
+        scope="group",
+        claim_ids=[],
+        overrides={},
+        granted_by_id="ea",
+    )
+    r = client.post(
+        f"/team/grants/{g.id}/overrides",
+        data={"object_type": "items", "role": "contributor"},
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 303)
+    from claimos.services.effective_permissions import group_effective_matrix
+
+    assert group_effective_matrix(db_session, "m1", "eg")["items"] == "contributor"
+
+    r2 = client.post(f"/team/grants/{g.id}/overrides/items/remove", follow_redirects=False)
+    assert r2.status_code in (302, 303)
+    assert group_effective_matrix(db_session, "m1", "eg")["items"] == "viewer"
+
+
+def test_override_on_cross_group_grant_is_403(client, db_session):
+    from claimos.services.grants import create_grant
+
+    g = create_grant(
+        db_session,
+        user_id="out",
+        user_role="photographer",
+        scope="group",
+        claim_ids=[],
+        overrides={},
+        granted_by_id="out",
+    )
+    r = client.post(
+        f"/team/grants/{g.id}/overrides",
+        data={"object_type": "items", "role": "contributor"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 403

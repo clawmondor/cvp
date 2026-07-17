@@ -11,7 +11,14 @@ from claimos.models_auth import Group, User
 from claimos.models_grants import RoleGrant
 from claimos.roles import OBJECT_TYPES, USER_ROLES
 from claimos.services.effective_permissions import group_effective_matrix
-from claimos.services.grants import GrantValidationError, create_grant, list_grants, revoke_grant
+from claimos.services.grants import (
+    GrantValidationError,
+    add_override,
+    create_grant,
+    list_grants,
+    remove_override,
+    revoke_grant,
+)
 from claimos.templating import templates
 
 router = APIRouter(prefix="/team")
@@ -31,6 +38,15 @@ def _load_own_member(db: Session, user: CurrentUser, user_id: str) -> User:
     if target is None or target.group_id != user.group_id:
         raise HTTPException(status_code=404, detail="Member not found")
     return target
+
+
+def _load_own_grant(db: Session, user: CurrentUser, grant_id: str) -> RoleGrant:
+    grant = db.get(RoleGrant, grant_id)
+    if grant is None:
+        raise HTTPException(status_code=404, detail="Grant not found")
+    if grant.group_id != user.group_id:
+        raise HTTPException(status_code=403, detail="Grant not in your firm")
+    return grant
 
 
 @router.get("/users", response_class=HTMLResponse)
@@ -154,3 +170,31 @@ def team_revoke_grant(
     target_user_id = grant.user_id
     revoke_grant(db, grant_id)
     return RedirectResponse(url=f"/team/users/{target_user_id}", status_code=303)
+
+
+@router.post("/grants/{grant_id}/overrides")
+def team_add_override(
+    grant_id: str,
+    object_type: str = Form(...),
+    role: str = Form(...),
+    user: CurrentUser = Depends(require_external_admin),
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    grant = _load_own_grant(db, user, grant_id)
+    try:
+        add_override(db, grant_id, object_type, role)
+    except GrantValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RedirectResponse(url=f"/team/users/{grant.user_id}", status_code=303)
+
+
+@router.post("/grants/{grant_id}/overrides/{object_type}/remove")
+def team_remove_override(
+    grant_id: str,
+    object_type: str,
+    user: CurrentUser = Depends(require_external_admin),
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    grant = _load_own_grant(db, user, grant_id)
+    remove_override(db, grant_id, object_type)
+    return RedirectResponse(url=f"/team/users/{grant.user_id}", status_code=303)
