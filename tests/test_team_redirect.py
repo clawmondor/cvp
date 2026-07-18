@@ -56,7 +56,7 @@ def client():
 def test_external_admin_redirected_off_admin_org(client):
     r = client.get("/admin/org/", follow_redirects=False)
     assert r.status_code == 302
-    assert r.headers["location"] == "/team/users"
+    assert r.headers["location"] == "/team"
 
 
 def test_profile_carveout_not_redirected(client):

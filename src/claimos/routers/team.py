@@ -11,7 +11,7 @@ from claimos.auth import generate_invite_code, hash_token
 from claimos.db import get_db
 from claimos.dependencies import ROLE_HIERARCHY, CurrentUser, require_active_user
 from claimos.models import Claim
-from claimos.models_auth import Group, User
+from claimos.models_auth import User
 from claimos.models_grants import RoleGrant
 from claimos.roles import OBJECT_TYPES, USER_ROLES, get_user_role
 from claimos.services.effective_permissions import claim_members_access, group_effective_matrix
@@ -65,18 +65,24 @@ def _validate_own_claims(db: Session, user: CurrentUser, claim_ids: list[str]) -
         raise HTTPException(status_code=400, detail="Claim not in your firm")
 
 
-@router.get("/claims", response_class=HTMLResponse)
-def team_claims(
+@router.get("", response_class=HTMLResponse)
+def team_index(
     request: Request,
     user: CurrentUser = Depends(require_external_admin),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
+    members = db.query(User).filter(User.group_id == user.group_id).order_by(User.email).all()
     claims = db.query(Claim).filter(Claim.owner_group_id == user.group_id).order_by(Claim.id).all()
     return templates.TemplateResponse(
         request=request,
-        name="team/claims.html",
-        context={"user": user, "claims": claims},
+        name="team/index.html",
+        context={"user": user, "members": members, "claims": claims},
     )
+
+
+@router.get("/claims", response_class=HTMLResponse)
+def team_claims(user: CurrentUser = Depends(require_external_admin)) -> RedirectResponse:
+    return RedirectResponse(url="/team", status_code=302)
 
 
 @router.get("/claims/{claim_id}/access", response_class=HTMLResponse)
@@ -105,19 +111,9 @@ def team_claim_access(
     )
 
 
-@router.get("/users", response_class=HTMLResponse)
-def team_users(
-    request: Request,
-    user: CurrentUser = Depends(require_external_admin),
-    db: Session = Depends(get_db),
-) -> HTMLResponse:
-    group = db.get(Group, user.group_id) if user.group_id else None
-    members = db.query(User).filter(User.group_id == user.group_id).order_by(User.email).all()
-    return templates.TemplateResponse(
-        request=request,
-        name="team/users.html",
-        context={"user": user, "group": group, "members": members},
-    )
+@router.get("/users")
+def team_users(user: CurrentUser = Depends(require_external_admin)) -> RedirectResponse:
+    return RedirectResponse(url="/team", status_code=302)
 
 
 @router.get("/users/invite", response_class=HTMLResponse)
@@ -185,11 +181,18 @@ def team_invite(
 
     invite_url = str(request.base_url).rstrip("/") + f"/register/{raw_code}"
     members = db.query(User).filter(User.group_id == user.group_id).order_by(User.email).all()
-    group = db.get(Group, user.group_id)
     return templates.TemplateResponse(
         request=request,
-        name="team/users.html",
-        context={"user": user, "group": group, "members": members, "invite_url": invite_url},
+        name="team/index.html",
+        context={
+            "user": user,
+            "members": members,
+            "claims": db.query(Claim)
+            .filter(Claim.owner_group_id == user.group_id)
+            .order_by(Claim.id)
+            .all(),
+            "invite_url": invite_url,
+        },
     )
 
 

@@ -85,7 +85,7 @@ def test_claims_list_shows_own_firm_claims_only(client, db_session):
         ]
     )
     db_session.commit()
-    resp = client.get("/team/claims")
+    resp = client.get("/team")
     assert resp.status_code == 200
     assert "Rossi" in resp.text
     assert "Other" not in resp.text

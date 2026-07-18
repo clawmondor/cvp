@@ -78,7 +78,7 @@ def client(db_session):
 
 
 def test_members_list_shows_own_group_only(client):
-    resp = client.get("/team/users")
+    resp = client.get("/team")
     assert resp.status_code == 200
     assert "m1@acme.com" in resp.text
     assert "out@other.com" not in resp.text  # different firm
@@ -121,7 +121,7 @@ def test_members_list_forbidden_for_non_admin(db_session, monkeypatch):
     app.dependency_overrides[get_db] = override_db
     client = TestClient(app, raise_server_exceptions=False)
     # No override of require_external_admin here; unauthenticated → 401/redirect.
-    resp = client.get("/team/users")
+    resp = client.get("/team")
     assert resp.status_code in (401, 403)
     app.dependency_overrides.clear()
 

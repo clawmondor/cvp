@@ -30,7 +30,7 @@ async def _redirect_external_admin(
     if user.system_role == "external_admin" and not request.url.path.startswith(
         "/admin/org/profile"
     ):
-        raise HTTPException(status_code=302, headers={"Location": "/team/users"})
+        raise HTTPException(status_code=302, headers={"Location": "/team"})
 
 
 router = APIRouter(prefix="/admin/org", dependencies=[Depends(_redirect_external_admin)])

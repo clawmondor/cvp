@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Team — Members{% endblock %}
+{% block title %}Team{% endblock %}
 {% block content %}
 <div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-bold text-neutral-900">Team — Members</h1>
+  <h1 class="text-2xl font-bold text-neutral-900">Team</h1>
   <a href="/team/users/invite" class="bg-success text-white px-4 py-2 rounded-sm text-sm hover:bg-success-emphasis">Invite member</a>
 </div>
 
@@ -13,5 +13,13 @@
 </div>
 {% endif %}
 
-{% include "team/_members_table.html" %}
+<section class="mb-10">
+  <h2 class="text-lg font-semibold text-neutral-900 mb-3">Members</h2>
+  {% include "team/_members_table.html" %}
+</section>
+
+<section>
+  <h2 class="text-lg font-semibold text-neutral-900 mb-3">Claim Access</h2>
+  {% include "team/_claims_table.html" %}
+</section>
 {% endblock %}
