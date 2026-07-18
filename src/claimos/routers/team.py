@@ -53,6 +53,18 @@ def _load_own_grant(db: Session, user: CurrentUser, grant_id: str) -> RoleGrant:
     return grant
 
 
+def _validate_own_claims(db: Session, user: CurrentUser, claim_ids: list[str]) -> None:
+    """Raise 400 unless every claim_id belongs to the caller's own firm."""
+    owned = {
+        c.id
+        for c in db.query(Claim).filter(
+            Claim.owner_group_id == user.group_id, Claim.id.in_(claim_ids)
+        )
+    }
+    if set(claim_ids) - owned:
+        raise HTTPException(status_code=400, detail="Claim not in your firm")
+
+
 @router.get("/claims", response_class=HTMLResponse)
 def team_claims(
     request: Request,
@@ -140,6 +152,8 @@ def team_invite(
         raise HTTPException(status_code=400, detail="Unknown user role")
     if db.query(User).filter(User.email == email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
+    if scope == "claims":
+        _validate_own_claims(db, user, claim_ids)
 
     raw_code = generate_invite_code()
     expires_at = datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=7)
@@ -275,14 +289,7 @@ def team_assign_grant(
     target = _load_own_member(db, user, user_id)
     # claim_ids must belong to the firm (defense in depth).
     if scope == "claims":
-        owned = {
-            c.id
-            for c in db.query(Claim).filter(
-                Claim.owner_group_id == user.group_id, Claim.id.in_(claim_ids)
-            )
-        }
-        if set(claim_ids) - owned:
-            raise HTTPException(status_code=400, detail="Claim not in your firm")
+        _validate_own_claims(db, user, claim_ids)
     try:
         create_grant(
             db,

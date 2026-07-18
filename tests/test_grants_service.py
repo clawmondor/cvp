@@ -24,6 +24,7 @@ def db():
         [
             Group(id="eg", name="Firm", kind="external"),
             Group(id="ig", name="Int", kind="internal"),
+            Group(id="og", name="Other Firm", kind="external"),
             User(
                 id="ph",
                 email="p@f.com",
@@ -42,6 +43,7 @@ def db():
             ),
             Claim(id="cA", owner_group_id="eg"),
             Claim(id="cB", owner_group_id="eg"),
+            Claim(id="cF", owner_group_id="og"),
         ]
     )
     s.commit()
@@ -89,6 +91,35 @@ def test_claims_scope_requires_at_least_one_claim(db):
             overrides={},
             granted_by_id="adm",
         )
+
+
+def test_create_claims_scoped_grant_rejects_foreign_claim(db):
+    """Cross-firm privilege escalation: a claim owned by a different group must
+    be rejected regardless of caller — this is the root-cause guard.
+    """
+    with pytest.raises(GrantValidationError):
+        create_grant(
+            db,
+            user_id="ph",
+            user_role="valuator",
+            scope="claims",
+            claim_ids=["cF"],
+            overrides={},
+            granted_by_id="adm",
+        )
+
+
+def test_create_claims_scoped_grant_accepts_own_firm_claim(db):
+    g = create_grant(
+        db,
+        user_id="ph",
+        user_role="valuator",
+        scope="claims",
+        claim_ids=["cA"],
+        overrides={},
+        granted_by_id="adm",
+    )
+    assert {c.claim_id for c in g.claims} == {"cA"}
 
 
 def test_claimant_must_be_single_claim(db):

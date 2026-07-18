@@ -7,7 +7,7 @@ from sqlalchemy.pool import StaticPool
 import claimos.models_auth  # noqa: F401
 import claimos.models_grants  # noqa: F401
 from claimos.dependencies import CurrentUser
-from claimos.models import Base
+from claimos.models import Base, Claim
 from claimos.models_auth import Group, User
 
 
@@ -45,6 +45,8 @@ def db_session():
                 system_role="external_user",
                 group_id="og",
             ),
+            Claim(id="cA", owner_group_id="eg", claim_number="cA"),
+            Claim(id="cB", owner_group_id="og", claim_number="cB"),
         ]
     )
     s.commit()
@@ -164,3 +166,48 @@ def test_invite_invalid_grant_is_atomic(client, db_session):
     from claimos.models_auth import User
 
     assert db_session.query(User).filter(User.email == "claimant@acme.com").first() is None
+
+
+def test_invite_foreign_claim_is_400_and_creates_no_user(client, db_session):
+    """Cross-firm privilege escalation: inviting scope=claims with another firm's
+    claim id must be rejected, and must NOT create the user (atomic on failure).
+    """
+    r = client.post(
+        "/team/users/invite",
+        data={
+            "email": "escalator@acme.com",
+            "display_name": "Escalator",
+            "user_role": "valuator",
+            "scope": "claims",
+            "claim_ids": ["cB"],
+        },
+    )
+    assert r.status_code == 400
+
+    from claimos.models_auth import User
+
+    assert db_session.query(User).filter(User.email == "escalator@acme.com").first() is None
+
+
+def test_invite_own_claim_scope_succeeds(client, db_session):
+    r = client.post(
+        "/team/users/invite",
+        data={
+            "email": "valuator@acme.com",
+            "display_name": "Valuator",
+            "user_role": "valuator",
+            "scope": "claims",
+            "claim_ids": ["cA"],
+        },
+    )
+    assert r.status_code == 200
+
+    from claimos.models_auth import User
+    from claimos.services.grants import list_grants
+
+    u = db_session.query(User).filter(User.email == "valuator@acme.com").first()
+    assert u is not None
+    grants = list_grants(db_session, u.id)
+    assert len(grants) == 1
+    assert grants[0].scope == "claims"
+    assert {c.claim_id for c in grants[0].claims} == {"cA"}

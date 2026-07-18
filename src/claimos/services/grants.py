@@ -3,6 +3,7 @@
 from sqlalchemy.orm import Session
 
 from claimos.dependencies import ROLE_HIERARCHY
+from claimos.models import Claim
 from claimos.models_auth import User
 from claimos.models_grants import RoleGrant, RoleGrantClaim, RoleGrantOverride
 from claimos.roles import OBJECT_TYPES, get_user_role
@@ -38,8 +39,17 @@ def create_grant(
     if role.single_claim_only:
         if scope != "claims" or len(claim_ids) != 1:
             raise GrantValidationError(f"{user_role} must be scoped to exactly one claim")
-    if scope == "claims" and not claim_ids:
-        raise GrantValidationError("claims scope requires at least one claim")
+    if scope == "claims":
+        if not claim_ids:
+            raise GrantValidationError("claims scope requires at least one claim")
+        owned = {
+            c.id
+            for c in db.query(Claim).filter(
+                Claim.owner_group_id == grantee.group_id, Claim.id.in_(claim_ids)
+            )
+        }
+        if set(claim_ids) - owned:
+            raise GrantValidationError("Claim not in grantee's firm")
 
     grant = RoleGrant(
         user_id=user_id,
