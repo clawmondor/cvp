@@ -118,11 +118,11 @@ async def start_scan_all(
         )
         if not files:
             return HTMLResponse('<p class="text-sm text-gray-500">No unscanned images found.</p>')
-        if len(files) > _SCAN_ALL_CAP:
-            return HTMLResponse(
-                f'<p class="text-sm text-red-600">Too many unscanned images ({len(files)}). '
-                f"Maximum per job is {_SCAN_ALL_CAP}. Scan in batches.</p>"
-            )
+        # if len(files) > _SCAN_ALL_CAP:
+        #     return HTMLResponse(
+        #         f'<p class="text-sm text-red-600">Too many unscanned images ({len(files)}). '
+        #         f"Maximum per job is {_SCAN_ALL_CAP}. Scan in batches.</p>"
+        #     )
 
         u = db.query(User).filter_by(id=user.id).first()
         if u is not None:
