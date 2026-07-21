@@ -30,7 +30,7 @@ def create_item_group(
     claim_id: str,
     background_tasks: BackgroundTasks,
     name: str = Form(...),
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "item_groups")),
 ) -> HTMLResponse:
     if not name.strip():
         raise HTTPException(status_code=400, detail="Group name required")
@@ -62,7 +62,7 @@ def rename_item_group(
     group_id: str,
     background_tasks: BackgroundTasks,
     name: str = Form(...),
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "item_groups")),
 ) -> HTMLResponse:
     if not name.strip():
         raise HTTPException(status_code=400, detail="Group name required")
@@ -96,7 +96,7 @@ def delete_item_group(
     claim_id: str,
     group_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager", "item_groups")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -138,7 +138,7 @@ def pin_evidence_to_group(
     background_tasks: BackgroundTasks,
     item_group_id: str = Form(""),
     new_item_group_name: str = Form(""),
-    user: CurrentUser = Depends(require_claim_role("editor")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "item_groups")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:

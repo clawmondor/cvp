@@ -15,9 +15,25 @@ from claimos.dependencies import CurrentUser, require_active_user
 from claimos.models import Claim
 from claimos.models_access import ClaimAccess
 from claimos.models_auth import Group, User
+from claimos.models_grants import RoleGrant
+from claimos.roles import USER_ROLES
+from claimos.services.grants import GrantValidationError, create_grant, list_grants, revoke_grant
 from claimos.templating import templates
 
-router = APIRouter(prefix="/admin/org")
+
+async def _redirect_external_admin(
+    request: Request,
+    user: CurrentUser = Depends(require_active_user),
+) -> None:
+    """External admins manage their firm at /team; bounce them out of /admin/org,
+    except the firm-profile editor which stays here until /team/settings lands."""
+    if user.system_role == "external_admin" and not request.url.path.startswith(
+        "/admin/org/profile"
+    ):
+        raise HTTPException(status_code=302, headers={"Location": "/team"})
+
+
+router = APIRouter(prefix="/admin/org", dependencies=[Depends(_redirect_external_admin)])
 
 _CTX = {"panel_color": "emerald", "panel_title": "Organization Administration"}
 
@@ -129,6 +145,12 @@ def org_user_detail(
     group_url = f"/admin/org/?group_id={resolved}"
     users_url = f"/admin/org/users?group_id={resolved}"
     user_url = f"/admin/org/users/{user_id}?group_id={resolved}"
+    grants = list_grants(db, target.id)
+    group_claims = (
+        db.query(Claim).filter(Claim.owner_group_id == target.group_id).order_by(Claim.id).all()
+        if target.group_id
+        else []
+    )
     return templates.TemplateResponse(
         request=request,
         name="admin/org/user_detail.html",
@@ -136,6 +158,9 @@ def org_user_detail(
             user,
             target=target,
             group=group,
+            grants=grants,
+            user_roles=USER_ROLES,
+            group_claims=group_claims,
             breadcrumbs=[
                 {"label": group_label, "url": group_url},
                 {"label": "Users", "url": users_url},
@@ -233,6 +258,55 @@ def org_activate_user(
         raise HTTPException(status_code=404, detail="User not found")
     target.is_active = True
     db.commit()
+    return org_user_detail(user_id, request, group_id, user, db)
+
+
+@router.post("/users/{user_id}/grants", response_class=HTMLResponse)
+def org_assign_grant(
+    user_id: str,
+    request: Request,
+    user_role: str = Form(...),
+    scope: str = Form("group"),
+    claim_ids: list[str] = Form(default=[]),
+    group_id: str | None = Query(None),
+    user: CurrentUser = Depends(_require_org_admin_or_above),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.system_role == "external_admin" and target.group_id != user.group_id:
+        raise HTTPException(status_code=403, detail="Cannot grant outside your group")
+    try:
+        create_grant(
+            db,
+            user_id=user_id,
+            user_role=user_role,
+            scope=scope,
+            claim_ids=claim_ids,
+            overrides={},  # override editor added with the Users-page slice
+            granted_by_id=user.id,
+        )
+    except GrantValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return org_user_detail(user_id, request, group_id, user, db)
+
+
+@router.post("/grants/{grant_id}/revoke", response_class=HTMLResponse)
+def org_revoke_grant(
+    grant_id: str,
+    request: Request,
+    group_id: str | None = Query(None),
+    user: CurrentUser = Depends(_require_org_admin_or_above),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    grant = db.get(RoleGrant, grant_id)
+    if grant is None:
+        raise HTTPException(status_code=404, detail="Grant not found")
+    if user.system_role == "external_admin" and grant.group_id != user.group_id:
+        raise HTTPException(status_code=403, detail="Cannot revoke outside your group")
+    user_id = grant.user_id
+    revoke_grant(db, grant_id)
     return org_user_detail(user_id, request, group_id, user, db)
 
 
@@ -346,6 +420,15 @@ def org_grant_claim_access(
     target = db.get(User, user_id)
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # RBAC v2: external users are resolved via role_grants, not claim_access — a
+    # claim_access row written here would be silently inert for them. Reject
+    # instead of misleading the grantor with a false "success".
+    if target.group and target.group.kind == "external":
+        raise HTTPException(
+            status_code=400,
+            detail="External users are managed via role grants; use the Roles & Access panel.",
+        )
 
     existing = (
         db.query(ClaimAccess)

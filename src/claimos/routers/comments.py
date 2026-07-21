@@ -28,6 +28,7 @@ def _get_comment_and_check_access(
     minimum_role: str,
     user: CurrentUser,
     db: Session,
+    object_type: str = "comments",
 ) -> Comment:
     """Load a comment and verify the caller has at least minimum_role on its claim."""
     comment = db.get(Comment, comment_id)
@@ -36,7 +37,7 @@ def _get_comment_and_check_access(
     item = db.get(Item, comment.item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found")
-    if not _check_claim_access(db, user, item.claim_id, minimum_role):
+    if not _check_claim_access(db, user, item.claim_id, minimum_role, object_type):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     return comment
 
@@ -44,7 +45,7 @@ def _get_comment_and_check_access(
 @router.get("/api/items/{item_id}/comments", response_class=HTMLResponse)
 def list_comments(
     item_id: str,
-    user: CurrentUser = Depends(require_claim_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer", "comments")),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     """List comments for an item, filtered by visibility."""
@@ -77,7 +78,7 @@ def create_comment(
     item_id: str,
     body: str = Form(...),
     visibility: str = Form("shared"),
-    user: CurrentUser = Depends(require_claim_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer", "comments")),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     """Create a comment on an item."""

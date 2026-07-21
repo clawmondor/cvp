@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from claimos.config import settings
 from claimos.db import SessionLocal
-from claimos.dependencies import CurrentUser, require_claim_role
+from claimos.dependencies import CurrentUser, _check_claim_access, require_claim_role
 from claimos.depreciation import compute_acv
 from claimos.models import Category, Item, ItemGroup, Room, SerpSearch
 from claimos.services.audit import get_client_ip, write_audit_log
@@ -78,9 +78,15 @@ def _compute_and_set_totals(item: Item, cat: Category) -> None:
     )
 
 
-def _item_row_html(item: Item, categories: list, rooms: list, item_groups: list) -> str:
+def _item_row_html(
+    item: Item, categories: list, rooms: list, item_groups: list, can_approve: bool = False
+) -> str:
     return templates.get_template("_item_row.html").render(
-        item=item, categories=categories, rooms=rooms, item_groups=item_groups
+        item=item,
+        categories=categories,
+        rooms=rooms,
+        item_groups=item_groups,
+        can_approve=can_approve,
     )
 
 
@@ -139,7 +145,7 @@ def get_items_rows(
     request: Request,
     claim_id: str,
     cursor: str = "",
-    user: CurrentUser = Depends(require_claim_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer", "items")),
 ) -> HTMLResponse:
     """Render one cursor-paginated page of item `<tr>` rows + sentinel.
 
@@ -157,6 +163,7 @@ def get_items_rows(
             order="asc",
         )
         categories, room_objs, _groups = _get_context(claim_id, db)
+        can_approve = _check_claim_access(db, user, claim_id, "approver", "items")
     finally:
         db.close()
     return HTMLResponse(
@@ -166,6 +173,7 @@ def get_items_rows(
             claim_id=claim_id,
             categories=categories,
             rooms=room_objs,
+            can_approve=can_approve,
         )
     )
 
@@ -173,7 +181,7 @@ def get_items_rows(
 @router.get("/api/claims/{claim_id}/items-summary", response_class=HTMLResponse)
 def get_items_summary(
     claim_id: str,
-    user: CurrentUser = Depends(require_claim_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer", "items")),
 ) -> HTMLResponse:
     """Render the Confirmed / RCV total / ACV total summary block."""
     db = SessionLocal()
@@ -191,7 +199,7 @@ def create_item(
     request: Request,
     claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "items")),
     description: str = Form(""),
     category_id: int = Form(...),
     room_id: str = Form(""),
@@ -238,7 +246,8 @@ def create_item(
         db.refresh(item)
         item_id = item.id
         categories, rooms, item_groups = _get_context(claim_id, db)
-        row_html = _item_row_html(item, categories, rooms, item_groups)
+        can_approve = _check_claim_access(db, user, claim_id, "approver", "items")
+        row_html = _item_row_html(item, categories, rooms, item_groups, can_approve)
         # Remove the empty-state placeholder if it's present; HTMX silently
         # no-ops when the target element isn't in the DOM.
         oob_clear_empty = '<tr id="items-empty-row" hx-swap-oob="delete"></tr>'
@@ -261,7 +270,7 @@ def create_item(
 
 @router.get("/api/items/{item_id}/edit", response_class=HTMLResponse)
 def item_edit_form(
-    item_id: str, user: CurrentUser = Depends(require_claim_role("editor"))
+    item_id: str, user: CurrentUser = Depends(require_claim_role("editor", "items"))
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -297,7 +306,7 @@ def item_edit_form(
 
 @router.get("/api/items/{item_id}/view", response_class=HTMLResponse)
 def item_view_row(
-    item_id: str, user: CurrentUser = Depends(require_claim_role("viewer"))
+    item_id: str, user: CurrentUser = Depends(require_claim_role("viewer", "items"))
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -305,7 +314,8 @@ def item_view_row(
         if item is None:
             raise HTTPException(status_code=404)
         categories, rooms, item_groups = _get_context(item.claim_id, db)
-        html = _item_row_html(item, categories, rooms, item_groups)
+        can_approve = _check_claim_access(db, user, item.claim_id, "approver", "items")
+        html = _item_row_html(item, categories, rooms, item_groups, can_approve)
     finally:
         db.close()
     return HTMLResponse(html)
@@ -316,7 +326,7 @@ def update_item(
     request: Request,
     item_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("editor")),
+    user: CurrentUser = Depends(require_claim_role("editor", "items")),
     description: str = Form(""),
     category_id: int = Form(...),
     room_id: str = Form(""),
@@ -332,7 +342,6 @@ def update_item(
     match_type: str = Form("exact"),
     acv_override_dollars: str = Form(""),
     acv_override_reason: str = Form(""),
-    confirmed: bool = Form(False),
     item_group_id: str = Form(""),
     new_item_group_name: str = Form(""),
 ) -> HTMLResponse:
@@ -345,7 +354,6 @@ def update_item(
         if cat is None:
             raise HTTPException(status_code=400, detail="Invalid category")
 
-        item.confirmed = confirmed
         item.description = description.strip()
         item.category_id = category_id
         item.room_id = room_id or None
@@ -376,7 +384,8 @@ def update_item(
         db.refresh(item)
         claim_id = item.claim_id
         categories, rooms, item_groups = _get_context(claim_id, db)
-        html = _item_row_html(item, categories, rooms, item_groups)
+        can_approve = _check_claim_access(db, user, claim_id, "approver", "items")
+        html = _item_row_html(item, categories, rooms, item_groups, can_approve)
     finally:
         db.close()
     background_tasks.add_task(
@@ -391,36 +400,53 @@ def update_item(
     return HTMLResponse(html)
 
 
-@router.post("/api/items/{item_id}/toggle-confirm", response_class=HTMLResponse)
-def toggle_confirm(
+@router.post("/api/items/{item_id}/confirm", response_class=HTMLResponse)
+def confirm_item(
     request: Request,
     item_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("approver", "items")),
+) -> HTMLResponse:
+    return _set_item_confirmed(item_id, True, user, request, background_tasks)
+
+
+@router.post("/api/items/{item_id}/unconfirm", response_class=HTMLResponse)
+def unconfirm_item(
+    request: Request,
+    item_id: str,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(require_claim_role("approver", "items")),
+) -> HTMLResponse:
+    return _set_item_confirmed(item_id, False, user, request, background_tasks)
+
+
+def _set_item_confirmed(
+    item_id: str,
+    value: bool,
+    user: CurrentUser,
+    request: Request,
+    background_tasks: BackgroundTasks,
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
         item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
         if item is None:
             raise HTTPException(status_code=404)
-        item.confirmed = not item.confirmed
-        if item.confirmed:
-            item.confirmed_by_id = user.id
-            item.confirmed_at = datetime.now(tz=timezone.utc)
-        else:
-            item.confirmed_by_id = None
-            item.confirmed_at = None
+        item.confirmed = value
+        item.confirmed_by_id = user.id if value else None
+        item.confirmed_at = datetime.now(timezone.utc) if value else None
         db.commit()
         db.refresh(item)
         claim_id = item.claim_id
-        categories, rooms, item_groups = _get_context(claim_id, db)
-        html = _item_row_html(item, categories, rooms, item_groups)
+        categories, rooms, item_groups = _get_context(item.claim_id, db)
+        can_approve = _check_claim_access(db, user, item.claim_id, "approver", "items")
+        html = _item_row_html(item, categories, rooms, item_groups, can_approve)
     finally:
         db.close()
     background_tasks.add_task(
         write_audit_log,
         user_id=user.id,
-        action="item.update",
+        action="item.confirm" if value else "item.unconfirm",
         resource_type="item",
         resource_id=item_id,
         claim_id=claim_id,
@@ -434,7 +460,7 @@ def toggle_exclude(
     request: Request,
     item_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager", "items")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -446,7 +472,8 @@ def toggle_exclude(
         db.refresh(item)
         claim_id = item.claim_id
         categories, rooms, item_groups = _get_context(claim_id, db)
-        html = _item_row_html(item, categories, rooms, item_groups)
+        can_approve = _check_claim_access(db, user, claim_id, "approver", "items")
+        html = _item_row_html(item, categories, rooms, item_groups, can_approve)
     finally:
         db.close()
     background_tasks.add_task(
@@ -466,7 +493,7 @@ def delete_item(
     request: Request,
     item_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager", "items")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:

@@ -215,6 +215,112 @@ One row per generated export file (PDF or CSV). Tracks what's been produced for 
 
 **Snapshotting totals in the row:** this is intentional. If a specialist exports a PDF, then edits items, the old export row still shows what the report said when it was sent. Historical integrity again.
 
+### `role_grants`, `role_grant_claims`, `role_grant_overrides`
+
+RBAC v2 (see `docs/RBAC.md`) replaces the single-role `claim_access` row **for external
+(firm) users** with a group-scoped, object-level grant model. Internal users
+(`system_admin`, `internal_admin`, `internal_user`, `specialist`) are untouched — they
+keep using `claim_access` below. Folding internal users into this model is backlogged
+(`docs/BACKLOG.md`).
+
+**Why a separate model instead of extending `claim_access`:** a single role per
+`(user, claim)` cannot express "contributor on evidence but only viewer on items" for
+one user, nor "same role, but only on these three claims, plus one extra bump on
+crops." Rather than overload `claim_access` with columns for object type, scope, and
+overrides, RBAC v2 introduces three purpose-built tables and leaves the legacy table
+alone for the population (internal users) that doesn't need the extra dimensions.
+
+#### `role_grants`
+
+One row per User Role assigned to an external user within their group. The User Role
+registry itself (`lawyer`, `paralegal`, `adjuster`, `claimant`, `photographer`,
+`valuator`) is fixed in code (`src/claimos/roles.py`), not a DB table — same rationale
+as `depreciation.py`: a small, product-defined enumeration doesn't need to be
+admin-editable (YAGNI).
+
+| Column | Type | Null | Notes |
+|:---|:---|:---|:---|
+| id | TEXT | no | UUID string, primary key |
+| user_id | TEXT | no | FK → users.id — the grantee (an external user) |
+| group_id | TEXT | no | FK → groups.id — the firm context; must equal the grantee's `group_id` and be an external group (enforced in the service layer) |
+| user_role | TEXT | no | Registry key: `lawyer` / `paralegal` / `adjuster` / `claimant` / `photographer` / `valuator`, or the synthetic `_uniform:<role>` produced by the legacy-data migration (see below) |
+| scope | TEXT | no | `"group"` (covers every claim the group owns) or `"claims"` (covers only the linked `role_grant_claims` rows) |
+| granted_by_id | TEXT | no | FK → users.id — who granted it |
+| created_at | DATETIME | no | UTC now |
+| updated_at | DATETIME | no | Auto-updated on every write |
+
+**Indexes:** `user_id`, `group_id`.
+
+**Uniqueness:** `uq_role_grant (user_id, group_id, user_role, scope)` — prevents exact
+duplicate grants. A user can still hold multiple distinct grants (different roles, or
+the same role at different scopes); narrowing to specific claims lives in the child
+`role_grant_claims` rows, not in this uniqueness constraint.
+
+**Validation (service layer, not just DB):**
+- `group_id` must equal the grantee's `group_id` and be an external group.
+- A **Claimant** grant (`user_role = "claimant"`) must have `scope = "claims"` with
+  **exactly one** linked `role_grant_claims` row — this structurally prevents a
+  claimant from ever reaching a sibling claim.
+- A group-scoped grant (`scope = "group"`) covers exactly the claims where
+  `claims.owner_group_id == role_grants.group_id` — i.e. the firm owns its claims.
+  This corrects an earlier assumption (pre-RBAC-v2 `docs/RBAC.md`) that external
+  groups cannot own claims; under RBAC v2 they do, via `claims.owner_group_id`.
+
+#### `role_grant_claims`
+
+Narrows a `scope = "claims"` grant to specific claims. Present **only** when the parent
+grant's `scope = "claims"` — a group-scoped grant has none.
+
+| Column | Type | Null | Notes |
+|:---|:---|:---|:---|
+| id | TEXT | no | UUID string, primary key |
+| grant_id | TEXT | no | FK → role_grants.id, ON DELETE CASCADE |
+| claim_id | TEXT | no | FK → claims.id |
+
+**Indexes:** `grant_id`.
+
+#### `role_grant_overrides`
+
+A per-object bump attached to a grant — the only path to a claim role higher than the
+User Role's base profile for that object type (e.g. `items → contributor` on a
+Photographer grant, or `items → approver` to make a Valuator an item approver without
+promoting them to full manager).
+
+| Column | Type | Null | Notes |
+|:---|:---|:---|:---|
+| id | TEXT | no | UUID string, primary key |
+| grant_id | TEXT | no | FK → role_grants.id, ON DELETE CASCADE |
+| object_type | TEXT | no | One of the canonical object types (`items`, `evidence`, `reports`, `exports`, `crops`, `audit_logs`, `rooms`, `item_groups`, `comments`, `users`) |
+| role | TEXT | no | A claim role — applied only if higher than the base profile role for that object type |
+
+**Indexes:** `grant_id`.
+
+**Resolution:** effective access for `(user, claim, object_type)` is the max, across
+every `role_grants` row whose scope covers the claim, of the User Role's base role for
+that object type combined with any override for that object type — default-deny if no
+covering grant yields a role at all. See `docs/RBAC.md` for the full algorithm and the
+per-object action ladder.
+
+#### Data migration: external `claim_access` → `role_grants`
+
+Alembic revision **`c9851834200b`** (`migrate external claim_access`, following
+`f8eb20311be3` which adds the three tables) is a one-way data migration
+(`src/claimos/migrate_claim_access.py`, `migrate_external_claim_access`):
+
+- For every existing `claim_access` row belonging to a user in an **external** group,
+  create a `role_grants` row with `scope = "claims"`, `user_role = "_uniform:<old role>"`
+  (a synthetic registry key meaning "this exact role, uniformly, on every object type" —
+  handled by `roles.role_for_object`'s `_uniform:` branch), and a single
+  `role_grant_claims` row linking it to the original claim. The original `claim_access`
+  row is then deleted.
+- Rows belonging to **internal** users (or users with no group) are left untouched —
+  internal users keep using `claim_access` exactly as before.
+- The migration is idempotent in practice (it consumes and deletes the rows it
+  converts, so re-running finds nothing left to migrate) and is intended to preserve
+  pre/post access parity for every migrated external user.
+- `downgrade()` is intentionally a no-op — this is documented as a one-way migration;
+  external grants are not reverted back to `claim_access` rows.
+
 ---
 
 ## SQLite-specific configuration
@@ -255,6 +361,8 @@ def set_sqlite_pragmas(dbapi_connection, connection_record):
 | Revision | Date | Description |
 |:---------|:-----|:------------|
 | (initial)| [date] | Create `claims`, `rooms`, `categories`, `items`, `evidence_files`, `vision_runs`, `exports` |
+| `f8eb20311be3` | 2026-07-16 | RBAC v2: add `role_grants`, `role_grant_claims`, `role_grant_overrides` (schema only) |
+| `c9851834200b` | 2026-07-16 | RBAC v2: one-way data migration converting external `claim_access` rows into `role_grants` (+ `role_grant_claims`); internal `claim_access` rows left untouched |
 
 Add a row to this table for every migration. A future operator reading this file in 18 months should be able to understand what changed and why.
 

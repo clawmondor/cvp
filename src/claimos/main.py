@@ -28,6 +28,7 @@ from claimos.routers import (
     rooms,
     serp,
     sharing,
+    team,
     vision,
 )
 from claimos.routers.admin import feedback as admin_feedback
@@ -86,6 +87,7 @@ app.include_router(admin_org.router)
 app.include_router(admin_vision_models.router)
 app.include_router(admin_runtime_config.router)
 app.include_router(admin_feedback.router, dependencies=[Depends(require_active_user)])
+app.include_router(team.router)
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

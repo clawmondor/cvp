@@ -34,7 +34,7 @@ def adjust_bbox(
     crop_id: str,
     body: BboxBody,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "crops")),
 ) -> JSONResponse:
     db = SessionLocal()
     try:
@@ -89,7 +89,7 @@ def clear_bbox(
     request: Request,
     crop_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "crops")),
 ) -> JSONResponse:
     db = SessionLocal()
     try:
@@ -119,7 +119,9 @@ def clear_bbox(
 
 @router.get("/api/evidence/{file_id}/crop-editor", response_class=HTMLResponse)
 def crop_editor(
-    request: Request, file_id: str, user: CurrentUser = Depends(require_claim_role("contributor"))
+    request: Request,
+    file_id: str,
+    user: CurrentUser = Depends(require_claim_role("contributor", "crops")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -179,7 +181,7 @@ def recrop_evidence(
     request: Request,
     file_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "crops")),
 ) -> JSONResponse:
     db = SessionLocal()
     try:

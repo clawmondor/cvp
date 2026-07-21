@@ -28,7 +28,7 @@ async def start_scan(
     request: Request,
     claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "evidence")),
     evidence_file_ids: list[str] = Form(default=[]),
     model_slug: str = Form(...),
 ) -> HTMLResponse:
@@ -98,7 +98,7 @@ async def start_scan_all(
     request: Request,
     claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "evidence")),
     model_slug: str = Form(...),
 ) -> HTMLResponse:
     db = SessionLocal()
@@ -164,7 +164,7 @@ async def start_scan_all(
 def poll_scan(
     claim_id: str,
     job_id: str,
-    user: CurrentUser = Depends(require_claim_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "evidence")),
 ) -> HTMLResponse:
     job_data = vision_svc.get_job_data(job_id)
     if job_data["status"] == "error" and job_data["total"] == 0:
@@ -181,7 +181,7 @@ def estimate(
     claim_id: str,
     count: int,
     model_slug: str,
-    user: CurrentUser = Depends(require_claim_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "evidence")),
 ) -> HTMLResponse:
     label = vision_svc.estimate_cost(count, model_slug)
     return HTMLResponse(f'<span id="cost-estimate" class="text-xs text-gray-500">{label}</span>')
@@ -200,7 +200,7 @@ async def region_scan(
     file_id: str,
     body: RegionScanBody,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "evidence")),
 ) -> JSONResponse:
     db = SessionLocal()
     try:
@@ -279,7 +279,7 @@ async def region_scan(
 def poll_scan_status(
     claim_id: str,
     job_id: str,
-    user: CurrentUser = Depends(require_claim_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "evidence")),
 ) -> JSONResponse:
     db = SessionLocal()
     try:
