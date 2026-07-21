@@ -38,7 +38,7 @@ async def upload_evidence(
     claim_id: str,
     background_tasks: BackgroundTasks,
     file: UploadFile,
-    user: CurrentUser = Depends(require_claim_role("contributor")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "evidence")),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     """Accept a single evidence file, stream it to disk, return its tile fragment.
@@ -128,7 +128,7 @@ def get_evidence_grid(
     request: Request,
     claim_id: str,
     cursor: str = "",
-    user: CurrentUser = Depends(require_claim_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer", "evidence")),
 ) -> HTMLResponse:
     """Render one cursor-paginated page of evidence tiles + sentinel.
 
@@ -164,7 +164,7 @@ def delete_evidence(
     request: Request,
     file_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager", "evidence")),
 ) -> HTMLResponse:
     claim_id: str | None = None
     db = SessionLocal()
@@ -200,7 +200,7 @@ def remove_all_images(
     claim_id: str,
     background_tasks: BackgroundTasks,
     confirm_count: int = Form(...),
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager", "evidence")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -261,7 +261,7 @@ def remove_all_images(
 def serve_file(
     claim_id: str,
     filename: str,
-    user: CurrentUser = Depends(require_claim_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer", "evidence")),
 ) -> FileResponse:
     stored_path = f"{claim_id}/{filename}"
     upload_base = Path(settings.upload_dir).resolve()

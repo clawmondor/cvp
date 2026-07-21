@@ -63,3 +63,55 @@ Source for all items: `docs/superpowers/specs/2026-04-29-hosting-design.md` §12
 **Why:** The feedback feature ships a reusable plain-text validator in `src/claimos/text_validation.py`. The rest of the app's free-form text inputs do not yet use it. Adopting it project-wide closes a class of stored-XSS issues at the input layer (defense in depth alongside Jinja autoescape and the CSP `script-src` policy).
 **Cost / effort:** Low per field, but requires a small per-field audit. Candidate fields: claim name + description, item name + description, room name, profile display name, item comments (`models_comments.Comment.body`), vision model display name, any other free-form `Text`/`String` columns receiving user input. Roll out per-field so each adoption can be reviewed against the field's existing data (e.g., a claim description that already contains `<` would 400 on next edit).
 **Source:** `docs/superpowers/specs/2026-06-03-user-feedback-design.md`.
+
+---
+
+## RBAC
+
+### Firm-facing Users page — DONE
+
+**Delivered by:** the `/team` surface (`src/claimos/routers/team.py`,
+`docs/superpowers/specs/2026-07-16-team-management-page-design.md`). External
+admins (and `system_admin`) now manage their firm from a dedicated Team nav
+section — Members list/detail, role assignment with a conditional claim picker,
+a per-user per-grant override editor, a group-wide effective-permissions matrix,
+a per-claim access view with full resolution, and invite-with-role. External
+admins are redirected off `/admin/org` to `/team/users` (except the
+`/admin/org/profile` carve-out below). See `docs/RBAC.md` "Team surface
+(external admins)".
+**Source:** `docs/superpowers/specs/2026-07-15-rbac-v2-granular-permissions-design.md` §8, §12; `docs/superpowers/specs/2026-07-16-team-management-page-design.md`.
+
+### `/team/settings` firm-profile editor
+
+**Why:** The Team surface intentionally deferred the firm-profile editor. In the
+interim, external admins still edit their firm profile via `/admin/org/profile`,
+which the `/team` redirect deliberately does not intercept, so no capability is
+lost — but it's the one remaining external-admin entry point into the admin
+area. A `/team/settings` page would replace it and let the redirect carve-out be
+removed.
+**Cost / effort:** Low-medium. Mostly moving the existing profile form to a new
+route/template under `/team`; no new data model.
+**Trigger to revisit:** opportunistically, or when the `/admin/org/profile`
+carve-out becomes a maintenance nuisance.
+**Source:** `docs/superpowers/specs/2026-07-16-team-management-page-design.md` §3.6.
+
+### Unify internal/system admin cross-firm management onto `/team`
+
+**Why:** The Team surface is external-admin-facing only; internal and system
+admins still manage cross-firm users/grants via `/admin/org` with its group
+selector. Folding that onto a `/team`-style surface (with a group selector added
+back for the cross-firm case) would remove the last divergence between how
+internal and external admins manage grants, and retire the older org-panel UI
+entirely.
+**Cost / effort:** Medium. Needs a design pass for the group-selector case (the
+Team templates currently assume a single, implicit `group_id`).
+**Trigger to revisit:** after `/team/settings` ships, or when maintaining two
+parallel grant-management UIs (`/admin/org` and `/team`) becomes a real cost.
+**Source:** `docs/superpowers/specs/2026-07-16-team-management-page-design.md` §2, "Non-goals".
+
+### Fold internal users into RBAC v2
+
+**Why:** RBAC v2 is external-users-only by design; internal users (`system_admin`, `internal_admin`, `internal_user`, `specialist`) still resolve claim access through the legacy single-role `claim_access` table, so ClaimOS currently runs two parallel claim-access models. Unifying onto one model removes that duplication, and would let internal roles get the same object-level granularity externals have (e.g. a specialist who should upload evidence but not confirm items).
+**Cost / effort:** Medium-high. Requires defining an internal User Role registry (or extending the existing one) and a data migration from internal `claim_access` rows onto `role_grants`, analogous to the external migration in alembic revision `c9851834200b` — plus updating every route's `require_claim_role` internal-path assumptions and the admin panels that write `claim_access` today.
+**Trigger to revisit:** after the firm-facing Users page ships, or sooner if internal role needs diverge enough that the coarse single-role model becomes a real limitation.
+**Source:** `docs/superpowers/specs/2026-07-15-rbac-v2-granular-permissions-design.md` §12.

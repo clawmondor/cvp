@@ -1,7 +1,13 @@
 import pytest
 import sqlalchemy as sa
 
-from claimos.migrate_db import TABLE_PLAN, migrate, raise_on_parity_mismatch, verify_parity
+from claimos.migrate_db import (
+    NO_LEGACY_SOURCE_TABLES,
+    TABLE_PLAN,
+    migrate,
+    raise_on_parity_mismatch,
+    verify_parity,
+)
 from claimos.models import Base
 
 # Subset of TABLE_PLAN matching the minimal fixtures below (groups/claims/rooms).
@@ -75,12 +81,20 @@ def test_table_plan_is_fk_safe_topological_order():
     index = {table: pos for pos, table in enumerate(plan_tables)}
 
     sorted_tables = Base.metadata.sorted_tables
-    assert set(plan_tables) == {t.name for t in sorted_tables}, (
-        "TABLE_PLAN must cover exactly the tables in the ORM metadata"
+
+    # RBAC v2 tables (role_grants, role_grant_claims, role_grant_overrides) are
+    # intentionally excluded: they have no legacy CVP source and are populated
+    # later by an Alembic data migration, not this one-shot copy. See
+    # NO_LEGACY_SOURCE_TABLES in migrate_db.py.
+    assert set(plan_tables) == ({t.name for t in sorted_tables} - NO_LEGACY_SOURCE_TABLES), (
+        "TABLE_PLAN must cover exactly the ORM metadata tables that have a legacy source"
     )
-    assert len(plan_tables) == 21
+    # 24 total ORM tables - 3 RBAC v2 tables with no legacy source = 21 copied tables.
+    assert len(plan_tables) == len(sorted_tables) - len(NO_LEGACY_SOURCE_TABLES) == 21
 
     for table in sorted_tables:
+        if table.name in NO_LEGACY_SOURCE_TABLES:
+            continue  # not in TABLE_PLAN by design; nothing to order-check
         for fk in table.foreign_keys:
             parent = fk.column.table.name
             if parent == table.name:

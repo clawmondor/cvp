@@ -23,7 +23,7 @@ def create_room(
     claim_id: str,
     background_tasks: BackgroundTasks,
     name: str = Form(...),
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "rooms")),
 ) -> HTMLResponse:
     name = name.strip()
     if not name:
@@ -57,7 +57,7 @@ def rename_room(
     room_id: str,
     background_tasks: BackgroundTasks,
     name: str = Form(...),
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "rooms")),
 ) -> HTMLResponse:
     name = name.strip()
     if not name:
@@ -91,7 +91,7 @@ def delete_room(
     request: Request,
     room_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager", "rooms")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:

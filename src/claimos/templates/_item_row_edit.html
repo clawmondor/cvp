@@ -89,12 +89,9 @@
                  class="mt-0.5 block w-full rounded-sm border border-neutral-300 px-2 py-1 text-sm focus:border-primary-light focus:outline-hidden">
         </div>
         <div class="col-span-1 flex flex-col justify-end pb-0.5">
-          <label class="flex items-center gap-1.5 cursor-pointer select-none">
-            <input type="checkbox" name="confirmed" value="true"
-                   {% if item.confirmed %}checked{% endif %}
-                   class="h-4 w-4 rounded-sm border-neutral-300 text-primary focus:ring-primary-light">
-            <span class="text-xs font-medium text-neutral-600">Confirmed</span>
-          </label>
+          <span class="text-xs font-medium text-neutral-600">
+            {{ "✓ Confirmed" if item.confirmed else "Draft" }}
+          </span>
         </div>
         <div class="col-span-2 flex gap-2">
           <button type="submit"

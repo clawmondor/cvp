@@ -6,6 +6,7 @@ import claimos.models_audit  # noqa: F401
 import claimos.models_auth  # noqa: F401
 import claimos.models_comments  # noqa: F401
 import claimos.models_feedback  # noqa: F401
+import claimos.models_grants  # noqa: F401
 import claimos.models_vision  # noqa: F401
 
 # Ensure all tables exist on the shared real-DB engine so that tests which

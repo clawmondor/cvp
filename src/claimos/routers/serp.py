@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from claimos.config import settings
 from claimos.db import SessionLocal
-from claimos.dependencies import CurrentUser, optional_user, require_claim_role
+from claimos.dependencies import CurrentUser, _check_claim_access, optional_user, require_claim_role
 from claimos.depreciation import compute_acv
 from claimos.models import Category, Item, ItemCrop, ItemGroup, Room, SerpSearch
 from claimos.services.audit import get_client_ip, write_audit_log
@@ -35,7 +35,7 @@ def serve_crop(crop_path: str, user: CurrentUser | None = Depends(optional_user)
 
 @router.get("/api/items/{item_id}/serp-panel", response_class=HTMLResponse)
 def serp_panel(
-    item_id: str, user: CurrentUser = Depends(require_claim_role("editor"))
+    item_id: str, user: CurrentUser = Depends(require_claim_role("editor", "items"))
 ) -> HTMLResponse:
     """Render the SERP panel for an item showing all crops and their latest search results."""
     db = SessionLocal()
@@ -78,7 +78,7 @@ def run_google_lens(
     item_id: str,
     crop_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("editor")),
+    user: CurrentUser = Depends(require_claim_role("editor", "items")),
     image_url: str = Form(""),
 ) -> HTMLResponse:
     """Run a Google Lens search for a specific item crop and persist the result."""
@@ -137,7 +137,7 @@ def serp_apply(
     request: Request,
     item_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("editor")),
+    user: CurrentUser = Depends(require_claim_role("editor", "items")),
     source_url: str = Form(""),
     source_retailer: str = Form(""),
     rcv_unit_cents: str = Form(""),
@@ -183,8 +183,13 @@ def serp_apply(
             .all()
         )
 
+        can_approve = _check_claim_access(db, user, claim_id, "approver", "items")
         html = templates.get_template("_item_row.html").render(
-            item=item, categories=categories, rooms=rooms, item_groups=item_groups
+            item=item,
+            categories=categories,
+            rooms=rooms,
+            item_groups=item_groups,
+            can_approve=can_approve,
         )
     finally:
         db.close()

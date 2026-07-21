@@ -11,7 +11,12 @@ from sqlalchemy.orm import selectinload
 
 from claimos.config import settings
 from claimos.db import SessionLocal
-from claimos.dependencies import CurrentUser, require_active_user, require_claim_role
+from claimos.dependencies import (
+    CurrentUser,
+    _check_claim_access,
+    require_active_user,
+    require_claim_role,
+)
 from claimos.models import (
     Category,
     Claim,
@@ -120,7 +125,7 @@ def claim_detail(
     request: Request,
     claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("viewer")),
+    user: CurrentUser = Depends(require_claim_role("viewer", "items")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:
@@ -227,6 +232,7 @@ def claim_detail(
         evidence_upload_max_batch_count = runtime_config.get_int(
             db, "evidence_upload_max_batch_count"
         )
+        can_approve = _check_claim_access(db, user, claim_id, "approver", "items")
     finally:
         db.close()
 
@@ -272,6 +278,7 @@ def claim_detail(
             "evidence_upload_concurrency": evidence_upload_concurrency,
             "evidence_upload_max_file_mb": evidence_upload_max_file_mb,
             "evidence_upload_max_batch_count": evidence_upload_max_batch_count,
+            "can_approve": can_approve,
         },
     )
 
@@ -281,7 +288,7 @@ def update_claim(
     request: Request,
     claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager", "items")),
     firm_name: str = Form(default=""),
     attorney_name: str = Form(default=""),
     attorney_email: str = Form(default=""),
@@ -340,7 +347,7 @@ def update_claim_status(
     request: Request,
     claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("manager", "items")),
     status: str = Form(...),
 ) -> RedirectResponse:
     valid = {"draft", "in_review", "delivered", "archived"}
@@ -372,7 +379,9 @@ def update_claim_status(
 
 @router.get("/claims/{claim_id}/preview", response_class=HTMLResponse)
 def claim_preview(
-    request: Request, claim_id: str, user: CurrentUser = Depends(require_claim_role("viewer"))
+    request: Request,
+    claim_id: str,
+    user: CurrentUser = Depends(require_claim_role("viewer", "reports")),
 ) -> HTMLResponse:
     db = SessionLocal()
     try:

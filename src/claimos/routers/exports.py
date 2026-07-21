@@ -17,7 +17,7 @@ def export_pdf(
     request: Request,
     claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "exports")),
 ) -> HTMLResponse:
     try:
         out_path = pdf_generator.generate_pdf(claim_id)
@@ -44,7 +44,7 @@ def export_csv(
     request: Request,
     claim_id: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "exports")),
 ) -> HTMLResponse:
     try:
         out_path = csv_export.generate_csv(claim_id)
@@ -72,7 +72,7 @@ def download_export(
     claim_id: str,
     path: str,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_claim_role("manager")),
+    user: CurrentUser = Depends(require_claim_role("contributor", "exports")),
 ) -> FileResponse:
     """Serve a generated export file for download."""
     from claimos.config import settings

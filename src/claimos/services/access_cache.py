@@ -5,13 +5,16 @@ load. Each one runs `_check_claim_access`, which does two DB queries. The
 cache makes a burst of N thumbnail requests cost 1 DB check + (N-1) cache
 hits, preventing the SQLAlchemy `QueuePool timeout` we saw after PR #17.
 
-Cache key is (user_id, claim_id, minimum_role); value is bool. TTL is 60 s.
+Cache key is (user_id, claim_id, minimum_role, object_type); value is bool. TTL is 60 s.
 System admins short-circuit before the cache so admin grants never end up
 cached or shared with non-admins.
 
-Worst-case staleness after a role change is `_TTL_SECONDS`. Wiring of
-`invalidate_claim` / `invalidate_user` into ClaimAccess and user-role
-mutation paths is tracked as a follow-up in the spec's Backlog.
+Worst-case staleness after a role change is `_TTL_SECONDS`, bounded by where
+`invalidate_user` is (and isn't) wired in. `services/grants.py`'s
+`create_grant` and `revoke_grant` both call `invalidate_user` after their
+commit, so RBAC v2 role-grant create/revoke reflect immediately rather than
+waiting out the TTL. Legacy `claim_access` mutations (internal users) are not
+wired to invalidation and rely on the TTL to expire stale entries.
 """
 
 import time
@@ -28,8 +31,8 @@ _TTL_SECONDS: float = 60.0
 _MAX_ENTRIES: int = 1024
 _EVICT_BATCH: int = 256
 
-# key -> (loaded_at, allowed)
-_cache: dict[tuple[str, str, str], tuple[float, bool]] = {}
+# key -> (loaded_at, allowed); key is (user_id, claim_id, minimum_role, object_type)
+_cache: dict[tuple[str, str, str, str | None], tuple[float, bool]] = {}
 
 
 def _now() -> float:
@@ -42,13 +45,14 @@ def _check_claim_access(
     user: "CurrentUser",
     claim_id: str,
     minimum_role: str,
+    object_type: str | None = None,
 ) -> bool:
     """Indirection through `claimos.dependencies` so that tests which monkeypatch
     `claimos.dependencies._check_claim_access` are honored here too. Tests that
     want to stub the cache's view of access can also monkeypatch this name
     directly (`access_cache._check_claim_access`).
     """
-    return _deps._check_claim_access(db, user, claim_id, minimum_role)
+    return _deps._check_claim_access(db, user, claim_id, minimum_role, object_type)
 
 
 def _evict_oldest() -> None:
@@ -63,19 +67,20 @@ def check_claim_access_cached(
     user: "CurrentUser",
     claim_id: str,
     minimum_role: str,
+    object_type: str | None = None,
 ) -> bool:
     """Cached wrapper around `_check_claim_access`. System admins skip the cache."""
     if user.system_role == "system_admin":
         return True
 
-    key = (user.id, claim_id, minimum_role)
+    key = (user.id, claim_id, minimum_role, object_type)
     entry = _cache.get(key)
     if entry is not None:
         loaded_at, allowed = entry
         if (_now() - loaded_at) < _TTL_SECONDS:
             return allowed
 
-    allowed = _check_claim_access(db, user, claim_id, minimum_role)
+    allowed = _check_claim_access(db, user, claim_id, minimum_role, object_type)
     _cache[key] = (_now(), allowed)
     if len(_cache) > _MAX_ENTRIES:
         _evict_oldest()

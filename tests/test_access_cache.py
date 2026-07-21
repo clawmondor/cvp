@@ -26,7 +26,7 @@ def _user(user_id: str = "u1", role: str = "internal_user") -> CurrentUser:
 def test_first_call_misses_then_caches(monkeypatch):
     calls = []
 
-    def fake_check(db, user, claim_id, minimum_role):
+    def fake_check(db, user, claim_id, minimum_role, object_type=None):
         calls.append((user.id, claim_id, minimum_role))
         return True
 
@@ -49,7 +49,7 @@ def test_different_keys_do_not_share_entries(monkeypatch):
 def test_system_admin_bypasses_cache(monkeypatch):
     calls = []
 
-    def fake_check(db, user, claim_id, minimum_role):
+    def fake_check(db, user, claim_id, minimum_role, object_type=None):
         calls.append(user.id)
         return True
 
@@ -73,7 +73,7 @@ def test_ttl_expiry_triggers_recheck(monkeypatch):
     assert len(calls) == 1
 
     # Fast-forward past TTL
-    entry_time = access_cache._cache[("u1", "m1", "viewer")][0]
+    entry_time = access_cache._cache[("u1", "m1", "viewer", None)][0]
     monkeypatch.setattr(access_cache, "_now", lambda: entry_time + access_cache._TTL_SECONDS + 1)
 
     access_cache.check_claim_access_cached(None, _user(), "m1", "viewer")
@@ -87,7 +87,7 @@ def test_invalidate_claim_clears_only_matching_entries(monkeypatch):
     access_cache.check_claim_access_cached(None, _user("a"), "m2", "viewer")
     access_cache.invalidate_claim("m1")
     keys = set(access_cache._cache.keys())
-    assert keys == {("a", "m2", "viewer")}
+    assert keys == {("a", "m2", "viewer", None)}
 
 
 def test_invalidate_user_clears_only_matching_entries(monkeypatch):
@@ -97,7 +97,7 @@ def test_invalidate_user_clears_only_matching_entries(monkeypatch):
     access_cache.check_claim_access_cached(None, _user("a"), "m2", "viewer")
     access_cache.invalidate_user("a")
     keys = set(access_cache._cache.keys())
-    assert keys == {("b", "m1", "viewer")}
+    assert keys == {("b", "m1", "viewer", None)}
 
 
 def test_eviction_when_cache_exceeds_max_size(monkeypatch):

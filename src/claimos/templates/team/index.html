@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Team{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold text-neutral-900">Team</h1>
+  <a href="/team/users/invite" class="bg-success text-white px-4 py-2 rounded-sm text-sm hover:bg-success-emphasis">Invite member</a>
+</div>
+
+{% if invite_url %}
+<div class="mb-6 p-4 bg-success-surface border border-success-border rounded-lg">
+  <p class="text-sm font-medium text-success-strong">Invite link created:</p>
+  <p class="mt-1 text-sm text-success font-mono break-all">{{ invite_url }}</p>
+</div>
+{% endif %}
+
+<section class="mb-10">
+  <h2 class="text-lg font-semibold text-neutral-900 mb-3">Members</h2>
+  {% include "team/_members_table.html" %}
+</section>
+
+<section>
+  <h2 class="text-lg font-semibold text-neutral-900 mb-3">Claim Access</h2>
+  {% include "team/_claims_table.html" %}
+</section>
+{% endblock %}

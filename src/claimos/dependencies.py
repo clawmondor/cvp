@@ -187,8 +187,68 @@ ROLE_HIERARCHY: dict[str, int] = {
     "viewer": 0,
     "editor": 1,
     "contributor": 2,
-    "manager": 3,
+    "approver": 3,
+    "manager": 4,
 }
+
+
+def _external_effective_role(
+    db: Session,
+    user: "CurrentUser",
+    claim_id: str,
+    object_type: str,
+) -> str | None:
+    """Highest claim role an external user has for a given object type on a claim.
+
+    Considers every role_grant whose scope covers the claim, applies per-object
+    overrides, and returns the max in ROLE_HIERARCHY (or None => no access).
+    """
+    from claimos.models_grants import RoleGrant, RoleGrantClaim, RoleGrantOverride
+    from claimos.roles import role_for_object
+
+    claim = db.get(Claim, claim_id)
+    if claim is None:
+        return None
+
+    grants = (
+        db.query(RoleGrant)
+        .filter(RoleGrant.user_id == user.id, RoleGrant.group_id == user.group_id)
+        .all()
+    )
+    best_rank = -1
+    best_role: str | None = None
+    for grant in grants:
+        if grant.scope == "group":
+            if claim.owner_group_id != grant.group_id:
+                continue
+        else:  # "claims"
+            linked = (
+                db.query(RoleGrantClaim)
+                .filter(RoleGrantClaim.grant_id == grant.id, RoleGrantClaim.claim_id == claim_id)
+                .first()
+            )
+            if linked is None:
+                continue
+
+        role = role_for_object(grant.user_role, object_type)
+        override = (
+            db.query(RoleGrantOverride)
+            .filter(
+                RoleGrantOverride.grant_id == grant.id,
+                RoleGrantOverride.object_type == object_type,
+            )
+            .first()
+        )
+        if override is not None:
+            if role is None or ROLE_HIERARCHY.get(override.role, -1) > ROLE_HIERARCHY.get(role, -1):
+                role = override.role
+        if role is None:
+            continue
+        rank = ROLE_HIERARCHY.get(role, -1)
+        if rank > best_rank:
+            best_rank = rank
+            best_role = role
+    return best_role
 
 
 def _check_claim_access(
@@ -196,8 +256,9 @@ def _check_claim_access(
     user: CurrentUser,
     claim_id: str,
     minimum_role: str,
+    object_type: str | None = None,
 ) -> bool:
-    """Check if user has at least minimum_role on a claim.
+    """Check if user has at least minimum_role on a claim (object-aware for external).
 
     Returns True if access is granted, False otherwise.
     """
@@ -215,7 +276,14 @@ def _check_claim_access(
         if user.system_role in ("internal_admin", "external_admin"):
             return True
 
-    # Check explicit claim_access grant
+    # External users on object-tagged routes resolve via role_grants.
+    if object_type is not None and user.group_kind == "external":
+        eff = _external_effective_role(db, user, claim_id, object_type)
+        if eff is None:
+            return False
+        return ROLE_HIERARCHY.get(eff, -1) >= ROLE_HIERARCHY.get(minimum_role, 999)
+
+    # Legacy path: internal users, or untagged routes.
     access = (
         db.query(ClaimAccess)
         .filter(
@@ -230,7 +298,7 @@ def _check_claim_access(
     return ROLE_HIERARCHY.get(access.role, -1) >= ROLE_HIERARCHY.get(minimum_role, 999)
 
 
-def require_claim_role(minimum_role: str):
+def require_claim_role(minimum_role: str, object_type: str | None = None):
     """Factory that returns a FastAPI dependency requiring a minimum claim role.
 
     Usage: Depends(require_claim_role("editor"))
@@ -285,7 +353,7 @@ def require_claim_role(minimum_role: str):
 
         from claimos.services.access_cache import check_claim_access_cached
 
-        if not check_claim_access_cached(db, user, claim_id, minimum_role):
+        if not check_claim_access_cached(db, user, claim_id, minimum_role, object_type):
             raise HTTPException(status_code=403, detail="Insufficient permissions")
 
         return user

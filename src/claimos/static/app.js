@@ -412,6 +412,19 @@ document.addEventListener('click', function (e) {
     if (e.target.closest('[data-print-page]')) window.print();
 });
 
+// Delegated click: data-action="confirm-item"/"unconfirm-item" → POST + swap row
+// (approver-only button; server renders it only when the current user may approve)
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-action="confirm-item"], [data-action="unconfirm-item"]');
+    if (!btn) return;
+    var itemId = btn.dataset.itemId;
+    var action = btn.dataset.action === 'confirm-item' ? 'confirm' : 'unconfirm';
+    htmx.ajax('POST', '/api/items/' + itemId + '/' + action, {
+        target: document.getElementById('item-row-' + itemId),
+        swap: 'outerHTML',
+    });
+});
+
 // Replace hx-on::after-request on add-room form (HTMX uses new Function() for hx-on, blocked by CSP)
 document.addEventListener('htmx:afterRequest', function (e) {
     if (e.detail.elt && e.detail.elt.id === 'add-room-form' && e.detail.successful) {
@@ -612,6 +625,14 @@ document.addEventListener('change', function (e) {
     } else {
         if (hidden) hidden.value = '';
     }
+});
+
+// Team: assign-role form — toggle the claim picker based on the scope select.
+document.addEventListener('change', function (e) {
+  const sel = e.target.closest('[data-role="scope-select"]');
+  if (!sel) return;
+  const picker = sel.closest('form').querySelector('[data-role="claim-picker"]');
+  if (picker) picker.hidden = sel.value !== 'claims';
 });
 
 // ---- Live items list: surface scan / region-rescan results -------------
