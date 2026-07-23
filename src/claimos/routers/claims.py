@@ -353,6 +353,7 @@ def update_claim(
     claim_id: str,
     background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_claim_role("manager", "items")),
+    nickname: str = Form(default=""),
     firm_name: str = Form(default=""),
     attorney_name: str = Form(default=""),
     attorney_email: str = Form(default=""),
@@ -374,6 +375,17 @@ def update_claim(
         claim = db.get(Claim, claim_id)
         if claim is None:
             return HTMLResponse("Claim not found", status_code=404)
+        nickname_clean, nickname_error = validate_nickname(
+            db, nickname, claim.owner_group_id, exclude_claim_id=claim.id
+        )
+        if nickname_error:
+            from urllib.parse import quote
+
+            return RedirectResponse(
+                url=f"/claims/{claim_id}?nickname_error={quote(nickname_error)}#overview",
+                status_code=303,
+            )
+        claim.nickname = nickname_clean
         claim.firm_name = firm_name
         claim.attorney_name = attorney_name
         claim.attorney_email = attorney_email
