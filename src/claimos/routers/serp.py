@@ -155,13 +155,13 @@ def serp_apply(
         item.match_type = "exact"
 
         if rcv_unit_cents.strip():
-            item.rcv_unit_cents = int(rcv_unit_cents.strip())
+            item.retail_unit_cents = int(rcv_unit_cents.strip())
 
-        item.rcv_total_cents = item.rcv_unit_cents * item.quantity
+        item.rcv_total_cents = item.retail_unit_cents * item.quantity
 
         cat = db.get(Category, item.category_id)
         item.acv_total_cents = compute_acv(
-            retail_unit_cents=item.rcv_unit_cents,
+            retail_unit_cents=item.retail_unit_cents,
             quantity=item.quantity,
             age_years=item.age_years,
             useful_life_years=cat.useful_life_years if cat else None,

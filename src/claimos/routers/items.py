@@ -49,7 +49,7 @@ def compute_items_totals(claim_id: str, db) -> dict[str, int]:
             Item.excluded,
             Item.rcv_total_cents,
             Item.acv_total_cents,
-            Item.rcv_unit_cents,
+            Item.retail_unit_cents,
         )
         .filter(Item.claim_id == claim_id)
         .all()
@@ -61,14 +61,14 @@ def compute_items_totals(claim_id: str, db) -> dict[str, int]:
         "items_rcv_total_cents": sum(r.rcv_total_cents for r in confirmed_rows),
         "items_acv_total_cents": sum(r.acv_total_cents for r in confirmed_rows),
         "unconfirmed_count": sum(1 for r in rows if not r.confirmed),
-        "missing_price_count": sum(1 for r in confirmed_rows if r.rcv_unit_cents == 0),
+        "missing_price_count": sum(1 for r in confirmed_rows if r.retail_unit_cents == 0),
     }
 
 
 def _compute_and_set_totals(item: Item, cat: Category) -> None:
-    item.rcv_total_cents = item.rcv_unit_cents * item.quantity
+    item.rcv_total_cents = item.retail_unit_cents * item.quantity
     item.acv_total_cents = compute_acv(
-        retail_unit_cents=item.rcv_unit_cents,
+        retail_unit_cents=item.retail_unit_cents,
         quantity=item.quantity,
         age_years=item.age_years,
         useful_life_years=cat.useful_life_years,
@@ -233,7 +233,7 @@ def create_item(
             quantity=max(1, quantity),
             age_years=max(0.0, age_years),
             condition=condition,
-            rcv_unit_cents=_parse_cents(rcv_unit_dollars),
+            retail_unit_cents=_parse_cents(rcv_unit_dollars),
             notes=notes.strip(),
             confirmed=True,  # manually entered items start confirmed; Vision drafts use False
         )
@@ -360,7 +360,7 @@ def update_item(
         item.quantity = max(1, quantity)
         item.age_years = max(0.0, age_years)
         item.condition = condition
-        item.rcv_unit_cents = _parse_cents(rcv_unit_dollars)
+        item.retail_unit_cents = _parse_cents(rcv_unit_dollars)
         item.brand = brand.strip() or None
         item.model = model_num.strip() or None
         item.notes = notes.strip()

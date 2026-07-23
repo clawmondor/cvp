@@ -347,7 +347,7 @@ acv_total       = acv_unit × quantity</pre>
         <td class="center">{{ item.quantity }}</td>
         <td class="center">{{ item.age_years | int }}y</td>
         <td class="center">{{ item.condition.replace("_"," ").title() }}</td>
-        <td class="right mono">${{ "{:,.2f}".format(item.rcv_unit_cents / 100) }}</td>
+        <td class="right mono">${{ "{:,.2f}".format(item.retail_unit_cents / 100) }}</td>
         <td class="right mono">${{ "{:,.2f}".format(item.rcv_total_cents / 100) }}</td>
         <td class="right mono">${{ "{:,.2f}".format(item.acv_total_cents / 100) }}{% if item.acv_override_cents is not none %} ★{% endif %}</td>
       </tr>
@@ -394,7 +394,7 @@ acv_total       = acv_unit × quantity</pre>
         </td>
         <td class="center">{{ item.match_type.replace("_"," ") if item.match_type else "—" }}</td>
         <td class="center">{{ item.source_captured_at.strftime("%Y-%m-%d") if item.source_captured_at else "—" }}</td>
-        <td class="right mono">${{ "{:,.2f}".format(item.rcv_unit_cents / 100) }}</td>
+        <td class="right mono">${{ "{:,.2f}".format(item.retail_unit_cents / 100) }}</td>
       </tr>
       {% endfor %}
     </tbody>

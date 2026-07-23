@@ -362,7 +362,7 @@ def process_one_image(job_image_id: str) -> None:
                 quantity=qty,
                 age_years=0.0,
                 condition=condition,
-                rcv_unit_cents=0,
+                retail_unit_cents=0,
                 rcv_total_cents=0,
                 acv_total_cents=0,
                 confirmed=False,

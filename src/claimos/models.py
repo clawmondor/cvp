@@ -158,7 +158,10 @@ class Item(Base):
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     age_years: Mapped[float] = mapped_column(Float, default=0.0)
     condition: Mapped[str] = mapped_column(String, default="average")
-    rcv_unit_cents: Mapped[int] = mapped_column(Integer, default=0)
+    retail_unit_cents: Mapped[int] = mapped_column(Integer, default=0)
+    shipping_cents: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False, server_default="0"
+    )
     rcv_total_cents: Mapped[int] = mapped_column(Integer, default=0)
     acv_total_cents: Mapped[int] = mapped_column(Integer, default=0)
     acv_override_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
