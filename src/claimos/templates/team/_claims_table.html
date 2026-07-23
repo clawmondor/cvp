@@ -11,7 +11,7 @@
       {% for c in claims %}
       <tr>
         <td class="px-6 py-4 text-sm">
-          <a href="/team/claims/{{ c.id }}/access" class="text-success hover:underline">{{ c.policyholder_name }}</a>
+          <a href="/team/claims/{{ c.id }}/access" class="text-success hover:underline">{{ c.nickname }}</a>
         </td>
         <td class="px-6 py-4 text-sm text-neutral-900">{{ c.claim_number or c.id }}</td>
         <td class="px-6 py-4 text-sm text-neutral-500">{{ c.status }}</td>
