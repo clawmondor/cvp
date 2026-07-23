@@ -38,7 +38,7 @@ class FakeItem:
         self.quantity = 1
         self.age_years = 3
         self.condition = "average"
-        self.rcv_unit_cents = 5000
+        self.retail_unit_cents = 5000
         self.rcv_total_cents = 5000
         self.acv_total_cents = 4000
         self.acv_override_cents = None

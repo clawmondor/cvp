@@ -88,7 +88,7 @@ def generate_csv(matter_id: str) -> Path:
                         "Description": item.description,
                         "Qty": item.quantity,
                         "Unit": "EA",
-                        "UnitPrice": _dollars(item.rcv_unit_cents),
+                        "UnitPrice": _dollars(item.retail_unit_cents),
                         "Total": _dollars(item.rcv_total_cents),
                         "Depreciation": _dollars(dep_cents),
                         "ACV": _dollars(item.acv_total_cents),
