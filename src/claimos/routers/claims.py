@@ -42,6 +42,36 @@ router = APIRouter()
 LOSS_TYPES = ["total_loss", "partial_loss", "smoke", "water", "theft", "other"]
 LOSS_EVENTS = ["Palisades Fire", "Eaton Fire", "Other"]
 
+NICKNAME_MAX_LEN = 100
+
+
+def validate_nickname(
+    db,
+    raw: str,
+    owner_group_id: str | None,
+    exclude_claim_id: str | None = None,
+) -> tuple[str, str | None]:
+    """Clean and validate a claim nickname.
+
+    Returns (cleaned_nickname, error_message). error_message is None when valid.
+    Uniqueness is case-insensitive and scoped to owner_group_id; exclude_claim_id
+    lets an edit skip the claim's own row.
+    """
+    nickname = (raw or "").strip()
+    if not nickname:
+        return nickname, "Nickname is required."
+    if len(nickname) > NICKNAME_MAX_LEN:
+        return nickname, "Nickname must be 100 characters or fewer."
+    query = db.query(Claim).filter(
+        Claim.owner_group_id == owner_group_id,
+        func.lower(Claim.nickname) == nickname.lower(),
+    )
+    if exclude_claim_id is not None:
+        query = query.filter(Claim.id != exclude_claim_id)
+    if db.query(query.exists()).scalar():
+        return nickname, "That nickname is already used in your group."
+    return nickname, None
+
 
 @router.get("/claims/new", response_class=HTMLResponse)
 def new_claim_form(
