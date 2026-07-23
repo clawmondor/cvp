@@ -84,15 +84,18 @@ def new_claim_form(
             "loss_types": LOSS_TYPES,
             "loss_events": LOSS_EVENTS,
             "user": user,
+            "error": None,
+            "form": {},
         },
     )
 
 
-@router.post("/claims")
+@router.post("/claims", response_model=None)
 def create_claim(
     request: Request,
     background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_active_user),
+    nickname: str = Form(default=""),
     firm_name: str = Form(default=""),
     attorney_name: str = Form(default=""),
     attorney_email: str = Form(default=""),
@@ -107,11 +110,42 @@ def create_claim(
     coverage_c_limit_dollars: str = Form(default="0"),
     firm_file_number: str = Form(default=""),
     target_delivery_date: str = Form(default=""),
-) -> RedirectResponse:
+) -> RedirectResponse | HTMLResponse:
     db = SessionLocal()
     try:
+        nickname_clean, nickname_error = validate_nickname(db, nickname, user.group_id)
+        if nickname_error:
+            return templates.TemplateResponse(
+                request=request,
+                name="claim_new.html",
+                context={
+                    "loss_types": LOSS_TYPES,
+                    "loss_events": LOSS_EVENTS,
+                    "user": user,
+                    "error": nickname_error,
+                    "form": {
+                        "nickname": nickname,
+                        "firm_name": firm_name,
+                        "attorney_name": attorney_name,
+                        "attorney_email": attorney_email,
+                        "policyholder_name": policyholder_name,
+                        "loss_location": loss_location,
+                        "loss_type": loss_type,
+                        "loss_event": loss_event,
+                        "loss_date": loss_date,
+                        "carrier": carrier,
+                        "policy_number": policy_number,
+                        "claim_number": claim_number,
+                        "coverage_c_limit_dollars": coverage_c_limit_dollars,
+                        "firm_file_number": firm_file_number,
+                        "target_delivery_date": target_delivery_date,
+                    },
+                },
+                status_code=200,
+            )
         claim = Claim(
             id=str(uuid.uuid4()),
+            nickname=nickname_clean,
             firm_name=firm_name,
             attorney_name=attorney_name,
             attorney_email=attorney_email,
