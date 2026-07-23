@@ -27,5 +27,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_column("items", "shipping_cents")
-    op.alter_column("items", "retail_unit_cents", new_column_name="rcv_unit_cents")
+    with op.batch_alter_table("items") as batch_op:
+        batch_op.drop_column("shipping_cents")
+        batch_op.alter_column("retail_unit_cents", new_column_name="rcv_unit_cents")

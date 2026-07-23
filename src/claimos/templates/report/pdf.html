@@ -243,8 +243,10 @@
   <p>Depreciation is computed using the <strong>straight-line method</strong>:</p>
   <pre>dep_rate        = 1 / useful_life_years
 accumulated_dep = min(dep_rate × age_years × condition_multiplier, 1 − floor_pct)
-acv_unit        = round(rcv_unit × (1 − accumulated_dep))
-acv_total       = acv_unit × quantity</pre>
+acv_unit        = round(retail_unit × (1 − accumulated_dep))
+rcv_total       = retail_unit × quantity + shipping
+acv_total       = acv_unit × quantity + shipping</pre>
+  <p>Replacement cost (RCV) includes shipping; shipping is not depreciated and passes through to ACV in full.</p>
   <p><strong>Condition multipliers:</strong>
      Excellent 0.75 · Above Average 0.90 · Average 1.00 · Below Average 1.15.</p>
   {% if categories_used %}

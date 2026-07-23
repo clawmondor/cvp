@@ -264,8 +264,12 @@
     <pre class="bg-neutral-50 border border-neutral-200 rounded-sm px-4 py-3 text-xs font-mono leading-relaxed">
 dep_rate          = 1 / useful_life_years
 accumulated_dep   = min(dep_rate × age_years × condition_multiplier, 1 − floor_pct)
-acv_unit          = round(rcv_unit × (1 − accumulated_dep))
-acv_total         = acv_unit × quantity</pre>
+acv_unit          = round(retail_unit × (1 − accumulated_dep))
+rcv_total         = retail_unit × quantity + shipping
+acv_total         = acv_unit × quantity + shipping</pre>
+    <p>
+      Replacement cost (RCV) includes shipping; shipping is not depreciated and passes through to ACV in full.
+    </p>
     <p><strong>Condition multipliers:</strong>
       Excellent 0.75 · Above Average 0.90 · Average 1.00 · Below Average 1.15.
       Items with no assigned useful life (e.g., jewelry, artwork) are not depreciated — ACV equals RCV.
