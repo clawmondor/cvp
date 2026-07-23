@@ -328,6 +328,7 @@ acv_total       = acv_unit × quantity</pre>
         <th class="center">Age</th>
         <th class="center">Cond</th>
         <th class="right">RCV/unit</th>
+        <th class="right">Shipping</th>
         <th class="right">RCV total</th>
         <th class="right">ACV total</th>
       </tr>
@@ -348,6 +349,7 @@ acv_total       = acv_unit × quantity</pre>
         <td class="center">{{ item.age_years | int }}y</td>
         <td class="center">{{ item.condition.replace("_"," ").title() }}</td>
         <td class="right mono">${{ "{:,.2f}".format(item.retail_unit_cents / 100) }}</td>
+        <td class="right mono">${{ "{:,.2f}".format(item.shipping_cents / 100) }}</td>
         <td class="right mono">${{ "{:,.2f}".format(item.rcv_total_cents / 100) }}</td>
         <td class="right mono">${{ "{:,.2f}".format(item.acv_total_cents / 100) }}{% if item.acv_override_cents is not none %} ★{% endif %}</td>
       </tr>
@@ -355,7 +357,7 @@ acv_total       = acv_unit × quantity</pre>
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="8" class="right">Totals</td>
+        <td colspan="9" class="right">Totals</td>
         <td class="right mono">${{ "{:,.2f}".format(total_rcv_cents / 100) }}</td>
         <td class="right mono">${{ "{:,.2f}".format(total_acv_cents / 100) }}</td>
       </tr>

@@ -365,6 +365,7 @@ acv_total         = acv_unit × quantity</pre>
         <th class="text-center px-2 py-2 border border-neutral-200">Age</th>
         <th class="text-center px-2 py-2 border border-neutral-200">Cond</th>
         <th class="text-right px-2 py-2 border border-neutral-200">RCV/unit</th>
+        <th class="text-right px-2 py-2 border border-neutral-200">Shipping</th>
         <th class="text-right px-2 py-2 border border-neutral-200">RCV total</th>
         <th class="text-right px-2 py-2 border border-neutral-200">ACV total</th>
       </tr>
@@ -385,6 +386,7 @@ acv_total         = acv_unit × quantity</pre>
         <td class="px-2 py-1.5 border border-neutral-200 text-center">{{ item.age_years | int }}y</td>
         <td class="px-2 py-1.5 border border-neutral-200 text-center">{{ item.condition.replace("_"," ").title() }}</td>
         <td class="px-2 py-1.5 border border-neutral-200 text-right font-mono">${{ "{:,.2f}".format(item.retail_unit_cents / 100) }}</td>
+        <td class="px-2 py-1.5 border border-neutral-200 text-right font-mono">${{ "{:,.2f}".format(item.shipping_cents / 100) }}</td>
         <td class="px-2 py-1.5 border border-neutral-200 text-right font-mono">${{ "{:,.2f}".format(item.rcv_total_cents / 100) }}</td>
         <td class="px-2 py-1.5 border border-neutral-200 text-right font-mono">
           ${{ "{:,.2f}".format(item.acv_total_cents / 100) }}{% if item.acv_override_cents is not none %} ★{% endif %}
@@ -394,7 +396,7 @@ acv_total         = acv_unit × quantity</pre>
     </tbody>
     <tfoot>
       <tr class="bg-neutral-50 font-semibold text-xs">
-        <td colspan="8" class="px-2 py-2 border border-neutral-200 text-right">Totals</td>
+        <td colspan="9" class="px-2 py-2 border border-neutral-200 text-right">Totals</td>
         <td class="px-2 py-2 border border-neutral-200 text-right font-mono">${{ "{:,.2f}".format(total_rcv_cents / 100) }}</td>
         <td class="px-2 py-2 border border-neutral-200 text-right font-mono">${{ "{:,.2f}".format(total_acv_cents / 100) }}</td>
       </tr>

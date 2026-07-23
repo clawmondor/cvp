@@ -72,16 +72,14 @@ def generate_csv(claim_id: str) -> Path:
 
             for item in confirmed_items:
                 dep_cents = item.rcv_total_cents - item.acv_total_cents
-                source_notes = " | ".join(
-                    filter(
-                        None,
-                        [
-                            item.source_retailer or "",
-                            item.source_url or "",
-                            item.match_type or "",
-                        ],
-                    )
-                )
+                note_parts = [
+                    item.source_retailer or "",
+                    item.source_url or "",
+                    item.match_type or "",
+                ]
+                if item.shipping_cents:
+                    note_parts.append(f"Shipping: ${_dollars(item.shipping_cents)}")
+                source_notes = " | ".join(filter(None, note_parts))
                 writer.writerow(
                     {
                         "LineItem": item.line_number,

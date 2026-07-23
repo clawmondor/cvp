@@ -157,7 +157,7 @@ def serp_apply(
         if rcv_unit_cents.strip():
             item.retail_unit_cents = int(rcv_unit_cents.strip())
 
-        item.rcv_total_cents = item.retail_unit_cents * item.quantity
+        item.rcv_total_cents = item.retail_unit_cents * item.quantity + item.shipping_cents
 
         cat = db.get(Category, item.category_id)
         item.acv_total_cents = compute_acv(
@@ -168,6 +168,7 @@ def serp_apply(
             acv_floor_pct=cat.acv_floor_pct if cat else 0.2,
             condition=item.condition,
             acv_override_cents=item.acv_override_cents,
+            shipping_cents=item.shipping_cents,
         )
 
         db.commit()

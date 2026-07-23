@@ -148,6 +148,20 @@ def test_csv_notes_concat(claim_with_items, tmp_path):
     assert "exact" in row["Notes"]
 
 
+def test_shipping_annotated_in_notes(claim_with_items, db_session, tmp_path):
+    claim, confirmed = claim_with_items
+    item_a = confirmed[0]
+    item_a.shipping_cents = 2_500
+    db_session.commit()
+
+    path = generate_csv(claim.id)
+    headers, rows = _read_csv(path)
+    assert headers == CSV_HEADERS
+    row = rows[0]
+    assert "Shipping: $25.00" in row["Notes"]
+    assert "Best Buy" in row["Notes"]
+
+
 def test_dollars_helper():
     assert _dollars(0) == "0.00"
     assert _dollars(100) == "1.00"
