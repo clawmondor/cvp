@@ -87,7 +87,7 @@ def seeded_rbac_db(db_session):
     )
     db_session.add_all([sys_admin, int_admin, int_user, ext_admin, ext_user])
 
-    claim = Claim(id="m1", owner_group_id="ig", created_by_id="ia")
+    claim = Claim(id="m1", owner_group_id="ig", created_by_id="ia", nickname="Claim M1")
     db_session.add(claim)
 
     # Grant ext_user viewer access

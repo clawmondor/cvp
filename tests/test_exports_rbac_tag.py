@@ -38,7 +38,7 @@ def _seed_claimant(db):
                 system_role="external_user",
                 group_id="eg",
             ),
-            Claim(id="c1", owner_group_id="eg"),
+            Claim(id="c1", owner_group_id="eg", nickname="Claim One"),
         ]
     )
     grant = RoleGrant(

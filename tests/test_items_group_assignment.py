@@ -42,7 +42,7 @@ def seeded_db(db_session):
         )
     )
     db_session.add(Category(id=1, name="Misc", useful_life_years=10, acv_floor_pct=0.2))
-    db_session.add(Claim(id="m1", owner_group_id="ig", created_by_id="ia"))
+    db_session.add(Claim(id="m1", owner_group_id="ig", created_by_id="ia", nickname="Claim M1"))
     db_session.commit()
     return db_session
 
@@ -163,7 +163,7 @@ def test_clear_group_with_empty(seeded_db, make_client):
 
 def test_assign_400_when_group_in_wrong_claim(seeded_db, make_client):
     """A group from another claim must be rejected."""
-    other = Claim(id="m2", owner_group_id="ig", created_by_id="ia")
+    other = Claim(id="m2", owner_group_id="ig", created_by_id="ia", nickname="Claim M2")
     seeded_db.add(other)
     seeded_db.add(ItemGroup(claim_id="m2", name="x", name_normalized="x"))
     seeded_db.commit()

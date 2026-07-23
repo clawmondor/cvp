@@ -31,7 +31,9 @@ def Session(engine):
 @pytest.fixture
 def db(engine, Session):
     session = Session()
-    session.add(Claim(id="m1", policyholder_name="T", loss_type="total_loss"))
+    session.add(
+        Claim(id="m1", policyholder_name="T", loss_type="total_loss", nickname="Test Claim")
+    )
     session.add(
         EvidenceFile(
             id="ef1",

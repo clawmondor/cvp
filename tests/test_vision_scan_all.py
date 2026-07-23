@@ -51,7 +51,9 @@ def db_session():
         )
     )
     db.add(User(id=CONTRIBUTOR_ID, email="c@t.com", display_name="C", system_role="internal_user"))
-    db.add(Claim(id=CLAIM_ID, policyholder_name="Owner", loss_type="total_loss"))
+    db.add(
+        Claim(id=CLAIM_ID, policyholder_name="Owner", loss_type="total_loss", nickname="Test Claim")
+    )
     tmp = tempfile.mktemp(suffix=".jpg")
     PILImage.new("RGB", (10, 10), "white").save(tmp)
     db.add(

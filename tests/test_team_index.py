@@ -43,8 +43,8 @@ def db_session():
                 system_role="external_user",
                 group_id="og",
             ),
-            Claim(id="cA", owner_group_id="eg", policyholder_name="Rossi"),
-            Claim(id="cX", owner_group_id="og", policyholder_name="Other"),
+            Claim(id="cA", owner_group_id="eg", policyholder_name="Rossi", nickname="Rossi Claim"),
+            Claim(id="cX", owner_group_id="og", policyholder_name="Other", nickname="Other Claim"),
         ]
     )
     s.commit()

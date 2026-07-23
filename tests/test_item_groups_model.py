@@ -11,7 +11,7 @@ from claimos.models import Claim, ItemGroup
 def claim_id() -> str:
     db = SessionLocal()
     try:
-        m = Claim(firm_name="Test Firm")
+        m = Claim(firm_name="Test Firm", nickname="Test Claim")
         db.add(m)
         db.commit()
         db.refresh(m)

@@ -33,7 +33,7 @@ def test_external_grant_parity_after_migration():
                 system_role="internal_user",
                 group_id="ig",
             ),
-            Claim(id="cA", owner_group_id="eg"),
+            Claim(id="cA", owner_group_id="eg", nickname="Claim A"),
             ClaimAccess(
                 id="a1", user_id="eu", claim_id="cA", role="contributor", granted_by_id="x"
             ),

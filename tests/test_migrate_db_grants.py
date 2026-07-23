@@ -50,7 +50,7 @@ def _make_post_copy_target_db(url: str) -> None:
                     system_role="internal_user",
                     group_id="ig",
                 ),
-                Claim(id="c1", owner_group_id="ig"),
+                Claim(id="c1", owner_group_id="ig", nickname="Claim One"),
                 ClaimAccess(
                     id="ca-ext",
                     user_id="eu",
@@ -140,7 +140,7 @@ def test_convert_external_access_is_zero_when_no_external_rows(tmp_path):
                     system_role="internal_user",
                     group_id="ig",
                 ),
-                Claim(id="c1", owner_group_id="ig"),
+                Claim(id="c1", owner_group_id="ig", nickname="Claim One"),
                 ClaimAccess(
                     id="ca-int", user_id="iu", claim_id="c1", role="viewer", granted_by_id="seed"
                 ),

@@ -38,7 +38,7 @@ def db_engine(tmp_base):
     db = Session()
 
     db.add(Category(id=1, name="Test", useful_life_years=10, acv_floor_pct=0.20))
-    db.add(Claim(id="m1", policyholder_name="Test"))
+    db.add(Claim(id="m1", policyholder_name="Test", nickname="Test Claim"))
     db.add(
         EvidenceFile(
             id="ef1",

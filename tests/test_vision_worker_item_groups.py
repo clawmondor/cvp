@@ -35,7 +35,7 @@ def db_session():
 @pytest.fixture
 def seeded(db_session):
     db_session.add(Category(id=1, name="Misc", useful_life_years=10, acv_floor_pct=0.2))
-    db_session.add(Claim(id="m1", firm_name="T"))
+    db_session.add(Claim(id="m1", firm_name="T", nickname="Test Claim"))
     db_session.commit()
     return db_session
 

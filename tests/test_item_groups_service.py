@@ -12,7 +12,7 @@ from claimos.services.item_groups import find_or_create
 def claim_id() -> str:
     db = SessionLocal()
     try:
-        m = Claim(firm_name="Test")
+        m = Claim(firm_name="Test", nickname="Test Claim")
         db.add(m)
         db.commit()
         db.refresh(m)
@@ -81,7 +81,7 @@ def test_rejects_empty_name(claim_id: str) -> None:
 def test_scoped_per_claim(claim_id: str) -> None:
     db = SessionLocal()
     try:
-        other = Claim(firm_name="Other")
+        other = Claim(firm_name="Other", nickname="Other Claim")
         db.add(other)
         db.commit()
         db.refresh(other)
@@ -115,7 +115,7 @@ def test_savepoint_isolates_race_recovery(claim_id: str) -> None:
             other.close()
 
         # Outer work the caller is in the middle of.
-        m_extra = Claim(firm_name="Caller's Pending Work")
+        m_extra = Claim(firm_name="Caller's Pending Work", nickname="Caller's Pending Work Claim")
         db.add(m_extra)
         db.flush()  # caller has pending state in this session
         pending_id = m_extra.id
