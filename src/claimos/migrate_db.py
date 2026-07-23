@@ -45,7 +45,7 @@ TABLE_PLAN: list[tuple[str, str, dict[str, str]]] = [
     ("rooms", "rooms", {"matter_id": "claim_id"}),
     ("vision_jobs", "vision_jobs", {"matter_id": "claim_id"}),
     ("evidence_files", "evidence_files", {"matter_id": "claim_id"}),
-    ("items", "items", {"matter_id": "claim_id"}),
+    ("items", "items", {"matter_id": "claim_id", "rcv_unit_cents": "retail_unit_cents"}),
     ("comments", "comments", {}),
     ("item_crops", "item_crops", {}),
     ("vision_job_images", "vision_job_images", {}),

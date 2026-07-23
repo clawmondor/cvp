@@ -167,3 +167,12 @@ def test_copy_table_raises_on_source_column_with_no_target_counterpart(tmp_path)
     message = str(exc_info.value)
     assert "rooms" in message
     assert "extra_legacy_col" in message
+
+
+def test_items_plan_renames_rcv_to_retail():
+    from claimos.migrate_db import TABLE_PLAN
+
+    items_entry = next(e for e in TABLE_PLAN if e[0] == "items")
+    renames = items_entry[2]
+    assert renames.get("rcv_unit_cents") == "retail_unit_cents"
+    assert renames.get("matter_id") == "claim_id"
