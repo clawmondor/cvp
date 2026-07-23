@@ -17,7 +17,8 @@
 - **No new dependencies.** Nothing beyond what `pyproject.toml` already has.
 - **No inline JS event handlers** in templates (CSP blocks them). New inputs are plain form fields — no `onclick`/`onchange`.
 - **`uv run ruff format .` then `uv run ruff format --check .`** must show zero reformatted files before every commit. Line length 100.
-- **Two branches:** Phase 1 (Tasks 1–4) is `main` (`claimos` / `Claim` / `claim_id`). Phase 2 (Task 5) mirrors Tasks 1–3 on `cvp-legacy` (`cvp` / `Matter` / `matter_id`), no migrate_db change.
+- **Two branches, strictly isolated.** Phase 1 (Tasks 1–4) is `main` (`claimos` / `Claim` / `claim_id`). Phase 2 (Task 5) mirrors Tasks 1–3 on `cvp-legacy` (`cvp` / `Matter` / `matter_id`), no migrate_db change.
+- **NEVER bring `main`'s changes into `cvp-legacy`.** The two codebases have diverged substantially. The Phase 2 branch MUST be created from `origin/cvp-legacy`, and its PR base MUST be `cvp-legacy`. Do NOT merge, rebase onto, or `git cherry-pick` any commit from the `main` / `feat/retail-value-shipping` branch into the legacy branch. Phase 2 changes are **re-applied by hand** using the translation table — hand-written, not ported from Phase 1 commits.
 
 ## File Structure (Phase 1 — `main`)
 
@@ -443,11 +444,19 @@ Expected: all green. Open the `main` PR (base `main`).
 
 The legacy codebase is structurally identical to `main` — only naming differs. Replicate Tasks 1–3 with the translation below. **Do NOT replicate Task 4** (migrate_db is the target-side tool on `main`; legacy is the source).
 
-**Branch setup:**
+**Branch setup — isolate from `main`:** the legacy branch is cut directly from `origin/cvp-legacy` so it contains **zero** of `main`'s divergent history. Never merge/rebase/cherry-pick from the Phase 1 branch.
+
 ```bash
 git fetch origin
 git checkout -b feat/retail-value-shipping-legacy origin/cvp-legacy
+
+# Verify isolation BEFORE writing any code: this must list ONLY legacy commits,
+# and must NOT show any Phase 1 commit (e.g. the retail/shipping refactor on main).
+git log --oneline -1                      # HEAD is the cvp-legacy tip
+git merge-base --is-ancestor origin/main HEAD && echo "ERROR: main is in history — abort" || echo "OK: clean from cvp-legacy"
 ```
+
+If the guard prints `ERROR`, the branch was cut from the wrong base — delete it and recreate from `origin/cvp-legacy`. The Phase 2 PR base is `cvp-legacy` (never `main`).
 
 **Name translation (apply everywhere):**
 
