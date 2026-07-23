@@ -161,7 +161,7 @@ def serp_apply(
 
         cat = db.get(Category, item.category_id)
         item.acv_total_cents = compute_acv(
-            rcv_unit_cents=item.rcv_unit_cents,
+            retail_unit_cents=item.rcv_unit_cents,
             quantity=item.quantity,
             age_years=item.age_years,
             useful_life_years=cat.useful_life_years if cat else None,
