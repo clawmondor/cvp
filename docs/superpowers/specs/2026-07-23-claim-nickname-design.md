@@ -81,8 +81,13 @@ group-unique nickname.
     nickname case-insensitively → error "That nickname is already used in your
     group". The helper takes the id of the claim being edited and **excludes it**
     from the collision check so re-saving an unchanged claim passes.
-- On validation failure, re-render the form (create or overview tab) with the
-  error message and the user's entered values preserved. No redirect.
+- On **create** validation failure, re-render `claim_new.html` with the error
+  message and the user's entered values preserved (no redirect — nothing is
+  persisted yet, so the entered values must survive the round-trip).
+- On **update** validation failure, nothing is committed (the DB keeps the old
+  nickname) and the handler redirects back to `/claims/{claim_id}#overview` with
+  an `error` query param; the overview tab renders an error banner. This avoids
+  rebuilding the large `claim_detail` render context on the edit path.
 
 ## Templates
 
