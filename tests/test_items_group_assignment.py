@@ -99,7 +99,8 @@ def _base_form() -> dict:
         "quantity": "1",
         "age_years": "0",
         "condition": "average",
-        "rcv_unit_dollars": "0",
+        "retail_unit_dollars": "0",
+        "shipping_dollars": "0",
         "brand": "",
         "model_num": "",
         "notes": "",
@@ -191,3 +192,22 @@ def test_create_item_with_new_group(seeded_db, make_client):
     items = seeded_db.query(Item).filter(Item.claim_id == claim_id).all()
     assert len(items) == 1
     assert items[0].item_group_id == groups[0].id
+
+
+def test_create_item_with_retail_and_shipping_saves_totals(seeded_db, make_client):
+    """POST /api/claims/{id}/items with retail_unit_dollars + shipping_dollars persists
+    retail_unit_cents, shipping_cents, and an rcv_total_cents that includes shipping."""
+    client, claim_id = make_client(role="contributor")
+    form = _base_form()
+    form["retail_unit_dollars"] = "100.00"
+    form["quantity"] = "3"
+    form["shipping_dollars"] = "20.00"
+    r = client.post(f"/api/claims/{claim_id}/items", data=form)
+    assert r.status_code == 200
+    seeded_db.expire_all()
+    items = seeded_db.query(Item).filter(Item.claim_id == claim_id).all()
+    assert len(items) == 1
+    item = items[0]
+    assert item.retail_unit_cents == 10000
+    assert item.shipping_cents == 2000
+    assert item.rcv_total_cents == 32000

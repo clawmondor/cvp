@@ -49,7 +49,7 @@ def claim_with_items(db_session, tmp_path, monkeypatch):
         quantity=1,
         age_years=3.0,
         condition="average",
-        rcv_unit_cents=120_000,
+        retail_unit_cents=120_000,
         rcv_total_cents=120_000,
         acv_total_cents=84_000,
         confirmed=True,
@@ -68,7 +68,7 @@ def claim_with_items(db_session, tmp_path, monkeypatch):
         quantity=1,
         age_years=0.0,
         condition="average",
-        rcv_unit_cents=0,
+        retail_unit_cents=0,
         rcv_total_cents=0,
         acv_total_cents=0,
         confirmed=False,
@@ -84,7 +84,7 @@ def claim_with_items(db_session, tmp_path, monkeypatch):
         quantity=1,
         age_years=10.0,
         condition="below_average",
-        rcv_unit_cents=50_000,
+        retail_unit_cents=50_000,
         rcv_total_cents=50_000,
         acv_total_cents=10_000,
         confirmed=True,
@@ -146,6 +146,20 @@ def test_csv_notes_concat(claim_with_items, tmp_path):
     assert "Best Buy" in row["Notes"]
     assert "bestbuy.com" in row["Notes"]
     assert "exact" in row["Notes"]
+
+
+def test_shipping_annotated_in_notes(claim_with_items, db_session, tmp_path):
+    claim, confirmed = claim_with_items
+    item_a = confirmed[0]
+    item_a.shipping_cents = 2_500
+    db_session.commit()
+
+    path = generate_csv(claim.id)
+    headers, rows = _read_csv(path)
+    assert headers == CSV_HEADERS
+    row = rows[0]
+    assert "Shipping: $25.00" in row["Notes"]
+    assert "Best Buy" in row["Notes"]
 
 
 def test_dollars_helper():

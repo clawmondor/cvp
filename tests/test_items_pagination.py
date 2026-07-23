@@ -82,7 +82,7 @@ def _seed_items(db, count: int) -> list[Item]:
             quantity=1,
             age_years=0.0,
             condition="average",
-            rcv_unit_cents=100,
+            retail_unit_cents=100,
             rcv_total_cents=100,
             acv_total_cents=80,
             confirmed=True,
@@ -174,7 +174,7 @@ def test_create_item_emits_oob_delete_for_empty_state(client_contrib, db_session
             "quantity": "1",
             "age_years": "0",
             "condition": "average",
-            "rcv_unit_dollars": "0",
+            "retail_unit_dollars": "0",
         },
     )
     assert resp.status_code == 200

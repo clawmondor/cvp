@@ -52,7 +52,7 @@
   <td class="whitespace-nowrap px-3 py-2 text-neutral-700 text-right">{{ item.quantity }}</td>
   <td class="whitespace-nowrap px-3 py-2 text-neutral-700 text-right">{{ item.age_years | int }}y</td>
   <td class="whitespace-nowrap px-3 py-2 text-neutral-600 text-xs">{{ item.condition.replace("_", " ") }}</td>
-  <td class="whitespace-nowrap px-3 py-2 text-neutral-700 text-right font-mono text-xs">${{ "%.2f" % (item.rcv_unit_cents / 100) }}</td>
+  <td class="whitespace-nowrap px-3 py-2 text-neutral-700 text-right font-mono text-xs">${{ "%.2f" % (item.retail_unit_cents / 100) }}</td>
   <td class="whitespace-nowrap px-3 py-2 text-neutral-900 text-right font-mono text-xs font-medium">${{ "%.2f" % (item.rcv_total_cents / 100) }}</td>
   <td class="whitespace-nowrap px-3 py-2 text-right font-mono text-xs">
     {% if item.acv_override_cents is not none %}
