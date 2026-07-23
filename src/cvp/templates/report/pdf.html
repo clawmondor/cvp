@@ -243,10 +243,13 @@
   <p>Depreciation is computed using the <strong>straight-line method</strong>:</p>
   <pre>dep_rate        = 1 / useful_life_years
 accumulated_dep = min(dep_rate × age_years × condition_multiplier, 1 − floor_pct)
-acv_unit        = round(rcv_unit × (1 − accumulated_dep))
-acv_total       = acv_unit × quantity</pre>
+acv_unit        = round(retail_unit × (1 − accumulated_dep))
+rcv_total       = retail_unit × quantity + shipping
+acv_total       = acv_unit × quantity + shipping</pre>
   <p><strong>Condition multipliers:</strong>
      Excellent 0.75 · Above Average 0.90 · Average 1.00 · Below Average 1.15.</p>
+  <p>Replacement cost (RCV) includes shipping; shipping is not depreciated and passes through to ACV
+     in full.</p>
   {% if categories_used %}
   <p><strong>Categories appearing in this report:</strong></p>
   <table>
@@ -328,6 +331,7 @@ acv_total       = acv_unit × quantity</pre>
         <th class="center">Age</th>
         <th class="center">Cond</th>
         <th class="right">RCV/unit</th>
+        <th class="right">Shipping</th>
         <th class="right">RCV total</th>
         <th class="right">ACV total</th>
       </tr>
@@ -347,7 +351,8 @@ acv_total       = acv_unit × quantity</pre>
         <td class="center">{{ item.quantity }}</td>
         <td class="center">{{ item.age_years | int }}y</td>
         <td class="center">{{ item.condition.replace("_"," ").title() }}</td>
-        <td class="right mono">${{ "{:,.2f}".format(item.rcv_unit_cents / 100) }}</td>
+        <td class="right mono">${{ "{:,.2f}".format(item.retail_unit_cents / 100) }}</td>
+        <td class="right mono">${{ "{:,.2f}".format(item.shipping_cents / 100) }}</td>
         <td class="right mono">${{ "{:,.2f}".format(item.rcv_total_cents / 100) }}</td>
         <td class="right mono">${{ "{:,.2f}".format(item.acv_total_cents / 100) }}{% if item.acv_override_cents is not none %} ★{% endif %}</td>
       </tr>
@@ -355,7 +360,7 @@ acv_total       = acv_unit × quantity</pre>
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="8" class="right">Totals</td>
+        <td colspan="9" class="right">Totals</td>
         <td class="right mono">${{ "{:,.2f}".format(total_rcv_cents / 100) }}</td>
         <td class="right mono">${{ "{:,.2f}".format(total_acv_cents / 100) }}</td>
       </tr>
@@ -394,7 +399,7 @@ acv_total       = acv_unit × quantity</pre>
         </td>
         <td class="center">{{ item.match_type.replace("_"," ") if item.match_type else "—" }}</td>
         <td class="center">{{ item.source_captured_at.strftime("%Y-%m-%d") if item.source_captured_at else "—" }}</td>
-        <td class="right mono">${{ "{:,.2f}".format(item.rcv_unit_cents / 100) }}</td>
+        <td class="right mono">${{ "{:,.2f}".format(item.retail_unit_cents / 100) }}</td>
       </tr>
       {% endfor %}
     </tbody>

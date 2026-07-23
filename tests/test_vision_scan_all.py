@@ -128,10 +128,12 @@ def test_scan_all_returns_empty_message_when_nothing_to_scan(
     assert "No unscanned" in resp.text
 
 
-def test_scan_all_rejects_over_cap(client_contributor, db_session, monkeypatch):
+def test_scan_all_creates_single_job_for_many_files(client_contributor, db_session, monkeypatch):
+    # The per-job cap is not currently enforced (the _SCAN_ALL_CAP check in
+    # start_scan_all is commented out), so scan-all creates one job covering
+    # every unscanned image rather than rejecting large batches.
     monkeypatch.setattr("cvp.routers.vision.SessionLocal", lambda: db_session)
     monkeypatch.setattr("cvp.services.vision_worker.wake", lambda: None)
-    monkeypatch.setattr("cvp.routers.vision._SCAN_ALL_CAP", 2)
 
     for i in range(3):
         db_session.add(
@@ -152,4 +154,9 @@ def test_scan_all_rejects_over_cap(client_contributor, db_session, monkeypatch):
         data={"model_slug": "anthropic/claude-opus-4"},
     )
     assert resp.status_code == 200
-    assert "Too many" in resp.text
+    assert "Too many" not in resp.text  # cap enforcement is currently disabled
+
+    jobs = db_session.query(VisionJob).filter_by(matter_id=MATTER_ID).all()
+    assert len(jobs) == 1
+    images = db_session.query(VisionJobImage).filter_by(job_id=jobs[0].id).all()
+    assert len(images) == 4  # fixture's 1 unscanned image + 3 added here

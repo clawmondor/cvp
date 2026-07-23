@@ -82,7 +82,7 @@ def _seed_items(db, count: int) -> list[Item]:
             quantity=1,
             age_years=0.0,
             condition="average",
-            rcv_unit_cents=100,
+            retail_unit_cents=100,
             rcv_total_cents=100,
             acv_total_cents=80,
             confirmed=True,
@@ -174,9 +174,28 @@ def test_create_item_emits_oob_delete_for_empty_state(client_contrib, db_session
             "quantity": "1",
             "age_years": "0",
             "condition": "average",
-            "rcv_unit_dollars": "0",
+            "retail_unit_dollars": "0",
         },
     )
     assert resp.status_code == 200
     assert 'id="items-empty-row"' in resp.text
     assert 'hx-swap-oob="delete"' in resp.text
+
+
+def test_create_item_persists_retail_and_shipping_totals(client_contrib, db_session):
+    resp = client_contrib.post(
+        f"/api/matters/{MATTER_ID}/items",
+        data={
+            "category_id": "1",
+            "quantity": "3",
+            "age_years": "0",
+            "condition": "average",
+            "retail_unit_dollars": "100.00",
+            "shipping_dollars": "20.00",
+        },
+    )
+    assert resp.status_code == 200
+    item = db_session.query(Item).filter(Item.matter_id == MATTER_ID).one()
+    assert item.retail_unit_cents == 10000
+    assert item.shipping_cents == 2000
+    assert item.rcv_total_cents == 32000

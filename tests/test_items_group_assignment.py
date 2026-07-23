@@ -99,7 +99,7 @@ def _base_form() -> dict:
         "quantity": "1",
         "age_years": "0",
         "condition": "average",
-        "rcv_unit_dollars": "0",
+        "retail_unit_dollars": "0",
         "brand": "",
         "model_num": "",
         "notes": "",

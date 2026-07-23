@@ -47,7 +47,7 @@ def _add_item(db, *, line, confirmed, excluded, rcv_total, acv_total, rcv_unit):
             quantity=1,
             age_years=0.0,
             condition="average",
-            rcv_unit_cents=rcv_unit,
+            retail_unit_cents=rcv_unit,
             rcv_total_cents=rcv_total,
             acv_total_cents=acv_total,
             confirmed=confirmed,
