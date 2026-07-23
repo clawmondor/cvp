@@ -76,7 +76,7 @@ def compute_items_totals(matter_id: str, db) -> dict[str, int]:
 def _compute_and_set_totals(item: Item, cat: Category) -> None:
     item.rcv_total_cents = item.rcv_unit_cents * item.quantity
     item.acv_total_cents = compute_acv(
-        rcv_unit_cents=item.rcv_unit_cents,
+        retail_unit_cents=item.rcv_unit_cents,
         quantity=item.quantity,
         age_years=item.age_years,
         useful_life_years=cat.useful_life_years,
