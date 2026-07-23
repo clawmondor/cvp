@@ -41,6 +41,12 @@ def test_too_long_is_rejected(db):
     assert err == "Nickname must be 100 characters or fewer."
 
 
+def test_exactly_100_chars_accepted(db):
+    cleaned, err = validate_nickname(db, "x" * 100, "g1")
+    assert err is None
+    assert cleaned == "x" * 100
+
+
 def test_case_insensitive_duplicate_in_same_group_rejected(db):
     cleaned, err = validate_nickname(db, "smith file", "g1")
     assert err == "That nickname is already used in your group."
