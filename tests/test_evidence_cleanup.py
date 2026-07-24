@@ -30,7 +30,7 @@ def db(tmp_path):
 
 @pytest.fixture
 def claim(db):
-    m = Claim(policyholder_name="Test", loss_type="total_loss")
+    m = Claim(policyholder_name="Test", loss_type="total_loss", nickname="Test Claim")
     db.add(m)
     db.commit()
     return m

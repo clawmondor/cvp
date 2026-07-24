@@ -1,7 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Team — {{ claim.policyholder_name }} Access{% endblock %}
+{% block title %}Team — {{ claim.nickname }} Access{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold text-neutral-900 mb-6">{{ claim.policyholder_name }} — Access</h1>
+<h1 class="text-2xl font-bold text-neutral-900">{{ claim.nickname }} — Access</h1>
+<p class="text-sm text-neutral-500 mb-6">{{ claim.policyholder_name or "—" }}</p>
 
 <div class="card mb-6">
   <div class="px-6 py-4 border-b border-neutral-200">

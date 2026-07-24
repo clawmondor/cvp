@@ -105,7 +105,7 @@ def org_client_with_claim(db_session, org_client):
         system_role="external_user",
         group_id="eg",
     )
-    claim = Claim(id="claim1", owner_group_id="eg")
+    claim = Claim(id="claim1", owner_group_id="eg", nickname="Claim One")
     db_session.add_all([ig, internal_target, external_target, claim])
     db_session.commit()
     return org_client

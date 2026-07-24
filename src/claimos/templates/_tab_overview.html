@@ -38,6 +38,22 @@
 {# ── Edit form ────────────────────────────────────────────────── #}
 <form method="post" action="/claims/{{ claim.id }}/update" class="space-y-8">
 
+  {% if request.query_params.get('nickname_error') %}
+  <div class="mb-4 rounded-md bg-error-surface p-4">
+    <p class="text-sm text-error-strong">{{ request.query_params.get('nickname_error') }}</p>
+  </div>
+  {% endif %}
+
+  <fieldset class="space-y-4">
+    <legend class="text-sm font-semibold text-neutral-900 border-b border-neutral-200 pb-1 w-full">Claim nickname</legend>
+    <div>
+      <label for="nickname" class="block text-sm font-medium text-neutral-700">Nickname <span class="text-error-strong">*</span></label>
+      <input type="text" name="nickname" id="nickname" required maxlength="100" value="{{ claim.nickname }}"
+             class="input mt-1 w-full" />
+      <p class="mt-1 text-xs text-neutral-500">A short label unique to your group.</p>
+    </div>
+  </fieldset>
+
   <fieldset class="space-y-4">
     <legend class="text-sm font-semibold text-neutral-900 border-b border-neutral-200 pb-1 w-full">Firm and attorney</legend>
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

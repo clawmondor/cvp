@@ -42,6 +42,36 @@ router = APIRouter()
 LOSS_TYPES = ["total_loss", "partial_loss", "smoke", "water", "theft", "other"]
 LOSS_EVENTS = ["Palisades Fire", "Eaton Fire", "Other"]
 
+NICKNAME_MAX_LEN = 100
+
+
+def validate_nickname(
+    db,
+    raw: str,
+    owner_group_id: str | None,
+    exclude_claim_id: str | None = None,
+) -> tuple[str, str | None]:
+    """Clean and validate a claim nickname.
+
+    Returns (cleaned_nickname, error_message). error_message is None when valid.
+    Uniqueness is case-insensitive and scoped to owner_group_id; exclude_claim_id
+    lets an edit skip the claim's own row.
+    """
+    nickname = (raw or "").strip()
+    if not nickname:
+        return nickname, "Nickname is required."
+    if len(nickname) > NICKNAME_MAX_LEN:
+        return nickname, "Nickname must be 100 characters or fewer."
+    query = db.query(Claim).filter(
+        Claim.owner_group_id == owner_group_id,
+        func.lower(Claim.nickname) == nickname.lower(),
+    )
+    if exclude_claim_id is not None:
+        query = query.filter(Claim.id != exclude_claim_id)
+    if db.query(query.exists()).scalar():
+        return nickname, "That nickname is already used in your group."
+    return nickname, None
+
 
 @router.get("/claims/new", response_class=HTMLResponse)
 def new_claim_form(
@@ -54,15 +84,18 @@ def new_claim_form(
             "loss_types": LOSS_TYPES,
             "loss_events": LOSS_EVENTS,
             "user": user,
+            "error": None,
+            "form": {},
         },
     )
 
 
-@router.post("/claims")
+@router.post("/claims", response_model=None)
 def create_claim(
     request: Request,
     background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_active_user),
+    nickname: str = Form(default=""),
     firm_name: str = Form(default=""),
     attorney_name: str = Form(default=""),
     attorney_email: str = Form(default=""),
@@ -77,11 +110,42 @@ def create_claim(
     coverage_c_limit_dollars: str = Form(default="0"),
     firm_file_number: str = Form(default=""),
     target_delivery_date: str = Form(default=""),
-) -> RedirectResponse:
+) -> RedirectResponse | HTMLResponse:
     db = SessionLocal()
     try:
+        nickname_clean, nickname_error = validate_nickname(db, nickname, user.group_id)
+        if nickname_error:
+            return templates.TemplateResponse(
+                request=request,
+                name="claim_new.html",
+                context={
+                    "loss_types": LOSS_TYPES,
+                    "loss_events": LOSS_EVENTS,
+                    "user": user,
+                    "error": nickname_error,
+                    "form": {
+                        "nickname": nickname,
+                        "firm_name": firm_name,
+                        "attorney_name": attorney_name,
+                        "attorney_email": attorney_email,
+                        "policyholder_name": policyholder_name,
+                        "loss_location": loss_location,
+                        "loss_type": loss_type,
+                        "loss_event": loss_event,
+                        "loss_date": loss_date,
+                        "carrier": carrier,
+                        "policy_number": policy_number,
+                        "claim_number": claim_number,
+                        "coverage_c_limit_dollars": coverage_c_limit_dollars,
+                        "firm_file_number": firm_file_number,
+                        "target_delivery_date": target_delivery_date,
+                    },
+                },
+                status_code=200,
+            )
         claim = Claim(
             id=str(uuid.uuid4()),
+            nickname=nickname_clean,
             firm_name=firm_name,
             attorney_name=attorney_name,
             attorney_email=attorney_email,
@@ -289,6 +353,7 @@ def update_claim(
     claim_id: str,
     background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_claim_role("manager", "items")),
+    nickname: str = Form(default=""),
     firm_name: str = Form(default=""),
     attorney_name: str = Form(default=""),
     attorney_email: str = Form(default=""),
@@ -310,6 +375,17 @@ def update_claim(
         claim = db.get(Claim, claim_id)
         if claim is None:
             return HTMLResponse("Claim not found", status_code=404)
+        nickname_clean, nickname_error = validate_nickname(
+            db, nickname, claim.owner_group_id, exclude_claim_id=claim.id
+        )
+        if nickname_error:
+            from urllib.parse import quote
+
+            return RedirectResponse(
+                url=f"/claims/{claim_id}?nickname_error={quote(nickname_error)}#overview",
+                status_code=303,
+            )
+        claim.nickname = nickname_clean
         claim.firm_name = firm_name
         claim.attorney_name = attorney_name
         claim.attorney_email = attorney_email

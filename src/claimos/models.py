@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -33,8 +34,17 @@ class Claim(Base):
     """A claim case. One claim = one attorney's claim, one report."""
 
     __tablename__ = "claims"
+    __table_args__ = (
+        Index(
+            "uq_claims_group_nickname_ci",
+            "owner_group_id",
+            text("lower(nickname)"),
+            unique=True,
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
+    nickname: Mapped[str] = mapped_column(String, nullable=False)
     firm_name: Mapped[str] = mapped_column(String, default="")
     attorney_name: Mapped[str] = mapped_column(String, default="")
     attorney_email: Mapped[str] = mapped_column(String, default="")

@@ -85,7 +85,7 @@ def claim_with_job(isolated_db, tmp_path):
     img_path = tmp_path / "test.jpg"
     Image.new("RGB", (200, 200), color="white").save(img_path)
 
-    claim = Claim(policyholder_name="Test Owner", loss_type="total_loss")
+    claim = Claim(policyholder_name="Test Owner", loss_type="total_loss", nickname="Test Claim")
     isolated_db.add(claim)
     isolated_db.flush()
 
@@ -301,7 +301,7 @@ def test_region_scan_uses_drawn_region_as_crop(isolated_db, monkeypatch, tmp_pat
     img_path = tmp_path / "big.jpg"
     Image.new("RGB", (400, 400), color="white").save(img_path)
 
-    claim = Claim(policyholder_name="Owner", loss_type="total_loss")
+    claim = Claim(policyholder_name="Owner", loss_type="total_loss", nickname="Test Claim")
     isolated_db.add(claim)
     isolated_db.flush()
 
@@ -380,7 +380,7 @@ def test_region_scan_crop_equals_region_regardless_of_model_box(isolated_db, mon
     img_path = tmp_path / "big.jpg"
     Image.new("RGB", (800, 800), color="white").save(img_path)
 
-    claim = Claim(policyholder_name="Owner", loss_type="total_loss")
+    claim = Claim(policyholder_name="Owner", loss_type="total_loss", nickname="Test Claim")
     isolated_db.add(claim)
     isolated_db.flush()
     claim_id = claim.id

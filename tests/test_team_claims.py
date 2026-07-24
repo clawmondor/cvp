@@ -80,15 +80,15 @@ def client(db_session):
 def test_claims_list_shows_own_firm_claims_only(client, db_session):
     db_session.add_all(
         [
-            Claim(id="cA", owner_group_id="eg", policyholder_name="Rossi"),
-            Claim(id="cX", owner_group_id="og", policyholder_name="Other"),
+            Claim(id="cA", owner_group_id="eg", nickname="Claim A", policyholder_name="Rossi"),
+            Claim(id="cX", owner_group_id="og", nickname="Claim X", policyholder_name="Other"),
         ]
     )
     db_session.commit()
     resp = client.get("/team")
     assert resp.status_code == 200
-    assert "Rossi" in resp.text
-    assert "Other" not in resp.text
+    assert "Claim A" in resp.text
+    assert "Claim X" not in resp.text
 
 
 def test_claim_access_view_shows_resolved_roles(client, db_session):
@@ -96,7 +96,9 @@ def test_claim_access_view_shows_resolved_roles(client, db_session):
     from claimos.models_auth import User
     from claimos.services.grants import create_grant
 
-    db_session.add(Claim(id="cA", owner_group_id="eg", policyholder_name="Rossi"))
+    db_session.add(
+        Claim(id="cA", owner_group_id="eg", nickname="Claim A", policyholder_name="Rossi")
+    )
     db_session.add(
         User(
             id="ph",
@@ -125,7 +127,9 @@ def test_claim_access_view_shows_resolved_roles(client, db_session):
 def test_claim_access_cross_group_is_404(client, db_session):
     from claimos.models import Claim
 
-    db_session.add(Claim(id="cX", owner_group_id="og", policyholder_name="Other"))
+    db_session.add(
+        Claim(id="cX", owner_group_id="og", nickname="Claim X", policyholder_name="Other")
+    )
     db_session.commit()
     assert client.get("/team/claims/cX/access").status_code == 404
 
@@ -134,7 +138,9 @@ def test_grant_claim_access_creates_claim_scoped_grant(client, db_session):
     from claimos.models import Claim
     from claimos.models_auth import User
 
-    db_session.add(Claim(id="cA", owner_group_id="eg", policyholder_name="Rossi"))
+    db_session.add(
+        Claim(id="cA", owner_group_id="eg", nickname="Claim A", policyholder_name="Rossi")
+    )
     db_session.add(
         User(
             id="val",
@@ -160,7 +166,9 @@ def test_grant_claim_access_creates_claim_scoped_grant(client, db_session):
 def test_grant_claim_access_rejects_cross_group_member(client, db_session):
     from claimos.models import Claim
 
-    db_session.add(Claim(id="cA", owner_group_id="eg", policyholder_name="Rossi"))
+    db_session.add(
+        Claim(id="cA", owner_group_id="eg", nickname="Claim A", policyholder_name="Rossi")
+    )
     db_session.commit()
     r = client.post(
         "/team/claims/cA/grant",

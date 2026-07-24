@@ -12,27 +12,44 @@
 
   <form method="post" action="/claims" class="space-y-8">
 
+    {% if error %}
+    <div class="mb-4 rounded-md bg-error-surface p-4">
+      <p class="text-sm text-error-strong">{{ error }}</p>
+    </div>
+    {% endif %}
+
+    <fieldset class="space-y-4">
+      <legend class="text-sm font-semibold text-neutral-900 border-b border-neutral-200 pb-1 w-full">Claim nickname</legend>
+      <div>
+        <label for="nickname" class="block text-sm font-medium text-neutral-700">Nickname <span class="text-error-strong">*</span></label>
+        <input type="text" name="nickname" id="nickname" required maxlength="100"
+               value="{{ form.nickname if form else '' }}"
+               class="input mt-1 w-full" />
+        <p class="mt-1 text-xs text-neutral-500">A short label unique to your group. Shown wherever claims are listed.</p>
+      </div>
+    </fieldset>
+
     <fieldset class="space-y-4">
       <legend class="text-sm font-semibold text-neutral-900 border-b border-neutral-200 pb-1 w-full">Firm and attorney</legend>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label for="firm_name" class="block text-sm font-medium text-neutral-700">Firm name</label>
-          <input type="text" name="firm_name" id="firm_name"
+          <input type="text" name="firm_name" id="firm_name" value="{{ form.firm_name if form else '' }}"
                  class="input mt-1 w-full" />
         </div>
         <div>
           <label for="firm_file_number" class="block text-sm font-medium text-neutral-700">Firm file number</label>
-          <input type="text" name="firm_file_number" id="firm_file_number"
+          <input type="text" name="firm_file_number" id="firm_file_number" value="{{ form.firm_file_number if form else '' }}"
                  class="input mt-1 w-full" />
         </div>
         <div>
           <label for="attorney_name" class="block text-sm font-medium text-neutral-700">Attorney name</label>
-          <input type="text" name="attorney_name" id="attorney_name"
+          <input type="text" name="attorney_name" id="attorney_name" value="{{ form.attorney_name if form else '' }}"
                  class="input mt-1 w-full" />
         </div>
         <div>
           <label for="attorney_email" class="block text-sm font-medium text-neutral-700">Attorney email</label>
-          <input type="email" name="attorney_email" id="attorney_email"
+          <input type="email" name="attorney_email" id="attorney_email" value="{{ form.attorney_email if form else '' }}"
                  class="input mt-1 w-full" />
         </div>
       </div>
@@ -43,7 +60,7 @@
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div class="sm:col-span-2">
           <label for="policyholder_name" class="block text-sm font-medium text-neutral-700">Policyholder name</label>
-          <input type="text" name="policyholder_name" id="policyholder_name"
+          <input type="text" name="policyholder_name" id="policyholder_name" value="{{ form.policyholder_name if form else '' }}"
                  class="input mt-1 w-full" />
         </div>
         <div class="sm:col-span-2">

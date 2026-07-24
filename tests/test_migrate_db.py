@@ -44,7 +44,7 @@ def _make_claimos_db(url: str) -> None:
         )
         c.exec_driver_sql(
             "CREATE TABLE claims (id TEXT PRIMARY KEY, policyholder_name TEXT, "
-            "owner_group_id TEXT, status TEXT)"
+            "owner_group_id TEXT, status TEXT, nickname TEXT)"
         )
         c.exec_driver_sql(
             "CREATE TABLE rooms (id TEXT PRIMARY KEY, claim_id TEXT, name TEXT, sort_order INTEGER)"
@@ -176,3 +176,17 @@ def test_items_plan_renames_rcv_to_retail():
     renames = items_entry[2]
     assert renames.get("rcv_unit_cents") == "retail_unit_cents"
     assert renames.get("matter_id") == "claim_id"
+
+
+def test_migrate_backfills_nickname(tmp_path):
+    src = f"sqlite:///{tmp_path / 'legacy.db'}"
+    tgt = f"sqlite:///{tmp_path / 'claimos.db'}"
+    _make_legacy_db(src)
+    _make_claimos_db(tgt)
+
+    migrate(src, tgt, only_tables=["groups", "claims", "rooms"])
+
+    eng = sa.create_engine(tgt)
+    with eng.connect() as c:
+        nickname = c.exec_driver_sql("SELECT nickname FROM claims WHERE id = 'm1'").scalar_one()
+    assert nickname == "Claim m1"  # legacy id 'm1' -> 'Claim ' + 'm1'[:8]

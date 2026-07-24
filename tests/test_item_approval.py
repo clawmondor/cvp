@@ -40,7 +40,7 @@ def _db():
                 system_role="external_admin",
                 group_id="eg",
             ),
-            Claim(id="cA", owner_group_id="eg"),
+            Claim(id="cA", owner_group_id="eg", nickname="Claim A"),
         ]
     )
     s.commit()
@@ -105,7 +105,11 @@ def approver_client():
     db = RealSessionLocal()
     item_id = f"item-{uuid.uuid4().hex[:8]}"
     try:
-        db.merge(Claim(id=CLAIM_ID, policyholder_name="P", loss_type="total_loss"))
+        db.merge(
+            Claim(
+                id=CLAIM_ID, policyholder_name="P", loss_type="total_loss", nickname="Audit Claim"
+            )
+        )
         db.merge(
             Category(id=999, name="Audit Test Category", useful_life_years=5, acv_floor_pct=0.2)
         )

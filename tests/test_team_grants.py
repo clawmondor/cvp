@@ -45,8 +45,8 @@ def db_session():
                 system_role="external_user",
                 group_id="og",
             ),
-            Claim(id="cA", owner_group_id="eg", claim_number="cA"),
-            Claim(id="cB", owner_group_id="eg", claim_number="cB"),
+            Claim(id="cA", owner_group_id="eg", claim_number="cA", nickname="Claim A"),
+            Claim(id="cB", owner_group_id="eg", claim_number="cB", nickname="Claim B"),
         ]
     )
     s.commit()

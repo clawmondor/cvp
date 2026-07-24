@@ -19,7 +19,7 @@ def db():
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     s = Session()
-    s.add(Claim(id="m", policyholder_name="P", loss_type="total_loss"))
+    s.add(Claim(id="m", policyholder_name="P", loss_type="total_loss", nickname="Test Claim"))
     s.commit()
     # 7 evidence rows; we'll paginate by id (stable, ascending insertion order)
     for i in range(7):

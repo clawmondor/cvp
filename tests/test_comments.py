@@ -58,7 +58,7 @@ def db():
                 system_role="external_admin",
                 group_id="eg",
             ),
-            Claim(id="cA", owner_group_id="eg"),
+            Claim(id="cA", owner_group_id="eg", nickname="Claim A"),
             Category(id=999, name="Comment Test Category", useful_life_years=5, acv_floor_pct=0.2),
         ]
     )

@@ -30,7 +30,7 @@ def db_session():
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     s = Session()
-    s.add(Claim(id=CLAIM_ID, policyholder_name="P", loss_type="total_loss"))
+    s.add(Claim(id=CLAIM_ID, policyholder_name="P", loss_type="total_loss", nickname="Test Claim"))
     s.add(Category(id=1, name="C", useful_life_years=5, acv_floor_pct=0.2))
     s.commit()
     yield s

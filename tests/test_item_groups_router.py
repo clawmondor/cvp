@@ -42,7 +42,7 @@ def seeded_db(db_session):
     )
     db_session.add(admin)
     db_session.add(Category(id=1, name="Misc", useful_life_years=10, acv_floor_pct=0.2))
-    claim = Claim(id="m1", owner_group_id="ig", created_by_id="ia")
+    claim = Claim(id="m1", owner_group_id="ig", created_by_id="ia", nickname="Claim M1")
     db_session.add(claim)
     db_session.commit()
     return db_session
@@ -157,7 +157,7 @@ def test_create_requires_role(seeded_db, make_client):
 
 def test_rename_wrong_claim_returns_404(seeded_db, make_client):
     """PATCH and DELETE via the wrong claim_id return 404."""
-    other = Claim(id="m2", owner_group_id="ig", created_by_id="ia")
+    other = Claim(id="m2", owner_group_id="ig", created_by_id="ia", nickname="Claim M2")
     seeded_db.add(other)
     seeded_db.add(ItemGroup(claim_id="m2", name="other-12", name_normalized="other-12"))
     seeded_db.commit()
@@ -236,7 +236,7 @@ def test_pin_evidence_new_group_name_creates(seeded_db, make_client):
 
 def test_pin_evidence_wrong_claim_returns_404(seeded_db, make_client):
     """Pinning evidence from a different claim must 404."""
-    other = Claim(id="m2", owner_group_id="ig", created_by_id="ia")
+    other = Claim(id="m2", owner_group_id="ig", created_by_id="ia", nickname="Claim M2")
     seeded_db.add(other)
     ef = EvidenceFile(claim_id="m2", filename="other.jpg", stored_path="other.jpg")
     seeded_db.add(ef)

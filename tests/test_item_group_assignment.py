@@ -10,7 +10,7 @@ from claimos.models import Category, Claim, EvidenceFile, Item, ItemGroup
 def claim_id() -> str:
     db = SessionLocal()
     try:
-        m = Claim(firm_name="Test")
+        m = Claim(firm_name="Test", nickname="Test Claim")
         db.add(m)
         # Make sure at least one category exists for Item creation.
         if db.query(Category).count() == 0:

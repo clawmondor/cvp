@@ -59,7 +59,7 @@ def seeded_share_db(db_session):
         group_id="ig",
     )
     db_session.add_all([admin, ext_user, int_user])
-    claim = Claim(id="m1", owner_group_id="ig", created_by_id="ia")
+    claim = Claim(id="m1", owner_group_id="ig", created_by_id="ia", nickname="Claim M1")
     db_session.add(claim)
     db_session.commit()
     return db_session

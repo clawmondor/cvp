@@ -40,7 +40,7 @@ def db():
                 system_role="external_admin",
                 group_id="eg",
             ),
-            Claim(id="cA", owner_group_id="eg"),
+            Claim(id="cA", owner_group_id="eg", nickname="Claim A"),
         ]
     )
     s.commit()

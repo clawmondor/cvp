@@ -31,7 +31,7 @@ def claim_with_items(db_session, tmp_path, monkeypatch):
     )
     db_session.add(cat)
 
-    claim = Claim(id=str(uuid.uuid4()), policyholder_name="Test Person")
+    claim = Claim(id=str(uuid.uuid4()), policyholder_name="Test Person", nickname="Test Claim")
     db_session.add(claim)
 
     room = Room(id=str(uuid.uuid4()), claim_id=claim.id, name="Living Room", sort_order=0)

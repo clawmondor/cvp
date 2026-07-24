@@ -41,9 +41,9 @@ def db():
                 system_role="external_admin",
                 group_id="eg",
             ),
-            Claim(id="cA", owner_group_id="eg"),
-            Claim(id="cB", owner_group_id="eg"),
-            Claim(id="cF", owner_group_id="og"),
+            Claim(id="cA", owner_group_id="eg", nickname="Claim A"),
+            Claim(id="cB", owner_group_id="eg", nickname="Claim B"),
+            Claim(id="cF", owner_group_id="og", nickname="Claim F"),
         ]
     )
     s.commit()

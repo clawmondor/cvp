@@ -34,7 +34,9 @@ def db_session():
     db.add(
         User(id=MANAGER_ID, email="mgr@test.com", display_name="Mgr", system_role="internal_user")
     )
-    db.add(Claim(id=CLAIM_ID, policyholder_name="Owner", loss_type="total_loss"))
+    db.add(
+        Claim(id=CLAIM_ID, policyholder_name="Owner", loss_type="total_loss", nickname="Test Claim")
+    )
     db.commit()
     yield db
     db.close()

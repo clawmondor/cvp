@@ -68,7 +68,9 @@ def db_session():
             system_role="internal_user",
         )
     )
-    db.add(Claim(id=CLAIM_ID, policyholder_name="Owner", loss_type="total_loss"))
+    db.add(
+        Claim(id=CLAIM_ID, policyholder_name="Owner", loss_type="total_loss", nickname="Test Claim")
+    )
     tmp = tempfile.mktemp(suffix=".jpg")
     PILImage.new("RGB", (200, 200), "white").save(tmp)
     db.add(
@@ -225,7 +227,9 @@ def test_poll_scan_status_returns_json(client_contributor, db_session, monkeypat
 def test_poll_scan_status_rejects_foreign_claim(client_contributor, db_session, monkeypatch):
     monkeypatch.setattr("claimos.routers.vision.SessionLocal", lambda: db_session)
     # Job belongs to a different claim than the one in the request path.
-    other = Claim(id="claim-other", policyholder_name="Other", loss_type="total_loss")
+    other = Claim(
+        id="claim-other", policyholder_name="Other", loss_type="total_loss", nickname="Other Claim"
+    )
     db_session.add(other)
     db_session.flush()
     job = VisionJob(claim_id="claim-other", model_slug="anthropic/claude-opus-4", status="running")

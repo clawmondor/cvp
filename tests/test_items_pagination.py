@@ -37,7 +37,7 @@ def db_session():
     from claimos.models_auth import User
 
     s.add(User(id=VIEWER_ID, email="v@test.com", display_name="V", system_role="internal_user"))
-    s.add(Claim(id=CLAIM_ID, policyholder_name="P", loss_type="total_loss"))
+    s.add(Claim(id=CLAIM_ID, policyholder_name="P", loss_type="total_loss", nickname="Test Claim"))
     s.add(Category(id=1, name="C", useful_life_years=5, acv_floor_pct=0.2))
     s.commit()
     yield s

@@ -91,6 +91,11 @@ def _copy_table(
     out = []
     for row in rows:
         d = {renames.get(k, k): v for k, v in dict(row).items()}
+        # Legacy `matters` has no nickname; every ClaimOS claim requires a
+        # unique, non-null one. Derive a placeholder from the id (specialists
+        # rename later). Mirrors the Alembic backfill.
+        if target_table == "claims" and not d.get("nickname"):
+            d["nickname"] = f"Claim {str(d['id'])[:8]}"
         out.append(d)
     cols = list(out[0].keys())
 

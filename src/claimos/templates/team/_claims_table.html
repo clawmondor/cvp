@@ -2,7 +2,7 @@
   <table class="min-w-full divide-y divide-neutral-200">
     <thead class="bg-neutral-50">
       <tr>
-        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Policyholder</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Nickname</th>
         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Claim</th>
         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Status</th>
       </tr>
@@ -11,7 +11,8 @@
       {% for c in claims %}
       <tr>
         <td class="px-6 py-4 text-sm">
-          <a href="/team/claims/{{ c.id }}/access" class="text-success hover:underline">{{ c.policyholder_name }}</a>
+          <a href="/team/claims/{{ c.id }}/access" class="text-success hover:underline">{{ c.nickname }}</a>
+          <p class="text-xs text-neutral-500">{{ c.policyholder_name or "—" }}</p>
         </td>
         <td class="px-6 py-4 text-sm text-neutral-900">{{ c.claim_number or c.id }}</td>
         <td class="px-6 py-4 text-sm text-neutral-500">{{ c.status }}</td>
