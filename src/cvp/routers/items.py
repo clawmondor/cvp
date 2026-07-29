@@ -1,14 +1,15 @@
 """Item CRUD endpoints with ACV auto-computation."""
 
 import json
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func
+from sqlalchemy import case, func, or_
 from sqlalchemy.orm import selectinload
 
 from cvp.config import settings
@@ -31,6 +32,180 @@ router = APIRouter()
 
 CONDITIONS = ["excellent", "above_average", "average", "below_average"]
 ITEMS_PAGE_SIZE = 50
+
+SORTABLE_KEYS = [
+    "line",
+    "description",
+    "room",
+    "category",
+    "qty",
+    "age",
+    "condition",
+    "rcv_unit",
+    "rcv_total",
+    "acv_total",
+    "status",
+]
+
+_SIMPLE_SORT_COLUMNS = {
+    "line": Item.line_number,
+    "description": Item.description,
+    "qty": Item.quantity,
+    "age": Item.age_years,
+    "rcv_unit": Item.retail_unit_cents,
+    "rcv_total": Item.rcv_total_cents,
+    "acv_total": Item.acv_total_cents,
+}
+
+_CONDITION_RANK = case(
+    {"excellent": 0, "above_average": 1, "average": 2, "below_average": 3},
+    value=Item.condition,
+    else_=99,
+)
+
+_STATUS_VALUES = {"all", "unconfirmed", "confirmed", "excluded", "missing_price"}
+
+
+@dataclass
+class ItemFilters:
+    room_id: str = ""
+    category_id: str = ""
+    status: str = "all"
+    q: str = ""
+    sort: str = "line"
+    dir: str = "asc"
+
+
+def _parse_item_filters(request: Request) -> ItemFilters:
+    p = request.query_params
+    sort = p.get("sort", "line")
+    if sort not in SORTABLE_KEYS:
+        sort = "line"
+    direction = p.get("dir", "asc")
+    if direction not in ("asc", "desc"):
+        direction = "asc"
+    status = p.get("status", "all")
+    if status not in _STATUS_VALUES:
+        status = "all"
+    return ItemFilters(
+        room_id=p.get("room_id", "").strip(),
+        category_id=p.get("category_id", "").strip(),
+        status=status,
+        q=p.get("q", "").strip(),
+        sort=sort,
+        dir=direction,
+    )
+
+
+def _apply_item_filters(query, f: ItemFilters):
+    if f.room_id:
+        query = query.filter(Item.room_id == f.room_id)
+    if f.category_id:
+        try:
+            query = query.filter(Item.category_id == int(f.category_id))
+        except ValueError:
+            pass
+    if f.status == "unconfirmed":
+        query = query.filter(Item.confirmed.is_(False))
+    elif f.status == "confirmed":
+        query = query.filter(Item.confirmed.is_(True))
+    elif f.status == "excluded":
+        query = query.filter(Item.excluded.is_(True))
+    elif f.status == "missing_price":
+        query = query.filter(
+            Item.confirmed.is_(True),
+            Item.excluded.is_(False),
+            Item.retail_unit_cents == 0,
+        )
+    if f.q:
+        like = f"%{f.q}%"
+        query = query.filter(
+            or_(
+                Item.description.ilike(like),
+                Item.brand.ilike(like),
+                Item.model.ilike(like),
+            )
+        )
+    return query
+
+
+def _apply_item_sort(query, f: ItemFilters):
+    descending = f.dir == "desc"
+
+    def d(expr):
+        return expr.desc() if descending else expr.asc()
+
+    if f.sort == "room":
+        query = query.outerjoin(Room, Item.room_id == Room.id).order_by(d(Room.name), Item.id.asc())
+    elif f.sort == "category":
+        query = query.join(Category, Item.category_id == Category.id).order_by(
+            d(Category.name), Item.id.asc()
+        )
+    elif f.sort == "condition":
+        query = query.order_by(d(_CONDITION_RANK), Item.id.asc())
+    elif f.sort == "status":
+        if descending:
+            query = query.order_by(Item.excluded.desc(), Item.confirmed.desc(), Item.id.asc())
+        else:
+            query = query.order_by(Item.excluded.asc(), Item.confirmed.asc(), Item.id.asc())
+    else:
+        col = _SIMPLE_SORT_COLUMNS.get(f.sort, Item.line_number)
+        query = query.order_by(d(col), Item.id.asc())
+    return query
+
+
+def _build_items_query(db, matter_id: str, f: ItemFilters):
+    query = db.query(Item).options(selectinload(Item.crops)).filter(Item.matter_id == matter_id)
+    query = _apply_item_filters(query, f)
+    query = _apply_item_sort(query, f)
+    return query
+
+
+def _count_items(db, matter_id: str, f: ItemFilters) -> int:
+    query = db.query(Item).filter(Item.matter_id == matter_id)
+    query = _apply_item_filters(query, f)
+    return query.count()
+
+
+def items_query_string(
+    f: ItemFilters, *, sort: str | None = None, direction: str | None = None
+) -> str:
+    """Build a querystring for filters + sort, omitting defaults.
+
+    ``sort``/``direction`` override the filter's own values (used to build
+    per-column header links). The default sort (``line`` asc) is omitted so a
+    reset view has an empty querystring.
+    """
+    params: dict[str, str] = {}
+    if f.room_id:
+        params["room_id"] = f.room_id
+    if f.category_id:
+        params["category_id"] = f.category_id
+    if f.status and f.status != "all":
+        params["status"] = f.status
+    if f.q:
+        params["q"] = f.q
+    s = f.sort if sort is None else sort
+    dirn = f.dir if direction is None else direction
+    if s != "line" or dirn != "asc":
+        params["sort"] = s
+        params["dir"] = dirn
+    return urlencode(params)
+
+
+def _sort_state(f: ItemFilters, col: str) -> tuple[str, str]:
+    """Return ``(querystring, indicator)`` for a sortable header link.
+
+    Clicking the active column flips direction; any other column starts asc.
+    Indicator is ▲ (asc active) / ▼ (desc active) / "" (inactive).
+    """
+    if f.sort == col:
+        next_dir = "desc" if f.dir == "asc" else "asc"
+        indicator = "▲" if f.dir == "asc" else "▼"
+    else:
+        next_dir = "asc"
+        indicator = ""
+    return items_query_string(f, sort=col, direction=next_dir), indicator
 
 
 def _get_context(matter_id: str, db):
