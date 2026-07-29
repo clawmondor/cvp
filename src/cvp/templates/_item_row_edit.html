@@ -113,6 +113,14 @@
             <span class="text-xs font-medium text-gray-600">Confirmed</span>
           </label>
         </div>
+        <div class="col-span-1 flex flex-col justify-end pb-0.5">
+          <label class="flex items-center gap-1.5 cursor-pointer select-none">
+            <input type="checkbox" name="needs_review" value="true"
+                   {% if item.needs_review %}checked{% endif %}
+                   class="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500">
+            <span class="text-xs font-medium text-gray-600">Needs review</span>
+          </label>
+        </div>
         <div class="col-span-2 flex">
           <button type="submit"
                   class="w-full rounded bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">

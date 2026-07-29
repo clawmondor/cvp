@@ -565,6 +565,7 @@ def update_item(
     acv_override_dollars: str = Form(""),
     acv_override_reason: str = Form(""),
     confirmed: bool = Form(False),
+    needs_review: bool = Form(False),
     item_group_id: str = Form(""),
     new_item_group_name: str = Form(""),
 ) -> HTMLResponse:
@@ -578,6 +579,7 @@ def update_item(
             raise HTTPException(status_code=400, detail="Invalid category")
 
         item.confirmed = confirmed
+        item.needs_review = needs_review
         item.description = description.strip()
         item.category_id = category_id
         item.room_id = room_id or None
