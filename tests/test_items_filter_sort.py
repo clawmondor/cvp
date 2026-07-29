@@ -181,3 +181,10 @@ def test_sort_state_toggles_active_column():
     qs2, indicator2 = _sort_state(ItemFilters(sort="qty", dir="asc"), "age")
     assert "sort=age" in qs2 and "dir=asc" in qs2
     assert indicator2 == ""
+
+
+def test_filter_status_needs_review(db):
+    _add(db, line_number=1, description="flagged", needs_review=True)
+    _add(db, line_number=2, description="clean", needs_review=False)
+    f = ItemFilters(status="needs_review")
+    assert _descs(_build_items_query(db, MATTER_ID, f).all()) == ["flagged"]

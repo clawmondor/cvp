@@ -37,7 +37,7 @@ def db_session():
     s.close()
 
 
-def _add_item(db, *, line, confirmed, excluded, rcv_total, acv_total, rcv_unit):
+def _add_item(db, *, line, confirmed, excluded, rcv_total, acv_total, rcv_unit, needs_review=False):
     db.add(
         Item(
             matter_id=MATTER_ID,
@@ -52,6 +52,7 @@ def _add_item(db, *, line, confirmed, excluded, rcv_total, acv_total, rcv_unit):
             acv_total_cents=acv_total,
             confirmed=confirmed,
             excluded=excluded,
+            needs_review=needs_review,
         )
     )
 
@@ -177,3 +178,46 @@ def test_items_summary_empty_matter_renders_no_totals_row(client):
     assert resp.status_code == 200
     assert 'id="items-summary"' in resp.text
     assert "RCV total" not in resp.text
+
+
+def test_needs_review_count(db_session):
+    _add_item(
+        db_session,
+        line=1,
+        confirmed=True,
+        excluded=False,
+        rcv_total=0,
+        acv_total=0,
+        rcv_unit=0,
+        needs_review=True,
+    )
+    _add_item(
+        db_session,
+        line=2,
+        confirmed=True,
+        excluded=False,
+        rcv_total=0,
+        acv_total=0,
+        rcv_unit=0,
+        needs_review=False,
+    )
+    db_session.commit()
+    totals = compute_items_totals(MATTER_ID, db_session)
+    assert totals["needs_review_count"] == 1
+
+
+def test_items_summary_renders_needs_review_count(client, db_session):
+    _add_item(
+        db_session,
+        line=1,
+        confirmed=True,
+        excluded=False,
+        rcv_total=10000,
+        acv_total=8000,
+        rcv_unit=10000,
+        needs_review=True,
+    )
+    db_session.commit()
+    resp = client.get(f"/api/matters/{MATTER_ID}/items-summary")
+    assert resp.status_code == 200
+    assert "Needs review" in resp.text

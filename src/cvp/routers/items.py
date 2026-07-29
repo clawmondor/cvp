@@ -62,7 +62,7 @@ _CONDITION_RANK = case(
     else_=99,
 )
 
-_STATUS_VALUES = {"all", "unconfirmed", "confirmed", "excluded", "missing_price"}
+_STATUS_VALUES = {"all", "unconfirmed", "confirmed", "excluded", "missing_price", "needs_review"}
 
 
 @dataclass
@@ -120,6 +120,8 @@ def _apply_item_filters(query: Query, f: ItemFilters) -> Query:
             Item.excluded.is_(False),
             Item.retail_unit_cents == 0,
         )
+    elif f.status == "needs_review":
+        query = query.filter(Item.needs_review.is_(True))
     if f.q:
         like = f"%{f.q}%"
         query = query.filter(
@@ -233,6 +235,7 @@ def compute_items_totals(matter_id: str, db) -> dict[str, int]:
             Item.rcv_total_cents,
             Item.acv_total_cents,
             Item.retail_unit_cents,
+            Item.needs_review,
         )
         .filter(Item.matter_id == matter_id)
         .all()
@@ -245,6 +248,7 @@ def compute_items_totals(matter_id: str, db) -> dict[str, int]:
         "items_acv_total_cents": sum(r.acv_total_cents for r in confirmed_rows),
         "unconfirmed_count": sum(1 for r in rows if not r.confirmed),
         "missing_price_count": sum(1 for r in confirmed_rows if r.retail_unit_cents == 0),
+        "needs_review_count": sum(1 for r in rows if r.needs_review),
     }
 
 
@@ -561,6 +565,7 @@ def update_item(
     acv_override_dollars: str = Form(""),
     acv_override_reason: str = Form(""),
     confirmed: bool = Form(False),
+    needs_review: bool = Form(False),
     item_group_id: str = Form(""),
     new_item_group_name: str = Form(""),
 ) -> HTMLResponse:
@@ -574,6 +579,7 @@ def update_item(
             raise HTTPException(status_code=400, detail="Invalid category")
 
         item.confirmed = confirmed
+        item.needs_review = needs_review
         item.description = description.strip()
         item.category_id = category_id
         item.room_id = room_id or None
@@ -671,6 +677,38 @@ def toggle_exclude(
         if item is None:
             raise HTTPException(status_code=404)
         item.excluded = not item.excluded
+        db.commit()
+        db.refresh(item)
+        matter_id = item.matter_id
+        categories, rooms, item_groups = _get_context(matter_id, db)
+        html = _item_row_html(item, categories, rooms, item_groups)
+    finally:
+        db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="item.update",
+        resource_type="item",
+        resource_id=item_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
+    return HTMLResponse(html)
+
+
+@router.post("/api/items/{item_id}/toggle-needs-review", response_class=HTMLResponse)
+def toggle_needs_review(
+    request: Request,
+    item_id: str,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(require_matter_role("manager")),
+) -> HTMLResponse:
+    db = SessionLocal()
+    try:
+        item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
+        if item is None:
+            raise HTTPException(status_code=404)
+        item.needs_review = not item.needs_review
         db.commit()
         db.refresh(item)
         matter_id = item.matter_id

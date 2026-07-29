@@ -173,6 +173,9 @@ class Item(Base):
     source_screenshot_path: Mapped[str | None] = mapped_column(String, nullable=True)
     confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     excluded: Mapped[bool] = mapped_column(Boolean, default=False)
+    needs_review: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="0"
+    )
     confirmed_by_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("users.id"), nullable=True
     )

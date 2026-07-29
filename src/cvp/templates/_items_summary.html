@@ -5,6 +5,9 @@
   {% if items_total_count and items_total_count > 0 %}
   <div class="flex justify-end gap-6 text-sm text-gray-600">
     <span>Confirmed: <strong class="text-gray-900">{{ items_confirmed_count }}</strong> of {{ items_total_count }}</span>
+    {% if needs_review_count and needs_review_count > 0 %}
+    <span>Needs review: <strong class="text-amber-600">{{ needs_review_count }}</strong></span>
+    {% endif %}
     <span>RCV total: <strong class="font-mono text-gray-900">${{ "%.2f" % (items_rcv_total_cents / 100) }}</strong></span>
     <span>ACV total: <strong class="font-mono text-gray-900">${{ "%.2f" % (items_acv_total_cents / 100) }}</strong></span>
   </div>

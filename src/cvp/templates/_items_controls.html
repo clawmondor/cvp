@@ -42,6 +42,7 @@
         ("confirmed", "Confirmed"),
         ("excluded", "Excluded"),
         ("missing_price", "Missing price"),
+        ("needs_review", "Needs review"),
       ] %}
       <option value="{{ value }}" {% if f.status == value %}selected{% endif %}>{{ label }}</option>
       {% endfor %}

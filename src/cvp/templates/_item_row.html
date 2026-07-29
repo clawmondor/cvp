@@ -67,13 +67,22 @@
     {% endif %}
   </td>
   <td class="whitespace-nowrap px-3 py-2 text-center">
-    <button hx-post="/api/items/{{ item.id }}/toggle-confirm"
-            hx-target="#item-row-{{ item.id }}"
-            hx-swap="outerHTML"
-            title="{{ 'Confirmed — click to un-confirm' if item.confirmed else 'Draft — click to confirm' }}"
-            class="rounded px-1.5 py-0.5 text-xs font-medium {% if item.confirmed %}bg-green-100 text-green-700 hover:bg-green-200{% else %}bg-gray-100 text-gray-500 hover:bg-gray-200{% endif %}">
-      {{ "✓" if item.confirmed else "draft" }}
-    </button>
+    <div class="flex items-center gap-1 justify-center">
+      <button hx-post="/api/items/{{ item.id }}/toggle-confirm"
+              hx-target="#item-row-{{ item.id }}"
+              hx-swap="outerHTML"
+              title="{{ 'Confirmed — click to un-confirm' if item.confirmed else 'Draft — click to confirm' }}"
+              class="rounded px-1.5 py-0.5 text-xs font-medium {% if item.confirmed %}bg-green-100 text-green-700 hover:bg-green-200{% else %}bg-gray-100 text-gray-500 hover:bg-gray-200{% endif %}">
+        {{ "✓" if item.confirmed else "draft" }}
+      </button>
+      <button hx-post="/api/items/{{ item.id }}/toggle-needs-review"
+              hx-target="#item-row-{{ item.id }}"
+              hx-swap="outerHTML"
+              title="{{ 'Flagged for review — click to clear' if item.needs_review else 'Click to flag for review' }}"
+              class="rounded px-1.5 py-0.5 text-xs font-medium {% if item.needs_review %}bg-amber-100 text-amber-700 hover:bg-amber-200{% else %}bg-gray-100 text-gray-500 hover:bg-gray-200{% endif %}">
+        {{ "⚑ review" if item.needs_review else "flag" }}
+      </button>
+    </div>
   </td>
   <td class="whitespace-nowrap px-3 py-2 text-center">
     <div class="flex items-center gap-1 justify-center">
