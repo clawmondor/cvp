@@ -360,6 +360,64 @@ document.addEventListener('click', function (e) {
   toggleCropEditor(btn.dataset.toggleCropEditor, opts);
 });
 
+// Delegated hover: [data-crop-preview] → float an enlarged copy of the crop.
+// pointer-events:none guarantees it never intercepts the "Edit crop" click.
+(function () {
+  var GAP = 12;
+  var MAX = 400;
+  var preview = null;
+
+  function ensurePreview() {
+    if (preview) return preview;
+    preview = document.createElement('img');
+    preview.id = 'crop-hover-preview';
+    preview.style.cssText =
+      'position:fixed;display:none;pointer-events:none;z-index:60;' +
+      'max-width:' + MAX + 'px;max-height:' + MAX + 'px;object-fit:contain;' +
+      'background:#fff;border:1px solid #d1d5db;border-radius:6px;' +
+      'box-shadow:0 10px 25px rgba(0,0,0,0.25);padding:2px;';
+    document.body.appendChild(preview);
+    return preview;
+  }
+
+  function position(rect) {
+    var p = preview;
+    // Measure natural render size (bounded by MAX) after the image loads/paints.
+    var w = Math.min(p.offsetWidth || MAX, MAX);
+    var h = Math.min(p.offsetHeight || MAX, MAX);
+    var left = rect.right + GAP;
+    if (left + w > window.innerWidth) {
+      left = rect.left - GAP - w; // flip to the left of the thumbnail
+    }
+    if (left < 0) left = GAP;
+    var top = rect.top + rect.height / 2 - h / 2;
+    if (top < GAP) top = GAP;
+    if (top + h > window.innerHeight - GAP) top = window.innerHeight - GAP - h;
+    if (top < GAP) top = GAP;
+    p.style.left = left + 'px';
+    p.style.top = top + 'px';
+  }
+
+  document.addEventListener('mouseover', function (e) {
+    var thumb = e.target.closest('[data-crop-preview]');
+    if (!thumb) return;
+    var p = ensurePreview();
+    var rect = thumb.getBoundingClientRect();
+    if (p.getAttribute('src') !== thumb.dataset.cropPreview) {
+      p.setAttribute('src', thumb.dataset.cropPreview);
+      p.setAttribute('alt', thumb.dataset.cropPreviewAlt || '');
+      p.onload = function () { position(rect); };
+    }
+    p.style.display = 'block';
+    position(rect);
+  });
+
+  document.addEventListener('mouseout', function (e) {
+    if (!e.target.closest('[data-crop-preview]')) return;
+    if (preview) preview.style.display = 'none';
+  });
+})();
+
 // Esc closes the crop editor modal (ignores when typing in form fields).
 document.addEventListener('keydown', function (e) {
   if (e.key !== 'Escape') return;
