@@ -1,3 +1,4 @@
+import hashlib
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -54,7 +55,25 @@ app = FastAPI(title="Contents Valuation Platform", lifespan=lifespan)
 # Security headers middleware
 app.add_middleware(SecurityHeadersMiddleware, environment=settings.environment)
 
-app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+_STATIC_DIR = BASE_DIR / "static"
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+
+
+def _compute_asset_versions() -> dict[str, str]:
+    """Short content hash per static JS file, for cache-busting ?v= query strings.
+
+    Templates reference these via ``request.app.state.asset_versions``. When a file's
+    content changes, its hash changes, so browsers and Cloudflare fetch the new URL
+    instead of serving a stale cached copy.
+    """
+    versions: dict[str, str] = {}
+    for path in _STATIC_DIR.glob("*.js"):
+        versions[path.name] = hashlib.md5(path.read_bytes()).hexdigest()[:8]
+    return versions
+
+
+# Computed once at startup; dev autoreload restarts the process on file changes.
+app.state.asset_versions = _compute_asset_versions()
 
 _crop_dir = Path(settings.crop_dir).resolve()
 _crop_dir.mkdir(parents=True, exist_ok=True)
