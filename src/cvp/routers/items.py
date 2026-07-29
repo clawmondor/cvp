@@ -19,7 +19,6 @@ from cvp.depreciation import compute_acv
 from cvp.models import Category, Item, ItemGroup, Room, SerpSearch
 from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.item_groups import find_or_create
-from cvp.services.pagination import paginate_by_cursor
 from cvp.services.serp_display import extract_results
 
 BASE_DIR = Path(__file__).parent.parent
@@ -321,31 +320,32 @@ def _parse_cents(dollars_str: str) -> int:
 def get_items_rows(
     request: Request,
     matter_id: str,
-    cursor: str = "",
+    offset: int = 0,
     user: CurrentUser = Depends(require_matter_role("viewer")),
 ) -> HTMLResponse:
-    """Render one cursor-paginated page of item `<tr>` rows + sentinel.
+    """Render one offset-paginated page of item `<tr>` rows + sentinel.
 
-    `cursor` is the line_number of the last row from the previous page
-    (empty string for the first page). Rows are ordered by `line_number` ASC.
+    Honors the sort/filter querystring (see `_parse_item_filters`). `offset`
+    is the row offset of this page (0 for the first page).
     """
-    cursor_int = int(cursor) if cursor else None
+    offset = max(0, offset)
+    f = _parse_item_filters(request)
     db = SessionLocal()
     try:
-        rows, next_cursor = paginate_by_cursor(
-            db.query(Item).options(selectinload(Item.crops)).filter(Item.matter_id == matter_id),
-            cursor_col=Item.line_number,
-            cursor_value=cursor_int,
-            limit=ITEMS_PAGE_SIZE,
-            order="asc",
-        )
+        rows = _build_items_query(db, matter_id, f).offset(offset).limit(ITEMS_PAGE_SIZE + 1).all()
+        if len(rows) > ITEMS_PAGE_SIZE:
+            rows = rows[:ITEMS_PAGE_SIZE]
+            next_offset = offset + ITEMS_PAGE_SIZE
+        else:
+            next_offset = None
         categories, room_objs, _groups = _get_context(matter_id, db)
     finally:
         db.close()
     return HTMLResponse(
         templates.get_template("_items_rows_fragment.html").render(
             items=rows,
-            items_next_cursor=next_cursor,
+            items_next_offset=next_offset,
+            items_qs=items_query_string(f),
             matter_id=matter_id,
             categories=categories,
             rooms=room_objs,
