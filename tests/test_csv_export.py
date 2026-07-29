@@ -158,6 +158,16 @@ def test_shipping_annotated_in_notes(matter_with_items, tmp_path):
     assert "Shipping: $25.00" in row["Notes"]
 
 
+def test_needs_review_item_still_exported(matter_with_items, db_session):
+    """A confirmed item flagged needs_review still appears in the CSV."""
+    item = db_session.query(Item).filter(Item.line_number == 1).first()
+    item.needs_review = True
+    db_session.commit()
+    out_path = generate_csv(item.matter_id)
+    text = out_path.read_text(encoding="utf-8")
+    assert "65-inch Samsung TV" in text
+
+
 def test_dollars_helper():
     assert _dollars(0) == "0.00"
     assert _dollars(100) == "1.00"

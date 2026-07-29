@@ -694,6 +694,38 @@ def toggle_exclude(
     return HTMLResponse(html)
 
 
+@router.post("/api/items/{item_id}/toggle-needs-review", response_class=HTMLResponse)
+def toggle_needs_review(
+    request: Request,
+    item_id: str,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(require_matter_role("manager")),
+) -> HTMLResponse:
+    db = SessionLocal()
+    try:
+        item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
+        if item is None:
+            raise HTTPException(status_code=404)
+        item.needs_review = not item.needs_review
+        db.commit()
+        db.refresh(item)
+        matter_id = item.matter_id
+        categories, rooms, item_groups = _get_context(matter_id, db)
+        html = _item_row_html(item, categories, rooms, item_groups)
+    finally:
+        db.close()
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="item.update",
+        resource_type="item",
+        resource_id=item_id,
+        matter_id=matter_id,
+        ip_address=get_client_ip(request),
+    )
+    return HTMLResponse(html)
+
+
 @router.delete("/api/items/{item_id}", response_class=HTMLResponse)
 def delete_item(
     request: Request,
