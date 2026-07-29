@@ -108,8 +108,12 @@ def test_toggle_needs_review_off(client, db_session):
 def test_row_shows_amber_review_pill_when_flagged(client, db_session):
     it = _make_item(db_session, needs_review=True)
     resp = client.post(f"/api/items/{it.id}/toggle-needs-review")
-    # After toggling a flagged item it becomes unflagged -> shows "flag"
-    assert "flag" in resp.text
+    # After toggling a flagged item it becomes unflagged -> no amber pill/label.
+    # (A bare "flag" in resp.text substring check is trivially true even when
+    # flagged, since the unflagged button's title is "Click to flag for
+    # review" — assert the flagged markers are absent instead.)
+    assert "⚑ review" not in resp.text
+    assert "bg-amber-100" not in resp.text
     # Flip back on and confirm the amber label renders
     resp2 = client.post(f"/api/items/{it.id}/toggle-needs-review")
     assert "⚑ review" in resp2.text
