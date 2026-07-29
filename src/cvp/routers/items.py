@@ -235,6 +235,7 @@ def compute_items_totals(matter_id: str, db) -> dict[str, int]:
             Item.rcv_total_cents,
             Item.acv_total_cents,
             Item.retail_unit_cents,
+            Item.needs_review,
         )
         .filter(Item.matter_id == matter_id)
         .all()
@@ -247,6 +248,7 @@ def compute_items_totals(matter_id: str, db) -> dict[str, int]:
         "items_acv_total_cents": sum(r.acv_total_cents for r in confirmed_rows),
         "unconfirmed_count": sum(1 for r in rows if not r.confirmed),
         "missing_price_count": sum(1 for r in confirmed_rows if r.retail_unit_cents == 0),
+        "needs_review_count": sum(1 for r in rows if r.needs_review),
     }
 
 
