@@ -99,7 +99,9 @@ def _parse_item_filters(request: Request) -> ItemFilters:
 
 
 def _apply_item_filters(query: Query, f: ItemFilters) -> Query:
-    if f.room_id:
+    if f.room_id == "__unassigned__":
+        query = query.filter(Item.room_id.is_(None))
+    elif f.room_id:
         query = query.filter(Item.room_id == f.room_id)
     if f.category_id:
         try:
@@ -351,6 +353,46 @@ def get_items_rows(
             rooms=room_objs,
         )
     )
+
+
+def items_region_context(db, matter_id: str, f: ItemFilters, *, offset: int = 0) -> dict:
+    """Build the template context for the swappable items region."""
+    rows = _build_items_query(db, matter_id, f).offset(offset).limit(ITEMS_PAGE_SIZE + 1).all()
+    if len(rows) > ITEMS_PAGE_SIZE:
+        rows = rows[:ITEMS_PAGE_SIZE]
+        next_offset = offset + ITEMS_PAGE_SIZE
+    else:
+        next_offset = None
+    categories, room_objs, _groups = _get_context(matter_id, db)
+    total_count = db.query(func.count(Item.id)).filter(Item.matter_id == matter_id).scalar()
+    return {
+        "matter_id": matter_id,
+        "f": f,
+        "items": rows,
+        "items_next_offset": next_offset,
+        "items_qs": items_query_string(f),
+        "header_sorts": {col: _sort_state(f, col) for col in SORTABLE_KEYS},
+        "filtered_count": _count_items(db, matter_id, f),
+        "items_total_count": total_count,
+        "categories": categories,
+        "rooms": room_objs,
+    }
+
+
+@router.get("/api/matters/{matter_id}/items-region", response_class=HTMLResponse)
+def get_items_region(
+    request: Request,
+    matter_id: str,
+    user: CurrentUser = Depends(require_matter_role("viewer")),
+) -> HTMLResponse:
+    """Render the full items region (filter bar + sortable header + page 1)."""
+    f = _parse_item_filters(request)
+    db = SessionLocal()
+    try:
+        ctx = items_region_context(db, matter_id, f)
+    finally:
+        db.close()
+    return HTMLResponse(templates.get_template("_items_region.html").render(**ctx))
 
 
 @router.get("/api/matters/{matter_id}/items-summary", response_class=HTMLResponse)
