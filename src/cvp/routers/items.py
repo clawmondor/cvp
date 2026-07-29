@@ -62,7 +62,7 @@ _CONDITION_RANK = case(
     else_=99,
 )
 
-_STATUS_VALUES = {"all", "unconfirmed", "confirmed", "excluded", "missing_price"}
+_STATUS_VALUES = {"all", "unconfirmed", "confirmed", "excluded", "missing_price", "needs_review"}
 
 
 @dataclass
@@ -120,6 +120,8 @@ def _apply_item_filters(query: Query, f: ItemFilters) -> Query:
             Item.excluded.is_(False),
             Item.retail_unit_cents == 0,
         )
+    elif f.status == "needs_review":
+        query = query.filter(Item.needs_review.is_(True))
     if f.q:
         like = f"%{f.q}%"
         query = query.filter(
