@@ -1,0 +1,23 @@
+{% set has_filter = f.room_id or f.category_id or (f.status and f.status != "all") or f.q %}
+<div id="items-region" data-sort="{{ f.sort }}" data-dir="{{ f.dir }}" data-matter-id="{{ matter_id }}"
+     class="space-y-4">
+  {% include "_items_controls.html" %}
+  <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        {% include "_items_head.html" %}
+      </thead>
+      <tbody id="items-tbody" class="divide-y divide-gray-100 bg-white">
+        {% if items %}
+          {% include "_items_rows_fragment.html" %}
+        {% else %}
+        <tr id="items-empty-row">
+          <td colspan="13" class="px-6 py-10 text-center text-sm text-gray-400">
+            {% if has_filter %}No items match the current filters.{% else %}No items yet — add one above.{% endif %}
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>

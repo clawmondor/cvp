@@ -1,0 +1,58 @@
+<form id="items-controls"
+      hx-get="/api/matters/{{ matter_id }}/items-region"
+      hx-target="#items-region" hx-swap="outerHTML"
+      hx-trigger="change, keyup changed delay:300ms from:find input[name='q']"
+      class="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+  {# Preserve the active sort across filter changes. #}
+  <input type="hidden" name="sort" value="{{ f.sort }}">
+  <input type="hidden" name="dir" value="{{ f.dir }}">
+  <div>
+    <label class="text-xs font-medium text-gray-600">Search</label>
+    <input id="items-search" name="q" value="{{ f.q }}" placeholder="description, brand, model…"
+           class="mt-0.5 block w-56 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+  </div>
+  <div>
+    <label class="text-xs font-medium text-gray-600">Room</label>
+    <select name="room_id"
+            class="mt-0.5 block rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+      <option value="">All rooms</option>
+      <option value="__unassigned__" {% if f.room_id == "__unassigned__" %}selected{% endif %}>— unassigned —</option>
+      {% for room in rooms %}
+      <option value="{{ room.id }}" {% if f.room_id == room.id %}selected{% endif %}>{{ room.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="text-xs font-medium text-gray-600">Category</label>
+    <select name="category_id"
+            class="mt-0.5 block rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+      <option value="">All categories</option>
+      {% for cat in categories %}
+      <option value="{{ cat.id }}" {% if f.category_id == cat.id|string %}selected{% endif %}>{{ cat.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="text-xs font-medium text-gray-600">Status</label>
+    <select name="status"
+            class="mt-0.5 block rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none">
+      {% for value, label in [
+        ("all", "All"),
+        ("unconfirmed", "Unconfirmed"),
+        ("confirmed", "Confirmed"),
+        ("excluded", "Excluded"),
+        ("missing_price", "Missing price"),
+      ] %}
+      <option value="{{ value }}" {% if f.status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="ml-auto flex items-center gap-3 pb-1 text-xs text-gray-500">
+    <span>Showing {{ filtered_count }} of {{ items_total_count }} items</span>
+    {% if has_filter %}
+    <a hx-get="/api/matters/{{ matter_id }}/items-region"
+       hx-target="#items-region" hx-swap="outerHTML"
+       class="cursor-pointer font-medium text-indigo-600 hover:text-indigo-500">Clear filters</a>
+    {% endif %}
+  </div>
+</form>

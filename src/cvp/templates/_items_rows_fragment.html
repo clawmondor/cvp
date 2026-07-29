@@ -1,6 +1,6 @@
 {% for item in items %}{% include "_item_row.html" %}{% endfor %}
-{% if items_next_cursor %}
-<tr hx-get="/api/matters/{{ matter_id }}/items-rows?cursor={{ items_next_cursor }}"
+{% if items_next_offset is not none %}
+<tr hx-get="/api/matters/{{ matter_id }}/items-rows?offset={{ items_next_offset }}{% if items_qs %}&{{ items_qs }}{% endif %}"
     hx-trigger="revealed"
     hx-swap="outerHTML">
   <td colspan="13" class="text-center text-xs text-gray-400 py-2">Loading…</td>

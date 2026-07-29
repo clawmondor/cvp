@@ -119,11 +119,42 @@ def test_sentinel_row_contains_matter_id_in_url(client, db_session):
 
 def test_second_page_returns_remainder_and_no_sentinel(client, db_session):
     _seed_items(db_session, 60)
-    resp = client.get(f"/api/matters/{MATTER_ID}/items-rows?cursor=50")
+    resp = client.get(f"/api/matters/{MATTER_ID}/items-rows?offset=50")
     assert resp.status_code == 200
     body = resp.text
     assert body.count('<tr id="item-row-') == 10
     assert 'hx-trigger="revealed"' not in body
+
+
+def test_rows_respect_sort_and_preserve_params_in_sentinel(client, db_session):
+    # 60 items priced ascending by line; sort desc should put the priciest first,
+    # and the sentinel must carry sort+dir so page 2 stays consistent.
+    for i in range(60):
+        db_session.add(
+            Item(
+                matter_id=MATTER_ID,
+                category_id=1,
+                line_number=i + 1,
+                description=f"item {i + 1}",
+                quantity=1,
+                condition="average",
+                retail_unit_cents=(i + 1) * 100,
+                rcv_total_cents=(i + 1) * 100,
+                acv_total_cents=(i + 1) * 80,
+                confirmed=True,
+            )
+        )
+    db_session.commit()
+    resp = client.get(f"/api/matters/{MATTER_ID}/items-rows?sort=rcv_total&dir=desc")
+    assert resp.status_code == 200
+    body = resp.text
+    # First row rendered should be the priciest (item 60).
+    first_row_pos = body.index('<tr id="item-row-')
+    assert "item 60" in body[first_row_pos : first_row_pos + 600]
+    # Sentinel preserves sort + dir and advances offset.
+    assert "offset=50" in body
+    assert "sort=rcv_total" in body
+    assert "dir=desc" in body
 
 
 def test_empty_matter_returns_no_rows_no_sentinel(client):

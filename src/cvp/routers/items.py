@@ -1,15 +1,16 @@
 """Item CRUD endpoints with ACV auto-computation."""
 
 import json
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func
-from sqlalchemy.orm import selectinload
+from sqlalchemy import case, func, or_
+from sqlalchemy.orm import Query, Session, selectinload
 
 from cvp.config import settings
 from cvp.db import SessionLocal
@@ -18,7 +19,6 @@ from cvp.depreciation import compute_acv
 from cvp.models import Category, Item, ItemGroup, Room, SerpSearch
 from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.item_groups import find_or_create
-from cvp.services.pagination import paginate_by_cursor
 from cvp.services.serp_display import extract_results
 
 BASE_DIR = Path(__file__).parent.parent
@@ -31,6 +31,181 @@ router = APIRouter()
 
 CONDITIONS = ["excellent", "above_average", "average", "below_average"]
 ITEMS_PAGE_SIZE = 50
+
+SORTABLE_KEYS = [
+    "line",
+    "description",
+    "room",
+    "category",
+    "qty",
+    "age",
+    "condition",
+    "rcv_unit",
+    "rcv_total",
+    "acv_total",
+    "status",
+]
+
+_SIMPLE_SORT_COLUMNS = {
+    "line": Item.line_number,
+    "description": Item.description,
+    "qty": Item.quantity,
+    "age": Item.age_years,
+    "rcv_unit": Item.retail_unit_cents,
+    "rcv_total": Item.rcv_total_cents,
+    "acv_total": Item.acv_total_cents,
+}
+
+_CONDITION_RANK = case(
+    {"excellent": 0, "above_average": 1, "average": 2, "below_average": 3},
+    value=Item.condition,
+    else_=99,
+)
+
+_STATUS_VALUES = {"all", "unconfirmed", "confirmed", "excluded", "missing_price"}
+
+
+@dataclass
+class ItemFilters:
+    room_id: str = ""
+    category_id: str = ""
+    status: str = "all"
+    q: str = ""
+    sort: str = "line"
+    dir: str = "asc"
+
+
+def _parse_item_filters(request: Request) -> ItemFilters:
+    p = request.query_params
+    sort = p.get("sort", "line")
+    if sort not in SORTABLE_KEYS:
+        sort = "line"
+        direction = "asc"
+    else:
+        direction = p.get("dir", "asc")
+        if direction not in ("asc", "desc"):
+            direction = "asc"
+    status = p.get("status", "all")
+    if status not in _STATUS_VALUES:
+        status = "all"
+    return ItemFilters(
+        room_id=p.get("room_id", "").strip(),
+        category_id=p.get("category_id", "").strip(),
+        status=status,
+        q=p.get("q", "").strip(),
+        sort=sort,
+        dir=direction,
+    )
+
+
+def _apply_item_filters(query: Query, f: ItemFilters) -> Query:
+    if f.room_id == "__unassigned__":
+        query = query.filter(Item.room_id.is_(None))
+    elif f.room_id:
+        query = query.filter(Item.room_id == f.room_id)
+    if f.category_id:
+        try:
+            query = query.filter(Item.category_id == int(f.category_id))
+        except ValueError:
+            pass
+    if f.status == "unconfirmed":
+        query = query.filter(Item.confirmed.is_(False))
+    elif f.status == "confirmed":
+        query = query.filter(Item.confirmed.is_(True))
+    elif f.status == "excluded":
+        query = query.filter(Item.excluded.is_(True))
+    elif f.status == "missing_price":
+        query = query.filter(
+            Item.confirmed.is_(True),
+            Item.excluded.is_(False),
+            Item.retail_unit_cents == 0,
+        )
+    if f.q:
+        like = f"%{f.q}%"
+        query = query.filter(
+            or_(
+                Item.description.ilike(like),
+                Item.brand.ilike(like),
+                Item.model.ilike(like),
+            )
+        )
+    return query
+
+
+def _apply_item_sort(query: Query, f: ItemFilters) -> Query:
+    descending = f.dir == "desc"
+
+    def d(expr):
+        return expr.desc() if descending else expr.asc()
+
+    if f.sort == "room":
+        query = query.outerjoin(Room, Item.room_id == Room.id).order_by(d(Room.name), Item.id.asc())
+    elif f.sort == "category":
+        query = query.join(Category, Item.category_id == Category.id).order_by(
+            d(Category.name), Item.id.asc()
+        )
+    elif f.sort == "condition":
+        query = query.order_by(d(_CONDITION_RANK), Item.id.asc())
+    elif f.sort == "status":
+        query = query.order_by(d(Item.excluded), d(Item.confirmed), Item.id.asc())
+    else:
+        col = _SIMPLE_SORT_COLUMNS.get(f.sort, Item.line_number)
+        query = query.order_by(d(col), Item.id.asc())
+    return query
+
+
+def _build_items_query(db: Session, matter_id: str, f: ItemFilters) -> Query:
+    query = db.query(Item).options(selectinload(Item.crops)).filter(Item.matter_id == matter_id)
+    query = _apply_item_filters(query, f)
+    query = _apply_item_sort(query, f)
+    return query
+
+
+def _count_items(db: Session, matter_id: str, f: ItemFilters) -> int:
+    query = db.query(Item).filter(Item.matter_id == matter_id)
+    query = _apply_item_filters(query, f)
+    return query.count()
+
+
+def items_query_string(
+    f: ItemFilters, *, sort: str | None = None, direction: str | None = None
+) -> str:
+    """Build a querystring for filters + sort, omitting defaults.
+
+    ``sort``/``direction`` override the filter's own values (used to build
+    per-column header links). The default sort (``line`` asc) is omitted so a
+    reset view has an empty querystring.
+    """
+    params: dict[str, str] = {}
+    if f.room_id:
+        params["room_id"] = f.room_id
+    if f.category_id:
+        params["category_id"] = f.category_id
+    if f.status and f.status != "all":
+        params["status"] = f.status
+    if f.q:
+        params["q"] = f.q
+    s = f.sort if sort is None else sort
+    dirn = f.dir if direction is None else direction
+    if s != "line" or dirn != "asc":
+        params["sort"] = s
+        params["dir"] = dirn
+    return urlencode(params)
+
+
+def _sort_state(f: ItemFilters, col: str) -> tuple[str, str]:
+    """Return ``(querystring, indicator)`` for a sortable header link.
+
+    Clicking the active column flips direction; any other column starts asc.
+    Indicator is ▲ (asc active) / ▼ (desc active) / "" (inactive).
+    """
+    if f.sort == col:
+        next_dir = "desc" if f.dir == "asc" else "asc"
+        indicator = "▲" if f.dir == "asc" else "▼"
+    else:
+        next_dir = "asc"
+        indicator = ""
+    return items_query_string(f, sort=col, direction=next_dir), indicator
 
 
 def _get_context(matter_id: str, db):
@@ -147,36 +322,77 @@ def _parse_cents(dollars_str: str) -> int:
 def get_items_rows(
     request: Request,
     matter_id: str,
-    cursor: str = "",
+    offset: int = 0,
     user: CurrentUser = Depends(require_matter_role("viewer")),
 ) -> HTMLResponse:
-    """Render one cursor-paginated page of item `<tr>` rows + sentinel.
+    """Render one offset-paginated page of item `<tr>` rows + sentinel.
 
-    `cursor` is the line_number of the last row from the previous page
-    (empty string for the first page). Rows are ordered by `line_number` ASC.
+    Honors the sort/filter querystring (see `_parse_item_filters`). `offset`
+    is the row offset of this page (0 for the first page).
     """
-    cursor_int = int(cursor) if cursor else None
+    offset = max(0, offset)
+    f = _parse_item_filters(request)
     db = SessionLocal()
     try:
-        rows, next_cursor = paginate_by_cursor(
-            db.query(Item).options(selectinload(Item.crops)).filter(Item.matter_id == matter_id),
-            cursor_col=Item.line_number,
-            cursor_value=cursor_int,
-            limit=ITEMS_PAGE_SIZE,
-            order="asc",
-        )
+        rows = _build_items_query(db, matter_id, f).offset(offset).limit(ITEMS_PAGE_SIZE + 1).all()
+        if len(rows) > ITEMS_PAGE_SIZE:
+            rows = rows[:ITEMS_PAGE_SIZE]
+            next_offset = offset + ITEMS_PAGE_SIZE
+        else:
+            next_offset = None
         categories, room_objs, _groups = _get_context(matter_id, db)
     finally:
         db.close()
     return HTMLResponse(
         templates.get_template("_items_rows_fragment.html").render(
             items=rows,
-            items_next_cursor=next_cursor,
+            items_next_offset=next_offset,
+            items_qs=items_query_string(f),
             matter_id=matter_id,
             categories=categories,
             rooms=room_objs,
         )
     )
+
+
+def items_region_context(db, matter_id: str, f: ItemFilters, *, offset: int = 0) -> dict:
+    """Build the template context for the swappable items region."""
+    rows = _build_items_query(db, matter_id, f).offset(offset).limit(ITEMS_PAGE_SIZE + 1).all()
+    if len(rows) > ITEMS_PAGE_SIZE:
+        rows = rows[:ITEMS_PAGE_SIZE]
+        next_offset = offset + ITEMS_PAGE_SIZE
+    else:
+        next_offset = None
+    categories, room_objs, _groups = _get_context(matter_id, db)
+    total_count = db.query(func.count(Item.id)).filter(Item.matter_id == matter_id).scalar()
+    return {
+        "matter_id": matter_id,
+        "f": f,
+        "items": rows,
+        "items_next_offset": next_offset,
+        "items_qs": items_query_string(f),
+        "header_sorts": {col: _sort_state(f, col) for col in SORTABLE_KEYS},
+        "filtered_count": _count_items(db, matter_id, f),
+        "items_total_count": total_count,
+        "categories": categories,
+        "rooms": room_objs,
+    }
+
+
+@router.get("/api/matters/{matter_id}/items-region", response_class=HTMLResponse)
+def get_items_region(
+    request: Request,
+    matter_id: str,
+    user: CurrentUser = Depends(require_matter_role("viewer")),
+) -> HTMLResponse:
+    """Render the full items region (filter bar + sortable header + page 1)."""
+    f = _parse_item_filters(request)
+    db = SessionLocal()
+    try:
+        ctx = items_region_context(db, matter_id, f)
+    finally:
+        db.close()
+    return HTMLResponse(templates.get_template("_items_region.html").render(**ctx))
 
 
 @router.get("/api/matters/{matter_id}/items-summary", response_class=HTMLResponse)

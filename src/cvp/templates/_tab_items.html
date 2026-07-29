@@ -89,31 +89,8 @@
     </div>
   </details>
 
-  <!-- Items table -->
-  <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-    <table class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50">
-        <tr>
-          <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">#</th>
-          <th class="px-3 py-2 text-left text-xs font-medium text-gray-500" style="width:100px;min-width:100px;">Photo</th>
-          <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Description</th>
-          <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Room</th>
-          <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Category</th>
-          <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Qty</th>
-          <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">Age</th>
-          <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">Cond</th>
-          <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">RCV/unit</th>
-          <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">RCV total</th>
-          <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">ACV total</th>
-          <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Status</th>
-          <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">Actions</th>
-        </tr>
-      </thead>
-      <tbody id="items-tbody" class="divide-y divide-gray-100 bg-white">
-        {% include "_items_tbody.html" %}
-      </tbody>
-    </table>
-  </div>
+  <!-- Items table (sortable/filterable region) -->
+  {% include "_items_region.html" %}
 
   {% include "_items_summary.html" %}
 

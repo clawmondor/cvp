@@ -16,7 +16,7 @@ from cvp.dependencies import CurrentUser, require_active_user, require_matter_ro
 from cvp.models import Category, EvidenceFile, Item, ItemGroup, Matter, VisionJob, VisionJobImage
 from cvp.models_auth import User as UserORM
 from cvp.models_vision import VisionModel
-from cvp.routers.items import compute_items_totals
+from cvp.routers.items import ItemFilters, compute_items_totals, items_region_context
 from cvp.services import runtime_config
 from cvp.services.audit import get_client_ip, should_debounce_view, write_audit_log
 from cvp.services.pagination import paginate_by_cursor
@@ -146,14 +146,7 @@ def matter_detail(
         items_total_count = _totals["items_total_count"]
         items_confirmed_count = _totals["items_confirmed_count"]
 
-        # First page of items rows (line_number ASC), with cursor.
-        items, items_next_cursor = paginate_by_cursor(
-            db.query(Item).options(selectinload(Item.crops)).filter(Item.matter_id == matter_id),
-            cursor_col=Item.line_number,
-            cursor_value=None,
-            limit=50,
-            order="asc",
-        )
+        items_region = items_region_context(db, matter_id, ItemFilters())
         rooms = sorted(matter.rooms, key=lambda r: r.sort_order)
         item_groups_rows = (
             db.query(ItemGroup, func.count(Item.id))
@@ -243,8 +236,12 @@ def matter_detail(
         name="matter_detail.html",
         context={
             "matter": matter,
-            "items": items,
-            "items_next_cursor": items_next_cursor,
+            "items": items_region["items"],
+            "items_next_offset": items_region["items_next_offset"],
+            "items_qs": items_region["items_qs"],
+            "f": items_region["f"],
+            "header_sorts": items_region["header_sorts"],
+            "filtered_count": items_region["filtered_count"],
             "items_total_count": items_total_count,
             "items_confirmed_count": items_confirmed_count,
             "items_rcv_total_cents": total_rcv_cents,
