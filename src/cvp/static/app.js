@@ -656,7 +656,33 @@ document.addEventListener('change', function (e) {
     banner.classList.remove('hidden');
   });
 
-  // "View them": dedup-safe page-1 refresh + totals refresh + scroll to bottom.
+  // Serialize the active items filters (from #items-controls) + sort state
+  // (from #items-region data-*) into a querystring, omitting defaults.
+  function currentItemsQuery() {
+    var region = document.getElementById('items-region');
+    var form = document.getElementById('items-controls');
+    var params = new URLSearchParams();
+    if (form) {
+      new FormData(form).forEach(function (v, k) {
+        if (k === 'sort' || k === 'dir') return;
+        if (v === '' || (k === 'status' && v === 'all')) return;
+        params.set(k, v);
+      });
+    }
+    if (region) {
+      var sort = region.dataset.sort || 'line';
+      var dir = region.dataset.dir || 'asc';
+      if (sort !== 'line' || dir !== 'asc') {
+        params.set('sort', sort);
+        params.set('dir', dir);
+      }
+    }
+    var s = params.toString();
+    return s ? '?' + s : '';
+  }
+
+  // "View them": refresh the region honoring the active sort/filter, refresh
+  // totals, and scroll the region into view.
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-view-new-items]');
     if (!btn || !window.htmx) return;
@@ -664,8 +690,8 @@ document.addEventListener('change', function (e) {
     var matterId = banner ? banner.dataset.matterId : null;
     if (!matterId) return;
 
-    htmx.ajax('GET', '/api/matters/' + matterId + '/items-rows',
-      { target: '#items-tbody', swap: 'innerHTML' });
+    htmx.ajax('GET', '/api/matters/' + matterId + '/items-region' + currentItemsQuery(),
+      { target: '#items-region', swap: 'outerHTML' });
     htmx.ajax('GET', '/api/matters/' + matterId + '/items-summary',
       { target: '#items-summary', swap: 'outerHTML' });
 
@@ -673,10 +699,10 @@ document.addEventListener('change', function (e) {
     if (banner) banner.classList.add('hidden');
 
     var onSettle = function (ev) {
-      if (ev.detail && ev.detail.target && ev.detail.target.id === 'items-tbody') {
+      if (ev.detail && ev.detail.target && ev.detail.target.id === 'items-region') {
         document.removeEventListener('htmx:afterSettle', onSettle);
-        var tbody = document.getElementById('items-tbody');
-        if (tbody) tbody.scrollIntoView({ block: 'end', behavior: 'smooth' });
+        var region = document.getElementById('items-region');
+        if (region) region.scrollIntoView({ block: 'end', behavior: 'smooth' });
       }
     };
     document.addEventListener('htmx:afterSettle', onSettle);
