@@ -10,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Re
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import case, func, or_
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import Query, Session, selectinload
 
 from cvp.config import settings
 from cvp.db import SessionLocal
@@ -81,9 +81,11 @@ def _parse_item_filters(request: Request) -> ItemFilters:
     sort = p.get("sort", "line")
     if sort not in SORTABLE_KEYS:
         sort = "line"
-    direction = p.get("dir", "asc")
-    if direction not in ("asc", "desc"):
         direction = "asc"
+    else:
+        direction = p.get("dir", "asc")
+        if direction not in ("asc", "desc"):
+            direction = "asc"
     status = p.get("status", "all")
     if status not in _STATUS_VALUES:
         status = "all"
@@ -97,7 +99,7 @@ def _parse_item_filters(request: Request) -> ItemFilters:
     )
 
 
-def _apply_item_filters(query, f: ItemFilters):
+def _apply_item_filters(query: Query, f: ItemFilters) -> Query:
     if f.room_id:
         query = query.filter(Item.room_id == f.room_id)
     if f.category_id:
@@ -129,7 +131,7 @@ def _apply_item_filters(query, f: ItemFilters):
     return query
 
 
-def _apply_item_sort(query, f: ItemFilters):
+def _apply_item_sort(query: Query, f: ItemFilters) -> Query:
     descending = f.dir == "desc"
 
     def d(expr):
@@ -144,24 +146,21 @@ def _apply_item_sort(query, f: ItemFilters):
     elif f.sort == "condition":
         query = query.order_by(d(_CONDITION_RANK), Item.id.asc())
     elif f.sort == "status":
-        if descending:
-            query = query.order_by(Item.excluded.desc(), Item.confirmed.desc(), Item.id.asc())
-        else:
-            query = query.order_by(Item.excluded.asc(), Item.confirmed.asc(), Item.id.asc())
+        query = query.order_by(d(Item.excluded), d(Item.confirmed), Item.id.asc())
     else:
         col = _SIMPLE_SORT_COLUMNS.get(f.sort, Item.line_number)
         query = query.order_by(d(col), Item.id.asc())
     return query
 
 
-def _build_items_query(db, matter_id: str, f: ItemFilters):
+def _build_items_query(db: Session, matter_id: str, f: ItemFilters) -> Query:
     query = db.query(Item).options(selectinload(Item.crops)).filter(Item.matter_id == matter_id)
     query = _apply_item_filters(query, f)
     query = _apply_item_sort(query, f)
     return query
 
 
-def _count_items(db, matter_id: str, f: ItemFilters) -> int:
+def _count_items(db: Session, matter_id: str, f: ItemFilters) -> int:
     query = db.query(Item).filter(Item.matter_id == matter_id)
     query = _apply_item_filters(query, f)
     return query.count()

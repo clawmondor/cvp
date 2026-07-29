@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from starlette.datastructures import QueryParams
 
 import cvp.models_vision  # noqa: F401
 from cvp.models import Base, Category, Item, Matter, Room
@@ -11,9 +12,16 @@ from cvp.routers.items import (
     ItemFilters,
     _build_items_query,
     _count_items,
+    _parse_item_filters,
     _sort_state,
     items_query_string,
 )
+
+
+class _Req:
+    def __init__(self, qs: str) -> None:
+        self.query_params = QueryParams(qs)
+
 
 MATTER_ID = "m-fs"
 
@@ -143,6 +151,12 @@ def test_unknown_sort_falls_back_to_line(db):
     # Bad sort/dir default to line asc (fallback happens in _parse; builder
     # also treats unknown sort keys as line).
     assert _descs(_build_items_query(db, MATTER_ID, f).all()) == ["a", "b"]
+
+
+def test_invalid_sort_forces_default_direction():
+    f = _parse_item_filters(_Req("sort=bogus&dir=desc"))
+    assert f.sort == "line"
+    assert f.dir == "asc"
 
 
 def test_query_string_omits_defaults():
