@@ -1,3 +1,4 @@
+{% set has_filter = f.room_id or f.category_id or (f.status and f.status != "all") or f.q %}
 <div id="items-region" data-sort="{{ f.sort }}" data-dir="{{ f.dir }}" data-matter-id="{{ matter_id }}"
      class="space-y-4">
   {% include "_items_controls.html" %}
@@ -12,7 +13,7 @@
         {% else %}
         <tr id="items-empty-row">
           <td colspan="13" class="px-6 py-10 text-center text-sm text-gray-400">
-            {% if items_qs %}No items match the current filters.{% else %}No items yet — add one above.{% endif %}
+            {% if has_filter %}No items match the current filters.{% else %}No items yet — add one above.{% endif %}
           </td>
         </tr>
         {% endif %}

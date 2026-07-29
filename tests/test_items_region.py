@@ -124,3 +124,10 @@ def test_region_empty_filter_message(client, db_session):
     resp = client.get(f"/api/matters/{MATTER_ID}/items-region?q=nomatch")
     body = resp.text
     assert "No items match the current filters." in body
+
+
+def test_region_empty_sort_only_shows_add_message(client, db_session):
+    resp = client.get(f"/api/matters/{MATTER_ID}/items-region?sort=rcv_total&dir=desc")
+    body = resp.text
+    assert "No items yet" in body
+    assert "No items match the current filters." not in body
