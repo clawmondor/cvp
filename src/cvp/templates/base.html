@@ -7,8 +7,8 @@
   <title>{% block title %}CVP{% endblock %} — Contents Valuation Platform</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  <script src="/static/app.js" defer></script>
-  <script src="/static/crop-editor.js" defer></script>
+  <script src="/static/app.js?v={{ request.app.state.asset_versions.get('app.js', '') }}" defer></script>
+  <script src="/static/crop-editor.js?v={{ request.app.state.asset_versions.get('crop-editor.js', '') }}" defer></script>
 </head>
 <body class="h-full">
   <nav class="bg-white border-b border-gray-200">

@@ -7,7 +7,7 @@
   <title>{% block title %}Admin{% endblock %} — CVP Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  <script src="/static/app.js" defer></script>
+  <script src="/static/app.js?v={{ request.app.state.asset_versions.get('app.js', '') }}" defer></script>
 </head>
 <body class="h-full">
   <div class="min-h-full flex flex-col">
