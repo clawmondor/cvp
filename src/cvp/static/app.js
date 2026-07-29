@@ -348,6 +348,16 @@ document.addEventListener('click', function (e) {
     if (btn) startRename(btn.dataset.renameRoomId);
 });
 
+// Delegated click: click anywhere on an item row (except an interactive control)
+// opens that item's inline editor. Interactive controls — the crop "Edit crop"
+// button, retailer search links, Comments, confirm toggle, Del — keep their own behavior.
+document.addEventListener('click', function (e) {
+    if (e.target.closest('a, button, input, select, textarea, label, summary')) return;
+    var row = e.target.closest('tr[data-item-edit-url]');
+    if (!row) return;
+    htmx.ajax('GET', row.dataset.itemEditUrl, { target: '#' + row.id, swap: 'outerHTML' });
+});
+
 // Delegated click: data-toggle-crop-editor → toggleCropEditor(fileId, opts)
 document.addEventListener('click', function (e) {
   var btn = e.target.closest('[data-toggle-crop-editor]');

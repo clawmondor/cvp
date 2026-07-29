@@ -1,5 +1,16 @@
 <tr id="item-row-{{ item.id }}" class="bg-indigo-50 text-sm">
-  <td colspan="13" class="px-3 py-3">
+  <td colspan="11" class="px-3 py-3">
+    <button type="button"
+            hx-get="/api/items/{{ item.id }}/view"
+            hx-target="#item-row-{{ item.id }}"
+            hx-swap="outerHTML"
+            aria-label="Close editor"
+            class="mb-2 rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600">
+      <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
     <form hx-patch="/api/items/{{ item.id }}"
           hx-target="#item-row-{{ item.id }}"
           hx-swap="outerHTML"
@@ -102,17 +113,10 @@
             <span class="text-xs font-medium text-gray-600">Confirmed</span>
           </label>
         </div>
-        <div class="col-span-2 flex gap-2">
+        <div class="col-span-2 flex">
           <button type="submit"
                   class="w-full rounded bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">
             Save
-          </button>
-          <button type="button"
-                  hx-get="/api/items/{{ item.id }}/view"
-                  hx-target="#item-row-{{ item.id }}"
-                  hx-swap="outerHTML"
-                  class="w-full rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50">
-            Cancel
           </button>
         </div>
       </div>
