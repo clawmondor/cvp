@@ -197,6 +197,55 @@ class Item(Base):
     )
 
 
+class ExportTemplate(Base):
+    """A group-shared custom CSV export layout."""
+
+    __tablename__ = "export_templates"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
+    group_id: Mapped[str] = mapped_column(String, ForeignKey("groups.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str] = mapped_column(String, default="")
+    created_by_id: Mapped[str | None] = mapped_column(String, ForeignKey("users.id"), nullable=True)
+    include_needs_review: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="0"
+    )
+    include_excluded: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="0"
+    )
+    sort_field: Mapped[str] = mapped_column(
+        String, default="line_number", nullable=False, server_default="line_number"
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    columns: Mapped[list["ExportTemplateColumn"]] = relationship(
+        "ExportTemplateColumn",
+        back_populates="template",
+        cascade="all, delete-orphan",
+        order_by="ExportTemplateColumn.position",
+    )
+
+
+class ExportTemplateColumn(Base):
+    """One ordered column in an ExportTemplate. Either a registry field or a static value."""
+
+    __tablename__ = "export_template_columns"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
+    template_id: Mapped[str] = mapped_column(
+        String, ForeignKey("export_templates.id", ondelete="CASCADE"), nullable=False
+    )
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    field_key: Mapped[str | None] = mapped_column(String, nullable=True)
+    header_label: Mapped[str | None] = mapped_column(String, nullable=True)
+    static_value: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    template: Mapped["ExportTemplate"] = relationship("ExportTemplate", back_populates="columns")
+
+
 class EvidenceFile(Base):
     """A file (photo, video, PDF, etc.) uploaded for a matter."""
 
