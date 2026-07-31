@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Custom Export Templates{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-6">
+  <a href="/matters/{{ matter_id }}" class="text-sm text-indigo-600">&larr; Back to matter</a>
+  <h1 class="text-lg font-semibold text-gray-800">Custom Export Templates</h1>
+
+  {% include "_export_templates_body.html" %}
+</div>
+{% endblock %}

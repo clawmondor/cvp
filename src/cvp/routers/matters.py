@@ -17,6 +17,7 @@ from cvp.models import Category, EvidenceFile, Item, ItemGroup, Matter, VisionJo
 from cvp.models_auth import User as UserORM
 from cvp.models_vision import VisionModel
 from cvp.routers.items import ItemFilters, compute_items_totals, items_region_context
+from cvp.services import export_templates as export_templates_svc
 from cvp.services import runtime_config
 from cvp.services.audit import get_client_ip, should_debounce_view, write_audit_log
 from cvp.services.pagination import paginate_by_cursor
@@ -217,6 +218,12 @@ def matter_detail(
         evidence_upload_max_batch_count = runtime_config.get_int(
             db, "evidence_upload_max_batch_count"
         )
+
+        custom_templates = (
+            export_templates_svc.list_templates(db, matter.owner_group_id)
+            if matter.owner_group_id
+            else []
+        )
     finally:
         db.close()
 
@@ -266,6 +273,7 @@ def matter_detail(
             "evidence_upload_concurrency": evidence_upload_concurrency,
             "evidence_upload_max_file_mb": evidence_upload_max_file_mb,
             "evidence_upload_max_batch_count": evidence_upload_max_batch_count,
+            "custom_templates": custom_templates,
         },
     )
 
