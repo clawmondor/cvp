@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request
 from fastapi.responses import FileResponse, HTMLResponse
 
 from cvp.dependencies import CurrentUser, require_matter_role
@@ -64,6 +64,34 @@ def export_csv(
         ip_address=get_client_ip(request),
     )
     return HTMLResponse(_export_result_html("CSV", out_path))
+
+
+@router.post("/api/matters/{matter_id}/exports/custom", response_class=HTMLResponse)
+def export_custom(
+    request: Request,
+    matter_id: str,
+    background_tasks: BackgroundTasks,
+    template_id: str = Form(...),
+    user: CurrentUser = Depends(require_matter_role("manager")),
+) -> HTMLResponse:
+    try:
+        out_path = csv_export.generate_custom_csv(matter_id, template_id)
+    except Exception as exc:
+        return HTMLResponse(
+            f'<p class="text-sm text-red-600">Custom export failed: {exc}</p>',
+            status_code=500,
+        )
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=user.id,
+        action="export.download",
+        resource_type="matter",
+        resource_id=matter_id,
+        matter_id=matter_id,
+        detail={"format": "custom", "template_id": template_id},
+        ip_address=get_client_ip(request),
+    )
+    return HTMLResponse(_export_result_html("Custom CSV", out_path))
 
 
 @router.get("/api/matters/{matter_id}/exports/download")

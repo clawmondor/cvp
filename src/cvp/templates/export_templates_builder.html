@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Custom Export Templates{% endblock %}
+{% block content %}
+<div id="builder-root" class="mx-auto max-w-4xl space-y-6">
+  <a href="/matters/{{ matter_id }}" class="text-sm text-indigo-600">&larr; Back to matter</a>
+  <h1 class="text-lg font-semibold text-gray-800">Custom Export Templates</h1>
+
+  <section class="space-y-2">
+    <h2 class="text-sm font-semibold text-gray-700">Existing templates</h2>
+    {% if templates_list %}
+    <ul class="space-y-1">
+      {% for t in templates_list %}
+      <li class="flex items-center justify-between rounded border border-gray-200 bg-white p-2 text-sm"
+          data-template-id="{{ t.id }}">
+        <span>{{ t.name }} <span class="text-xs text-gray-400">({{ t.columns|length }} cols)</span></span>
+        <button type="button"
+                hx-delete="/api/matters/{{ matter_id }}/export-templates/{{ t.id }}"
+                hx-target="#builder-root" hx-swap="outerHTML"
+                class="text-xs text-red-500 hover:text-red-700">Delete</button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-xs text-gray-400">No templates yet.</p>
+    {% endif %}
+  </section>
+
+  <!-- Task 6 fills in the field catalog + builder form here -->
+</div>
+{% endblock %}

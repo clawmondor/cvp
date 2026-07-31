@@ -20,6 +20,7 @@ from cvp.routers import (
     comments,
     crops,
     evidence,
+    export_templates,
     exports,
     feedback,
     health,
@@ -95,6 +96,7 @@ app.include_router(vision.router)
 app.include_router(serp.router)
 app.include_router(crops.router)
 app.include_router(exports.router)
+app.include_router(export_templates.router)
 app.include_router(sharing.router)
 app.include_router(comments.router)
 app.include_router(feedback.router, dependencies=[Depends(require_active_user)])
