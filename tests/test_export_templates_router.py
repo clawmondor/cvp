@@ -156,3 +156,23 @@ def test_custom_export_runs(seeded_db, make_client, tmp_path, monkeypatch):
     r = client.post(f"/api/matters/{matter_id}/exports/custom", data={"template_id": tid})
     assert r.status_code == 200
     assert "generated successfully" in r.text
+
+
+def test_builder_page_has_catalog_and_form(seeded_db, make_client):
+    client, matter_id = make_client()
+    r = client.get(f"/matters/{matter_id}/export-templates")
+    assert r.status_code == 200
+    assert 'data-action="add-col"' in r.text
+    assert 'id="columns-json"' in r.text
+    assert 'id="col-row-template"' in r.text
+    assert 'data-action="load-xactimate"' in r.text
+
+
+def test_mutation_returns_fragment_not_full_page(seeded_db, make_client):
+    client, matter_id = make_client()
+    r = client.post(f"/api/matters/{matter_id}/export-templates", data=_payload())
+    assert r.status_code in (200, 201)
+    assert 'id="builder-root"' in r.text
+    lowered = r.text.lower()
+    assert "<!doctype" not in lowered
+    assert "<html" not in lowered

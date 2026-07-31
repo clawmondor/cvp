@@ -1,0 +1,86 @@
+<div id="builder-root" class="mx-auto max-w-4xl space-y-6">
+  <section class="space-y-2">
+    <h2 class="text-sm font-semibold text-gray-700">Existing templates</h2>
+    {% if templates_list %}
+    <ul class="space-y-1">
+      {% for t in templates_list %}
+      <li class="flex items-center justify-between rounded border border-gray-200 bg-white p-2 text-sm"
+          data-template-id="{{ t.id }}">
+        <span>{{ t.name }} <span class="text-xs text-gray-400">({{ t.columns|length }} cols)</span></span>
+        <button type="button"
+                hx-delete="/api/matters/{{ matter_id }}/export-templates/{{ t.id }}"
+                hx-target="#builder-root" hx-swap="outerHTML"
+                class="text-xs text-red-500 hover:text-red-700">Delete</button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-xs text-gray-400">No templates yet.</p>
+    {% endif %}
+  </section>
+
+  <form id="builder-form"
+        hx-post="/api/matters/{{ matter_id }}/export-templates"
+        hx-target="#builder-root" hx-swap="outerHTML"
+        class="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+    <div class="grid grid-cols-2 gap-3">
+      <label class="text-xs font-semibold text-gray-600">Name
+        <input name="name" required class="mt-1 w-full rounded border px-2 py-1 text-sm">
+      </label>
+      <label class="text-xs font-semibold text-gray-600">Sort by
+        <select name="sort_field" class="mt-1 w-full rounded border px-2 py-1 text-sm">
+          {% for s in sort_fields %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+    <label class="text-xs font-semibold text-gray-600">Description
+      <input name="description" class="mt-1 w-full rounded border px-2 py-1 text-sm">
+    </label>
+    <div class="flex gap-4 text-xs text-gray-600">
+      <label><input type="checkbox" name="include_needs_review" value="true"> Include needs-review items</label>
+      <label><input type="checkbox" name="include_excluded" value="true"> Include excluded items</label>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <p class="mb-1 text-xs font-semibold text-gray-600">Available fields</p>
+        <button type="button" class="mb-2 rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-700"
+                data-action="load-xactimate"
+                data-keys='{{ xactimate_defaults | map(attribute="field_key") | list | tojson }}'>
+          Start from Xactimate layout
+        </button>
+        {% for group, fields in field_groups.items() %}
+        <p class="mt-2 text-[11px] font-semibold uppercase text-gray-400">{{ group }}</p>
+        <div class="flex flex-wrap gap-1">
+          {% for f in fields %}
+          <button type="button" class="rounded border border-gray-300 bg-white px-2 py-0.5 text-xs hover:bg-gray-100"
+                  data-action="add-col" data-field-key="{{ f.key }}"
+                  data-default-header="{{ f.default_header }}">+ {{ f.default_header }}</button>
+          {% endfor %}
+        </div>
+        {% endfor %}
+        <button type="button" class="mt-2 rounded border border-dashed border-gray-400 px-2 py-0.5 text-xs"
+                data-action="add-static">+ Static column</button>
+      </div>
+      <div>
+        <p class="mb-1 text-xs font-semibold text-gray-600">Columns (in order)</p>
+        <ol id="col-list" class="space-y-1"></ol>
+      </div>
+    </div>
+
+    <input type="hidden" id="columns-json" name="columns_json" value="[]">
+    <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+      Save template
+    </button>
+  </form>
+
+  <template id="col-row-template">
+    <li class="col-row flex items-center gap-2 rounded border border-gray-200 bg-white p-2">
+      <span class="col-label flex-1 text-xs"></span>
+      <input type="text" class="col-header w-36 rounded border px-1 text-xs" placeholder="header">
+      <button type="button" data-action="move-col-up" class="text-gray-400 hover:text-gray-700">↑</button>
+      <button type="button" data-action="move-col-down" class="text-gray-400 hover:text-gray-700">↓</button>
+      <button type="button" data-action="remove-col" class="text-red-400 hover:text-red-700">✕</button>
+    </li>
+  </template>
+</div>

@@ -776,3 +776,90 @@ document.addEventListener('change', function (e) {
     document.addEventListener('htmx:afterSettle', onSettle);
   });
 })();
+
+// ---- Custom export template builder ----
+(function () {
+  function colList() { return document.getElementById('col-list'); }
+
+  function serialize() {
+    var list = colList();
+    var json = document.getElementById('columns-json');
+    if (!list || !json) return;
+    var cols = [];
+    list.querySelectorAll('.col-row').forEach(function (row) {
+      var fieldKey = row.dataset.fieldKey || null;
+      var header = (row.querySelector('.col-header') || {}).value || '';
+      var staticInput = row.querySelector('.col-static');
+      cols.push({
+        field_key: fieldKey,
+        header_label: header || null,
+        static_value: fieldKey ? null : ((staticInput && staticInput.value) || ''),
+      });
+    });
+    json.value = JSON.stringify(cols);
+  }
+
+  function makeRow(fieldKey, defaultHeader, isStatic) {
+    var tpl = document.getElementById('col-row-template');
+    var row = tpl.content.firstElementChild.cloneNode(true);
+    var label = row.querySelector('.col-label');
+    if (isStatic) {
+      row.dataset.fieldKey = '';
+      label.innerHTML = '<span class="font-semibold text-gray-500">Static:</span> '
+        + '<input type="text" class="col-static ml-1 rounded border px-1 text-xs" placeholder="fixed value">';
+      row.querySelector('.col-header').placeholder = 'header (required)';
+    } else {
+      row.dataset.fieldKey = fieldKey;
+      label.innerHTML = '<span class="font-mono text-gray-700"></span>';
+      label.firstChild.textContent = fieldKey;
+      row.querySelector('.col-header').placeholder = defaultHeader || 'header';
+    }
+    return row;
+  }
+
+  document.addEventListener('click', function (e) {
+    var addBtn = e.target.closest('[data-action="add-col"]');
+    if (addBtn) {
+      colList().appendChild(makeRow(addBtn.dataset.fieldKey, addBtn.dataset.defaultHeader, false));
+      serialize();
+      return;
+    }
+    if (e.target.closest('[data-action="add-static"]')) {
+      colList().appendChild(makeRow(null, '', true));
+      serialize();
+      return;
+    }
+    var load = e.target.closest('[data-action="load-xactimate"]');
+    if (load) {
+      var keys = JSON.parse(load.dataset.keys || '[]');
+      colList().innerHTML = '';
+      keys.forEach(function (k) {
+        var src = document.querySelector('[data-action="add-col"][data-field-key="' + k + '"]');
+        colList().appendChild(makeRow(k, src ? src.dataset.defaultHeader : '', false));
+      });
+      serialize();
+      return;
+    }
+    var up = e.target.closest('[data-action="move-col-up"]');
+    if (up) {
+      var r = up.closest('.col-row');
+      if (r.previousElementSibling) r.parentNode.insertBefore(r, r.previousElementSibling);
+      serialize();
+      return;
+    }
+    var down = e.target.closest('[data-action="move-col-down"]');
+    if (down) {
+      var rd = down.closest('.col-row');
+      if (rd.nextElementSibling) rd.parentNode.insertBefore(rd.nextElementSibling, rd);
+      serialize();
+      return;
+    }
+    var rm = e.target.closest('[data-action="remove-col"]');
+    if (rm) { rm.closest('.col-row').remove(); serialize(); return; }
+  });
+
+  // keep hidden JSON in sync when header/static text changes
+  document.addEventListener('input', function (e) {
+    if (e.target.closest('.col-header, .col-static')) serialize();
+  });
+})();

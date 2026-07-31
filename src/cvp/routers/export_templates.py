@@ -45,22 +45,40 @@ def _parse_columns(columns_json: str) -> list[svc.ColumnSpec]:
     return specs
 
 
-def _render_builder(
+def _builder_context(
+    request: Request, db, matter_id: str, group_id: str, user: CurrentUser
+) -> dict:
+    tmpls = svc.list_templates(db, group_id)
+    return {
+        "request": request,
+        "user": user,
+        "matter_id": matter_id,
+        "templates_list": tmpls,
+        "field_groups": field_groups(),
+        "sort_fields": svc.SORT_FIELDS,
+        "xactimate_defaults": svc.xactimate_default_columns(),
+    }
+
+
+def _render_page(
     request: Request, db, matter_id: str, group_id: str, user: CurrentUser
 ) -> HTMLResponse:
-    tmpls = svc.list_templates(db, group_id)
+    """Full page (extends base.html) — used by the GET builder page."""
     return templates.TemplateResponse(
         request,
         "export_templates_builder.html",
-        {
-            "request": request,
-            "user": user,
-            "matter_id": matter_id,
-            "templates_list": tmpls,
-            "field_groups": field_groups(),
-            "sort_fields": svc.SORT_FIELDS,
-            "xactimate_defaults": svc.xactimate_default_columns(),
-        },
+        _builder_context(request, db, matter_id, group_id, user),
+    )
+
+
+def _render_body(
+    request: Request, db, matter_id: str, group_id: str, user: CurrentUser
+) -> HTMLResponse:
+    """Swappable ``#builder-root`` fragment only — used by create/update/delete."""
+    return templates.TemplateResponse(
+        request,
+        "_export_templates_body.html",
+        _builder_context(request, db, matter_id, group_id, user),
     )
 
 
@@ -73,7 +91,7 @@ def builder_page(
     db = SessionLocal()
     try:
         group_id = _matter_group_id(db, matter_id)
-        return _render_builder(request, db, matter_id, group_id, user)
+        return _render_page(request, db, matter_id, group_id, user)
     finally:
         db.close()
 
@@ -107,7 +125,7 @@ def create(
             )
         except ValueError as exc:
             return HTMLResponse(f'<p class="text-sm text-red-600">{exc}</p>', status_code=400)
-        return _render_builder(request, db, matter_id, group_id, user)
+        return _render_body(request, db, matter_id, group_id, user)
     finally:
         db.close()
 
@@ -144,7 +162,7 @@ def update(
             )
         except ValueError as exc:
             return HTMLResponse(f'<p class="text-sm text-red-600">{exc}</p>', status_code=400)
-        return _render_builder(request, db, matter_id, group_id, user)
+        return _render_body(request, db, matter_id, group_id, user)
     finally:
         db.close()
 
@@ -163,6 +181,6 @@ def delete(
         if template is None:
             raise HTTPException(status_code=404, detail="Template not found")
         svc.delete_template(db, template)
-        return _render_builder(request, db, matter_id, group_id, user)
+        return _render_body(request, db, matter_id, group_id, user)
     finally:
         db.close()
