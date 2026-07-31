@@ -134,11 +134,31 @@ def test_cross_group_template_404(seeded_db, make_client):
     assert r.status_code == 404
 
 
+def test_cross_group_put_404(seeded_db, make_client):
+    client, matter_id = make_client()
+    other = ExportTemplate(id="tY", group_id="other-group", name="Nope", sort_field="line_number")
+    other.columns = [ExportTemplateColumn(position=0, field_key="description")]
+    seeded_db.add(other)
+    seeded_db.commit()
+
+    r = client.put(f"/api/matters/{matter_id}/export-templates/tY", data=_payload())
+    assert r.status_code == 404
+
+
 def test_invalid_payload_400(seeded_db, make_client):
     client, matter_id = make_client()
     r = client.post(
         f"/api/matters/{matter_id}/export-templates",
         data=_payload(columns=[]),
+    )
+    assert r.status_code == 400
+
+
+def test_malformed_columns_json_returns_400(seeded_db, make_client):
+    client, matter_id = make_client()
+    r = client.post(
+        f"/api/matters/{matter_id}/export-templates",
+        data=_payload(columns_json=json.dumps(["a", "b"])),
     )
     assert r.status_code == 400
 

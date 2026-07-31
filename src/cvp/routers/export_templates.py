@@ -1,5 +1,6 @@
 """Custom export template CRUD + builder page."""
 
+import html
 import json
 from pathlib import Path
 
@@ -35,6 +36,8 @@ def _parse_columns(columns_json: str) -> list[svc.ColumnSpec]:
         raise HTTPException(status_code=400, detail="Malformed columns")
     specs: list[svc.ColumnSpec] = []
     for c in raw:
+        if not isinstance(c, dict):
+            raise HTTPException(status_code=400, detail="Malformed columns")
         specs.append(
             svc.ColumnSpec(
                 field_key=(c.get("field_key") or None),
@@ -124,7 +127,9 @@ def create(
                 columns=_parse_columns(columns_json),
             )
         except ValueError as exc:
-            return HTMLResponse(f'<p class="text-sm text-red-600">{exc}</p>', status_code=400)
+            return HTMLResponse(
+                f'<p class="text-sm text-red-600">{html.escape(str(exc))}</p>', status_code=400
+            )
         return _render_body(request, db, matter_id, group_id, user)
     finally:
         db.close()
@@ -161,7 +166,9 @@ def update(
                 columns=_parse_columns(columns_json),
             )
         except ValueError as exc:
-            return HTMLResponse(f'<p class="text-sm text-red-600">{exc}</p>', status_code=400)
+            return HTMLResponse(
+                f'<p class="text-sm text-red-600">{html.escape(str(exc))}</p>', status_code=400
+            )
         return _render_body(request, db, matter_id, group_id, user)
     finally:
         db.close()
