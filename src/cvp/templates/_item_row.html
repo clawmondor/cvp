@@ -4,6 +4,7 @@
 {% for c in categories %}{% set _ = cat_map.update({c.id: c.name}) %}{% endfor %}
 <tr id="item-row-{{ item.id }}"
     data-item-edit-url="/api/items/{{ item.id }}/edit"
+    data-item-description="{{ item.description or '—' }}"
     class="{% if item.excluded %}opacity-40{% endif %} hover:bg-gray-50 text-sm cursor-pointer">
   <td class="whitespace-nowrap px-3 py-2 text-gray-400 font-mono text-xs">{{ item.line_number }}</td>
   <td class="px-2 py-1" style="width:100px;min-width:100px;">

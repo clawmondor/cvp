@@ -777,6 +777,144 @@ document.addEventListener('change', function (e) {
   });
 })();
 
+// ---- Last-edited item: capture on edit-open, render a jump link ----
+(function () {
+  function LAST_EDITED_KEY(matterId) { return 'claimos:lastEdited:' + matterId; }
+
+  function getMatterId() {
+    var banner = document.getElementById('items-new-banner');
+    return banner ? banner.dataset.matterId : null;
+  }
+
+  function readLastEdited() {
+    var matterId = getMatterId();
+    if (!matterId) return null;
+    try {
+      var raw = localStorage.getItem(LAST_EDITED_KEY(matterId));
+      if (!raw) return null;
+      var val = JSON.parse(raw);
+      if (val && val.id) return val;
+    } catch (_) {}
+    return null;
+  }
+
+  function writeLastEdited(id, description) {
+    var matterId = getMatterId();
+    if (!matterId) return;
+    try {
+      localStorage.setItem(
+        LAST_EDITED_KEY(matterId),
+        JSON.stringify({ id: id, description: description || '' })
+      );
+    } catch (_) {}
+  }
+
+  function renderLastEditedLink() {
+    var container = document.getElementById('last-edited-link');
+    if (!container) return;
+    var entry = readLastEdited();
+    var descEl = container.querySelector('[data-last-edited-desc]');
+    if (!entry) {
+      container.classList.add('hidden');
+      container.classList.remove('flex');
+      return;
+    }
+    if (descEl) descEl.textContent = entry.description;
+    container.classList.remove('hidden');
+    container.classList.add('flex');
+  }
+
+  function clearLastEditedNote() {
+    var container = document.getElementById('last-edited-link');
+    var noteEl = container ? container.querySelector('[data-last-edited-note]') : null;
+    if (noteEl) { noteEl.textContent = ''; noteEl.classList.add('hidden'); }
+  }
+
+  // Capture: piggyback on the row-click that opens the inline editor.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('a, button, input, select, textarea, label, summary')) return;
+    var row = e.target.closest('tr[data-item-edit-url]');
+    if (!row) return;
+    var id = row.id.replace(/^item-row-/, '');
+    writeLastEdited(id, row.dataset.itemDescription || '');
+    renderLastEditedLink();
+    clearLastEditedNote();
+  });
+
+  // Render on full load and whenever htmx swaps the items tab back in.
+  document.addEventListener('DOMContentLoaded', renderLastEditedLink);
+  document.addEventListener('htmx:afterSettle', function () {
+    if (document.getElementById('last-edited-link')) renderLastEditedLink();
+  });
+
+  function flashRow(row) {
+    var classes = ['ring-2', 'ring-indigo-400', 'bg-indigo-50'];
+    row.classList.add.apply(row.classList, classes);
+    setTimeout(function () {
+      row.classList.remove.apply(row.classList, classes);
+    }, 1500);
+  }
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-jump-last-edited]');
+    if (!btn) return;
+    e.preventDefault();
+    var container = document.getElementById('last-edited-link');
+    var noteEl = container ? container.querySelector('[data-last-edited-note]') : null;
+    var entry = readLastEdited();
+    if (!entry) return;
+
+    function showNote(text) {
+      if (!noteEl) return;
+      noteEl.textContent = text;
+      noteEl.classList.remove('hidden');
+    }
+    function clearNote() {
+      if (!noteEl) return;
+      noteEl.textContent = '';
+      noteEl.classList.add('hidden');
+    }
+    function jumpTo(row) {
+      clearNote();
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      flashRow(row);
+    }
+
+    var existing = document.getElementById('item-row-' + entry.id);
+    if (existing) { jumpTo(existing); return; }
+
+    // Row not loaded yet: drive the existing infinite-scroll pagination
+    // (the "Loading…" sentinel) until the row appears or pages run out.
+    if (!window.htmx) { showNote('not in the current view'); return; }
+    if (btn.dataset.jumpLoading) return; // guard re-entry while paging
+    btn.dataset.jumpLoading = '1';
+    showNote('loading…');
+
+    var MAX_PAGES = 200; // safety cap vs. runaway loop
+    var pages = 0;
+
+    function step() {
+      var row = document.getElementById('item-row-' + entry.id);
+      if (row) { delete btn.dataset.jumpLoading; jumpTo(row); return; }
+      var sentinel = document.querySelector('#items-tbody tr[hx-get*="/items-rows"]');
+      if (!sentinel || pages >= MAX_PAGES) {
+        delete btn.dataset.jumpLoading;
+        showNote('not in the current view');
+        return;
+      }
+      pages++;
+      var url = sentinel.getAttribute('hx-get');
+      htmx.ajax('GET', url, { target: sentinel, swap: 'outerHTML' })
+        .then(step)
+        .catch(function () {
+          delete btn.dataset.jumpLoading;
+          showNote('not in the current view');
+        });
+    }
+    step();
+  });
+})();
+
 // ---- Custom export template builder ----
 (function () {
   function colList() { return document.getElementById('col-list'); }
