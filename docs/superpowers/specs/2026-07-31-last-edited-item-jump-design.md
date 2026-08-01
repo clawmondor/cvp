@@ -78,9 +78,27 @@ Clicking "jump to it":
    briefly flash a highlight ring on the row (add a CSS class, remove it after
    ~1.5s) so the eye catches the target. This mirrors the existing new-items
    banner scroll behavior.
-3. If **not found** (item filtered out, on another sort page, or deleted):
-   show a brief inline note next to the link — *"not in the current view"* —
-   and take no other action. No hard error, no navigation.
+3. If **not found**: the Items table is lazy-loaded (50 rows/page via
+   `hx-trigger="revealed"` infinite scroll), so on a fresh reload a target
+   beyond the first page is not yet in the DOM. The jump therefore drives the
+   existing paginated `items-rows` endpoint page by page (via the "Loading…"
+   sentinel's own `hx-get`) until the row appears, then scrolls + highlights.
+   Only if the pages are exhausted without finding the row (genuinely filtered
+   out or deleted) does it show a brief inline note — *"not in the current
+   view"* — and take no other action. No hard error, no navigation. The note
+   is owned solely by the jump handler; a fresh capture clears any stale note.
+
+## Known limitations
+
+- **Sequential paging on jump.** Jumping to an item far down a long, freshly
+  reloaded table issues several sequential `items-rows` requests until the row
+  loads. Acceptable for this internal one-user tool; a "loading…" note shows
+  during the loop. A safety cap (200 pages) prevents runaway loops, and a
+  request failure clears the loading state and falls back to the not-found note.
+- **Description label is not live-synced.** If the recorded item's description
+  is edited in place, the link keeps showing the old text until the item's
+  editor is opened again (which re-captures the current description). Live-sync
+  is intentionally out of scope.
 
 ## Implementation notes
 
@@ -104,6 +122,9 @@ Clicking "jump to it":
 - Deleted case: delete the last-edited item → jump shows the same note.
 - Different matter: switching matters shows that matter's own last-edited entry
   (or nothing), not another matter's.
+- Pagination case (long table, **>50 items**): record an item beyond the first
+  page, reload, then jump → the table pages in and the row is scrolled to and
+  highlighted (not a false "not in the current view").
 
 Given this is client-side JS with no Python surface, verification is via the
 browser-verify recipe rather than pytest.
