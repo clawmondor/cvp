@@ -1001,3 +1001,29 @@ document.addEventListener('change', function (e) {
     if (e.target.closest('.col-header, .col-static')) serialize();
   });
 })();
+
+// Back-to-top button: reveal once the page is scrolled, smooth-scroll to top on click.
+(function () {
+    var SHOW_AFTER = 300; // px scrolled before the button fades in
+
+    function syncVisibility() {
+        var btn = document.querySelector('[data-back-to-top]');
+        if (!btn) return;
+        if (window.scrollY > SHOW_AFTER) {
+            btn.classList.remove('opacity-0', 'pointer-events-none');
+            btn.classList.add('opacity-100');
+        } else {
+            btn.classList.add('opacity-0', 'pointer-events-none');
+            btn.classList.remove('opacity-100');
+        }
+    }
+
+    window.addEventListener('scroll', syncVisibility, { passive: true });
+    document.addEventListener('DOMContentLoaded', syncVisibility);
+
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('[data-back-to-top]')) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    });
+})();
