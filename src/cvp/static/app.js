@@ -899,7 +899,12 @@ document.addEventListener('change', function (e) {
       }
       pages++;
       var url = sentinel.getAttribute('hx-get');
-      htmx.ajax('GET', url, { target: sentinel, swap: 'outerHTML' }).then(step);
+      htmx.ajax('GET', url, { target: sentinel, swap: 'outerHTML' })
+        .then(step)
+        .catch(function () {
+          delete btn.dataset.jumpLoading;
+          showNote('not in the current view');
+        });
     }
     step();
   });
