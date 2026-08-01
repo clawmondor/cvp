@@ -858,15 +858,50 @@ document.addEventListener('change', function (e) {
     var noteEl = container ? container.querySelector('[data-last-edited-note]') : null;
     var entry = readLastEdited();
     if (!entry) return;
-    var row = document.getElementById('item-row-' + entry.id);
-    if (row) {
-      if (noteEl) { noteEl.textContent = ''; noteEl.classList.add('hidden'); }
-      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      flashRow(row);
-    } else if (noteEl) {
-      noteEl.textContent = 'not in the current view';
+
+    function showNote(text) {
+      if (!noteEl) return;
+      noteEl.textContent = text;
       noteEl.classList.remove('hidden');
     }
+    function clearNote() {
+      if (!noteEl) return;
+      noteEl.textContent = '';
+      noteEl.classList.add('hidden');
+    }
+    function jumpTo(row) {
+      clearNote();
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      flashRow(row);
+    }
+
+    var existing = document.getElementById('item-row-' + entry.id);
+    if (existing) { jumpTo(existing); return; }
+
+    // Row not loaded yet: drive the existing infinite-scroll pagination
+    // (the "Loading…" sentinel) until the row appears or pages run out.
+    if (!window.htmx) { showNote('not in the current view'); return; }
+    if (btn.dataset.jumpLoading) return; // guard re-entry while paging
+    btn.dataset.jumpLoading = '1';
+    showNote('loading…');
+
+    var MAX_PAGES = 200; // safety cap vs. runaway loop
+    var pages = 0;
+
+    function step() {
+      var row = document.getElementById('item-row-' + entry.id);
+      if (row) { delete btn.dataset.jumpLoading; jumpTo(row); return; }
+      var sentinel = document.querySelector('#items-tbody tr[hx-get*="/items-rows"]');
+      if (!sentinel || pages >= MAX_PAGES) {
+        delete btn.dataset.jumpLoading;
+        showNote('not in the current view');
+        return;
+      }
+      pages++;
+      var url = sentinel.getAttribute('hx-get');
+      htmx.ajax('GET', url, { target: sentinel, swap: 'outerHTML' }).then(step);
+    }
+    step();
   });
 })();
 
