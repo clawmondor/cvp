@@ -814,16 +814,20 @@ document.addEventListener('change', function (e) {
     if (!container) return;
     var entry = readLastEdited();
     var descEl = container.querySelector('[data-last-edited-desc]');
-    var noteEl = container.querySelector('[data-last-edited-note]');
     if (!entry) {
       container.classList.add('hidden');
       container.classList.remove('flex');
       return;
     }
     if (descEl) descEl.textContent = entry.description;
-    if (noteEl) { noteEl.textContent = ''; noteEl.classList.add('hidden'); }
     container.classList.remove('hidden');
     container.classList.add('flex');
+  }
+
+  function clearLastEditedNote() {
+    var container = document.getElementById('last-edited-link');
+    var noteEl = container ? container.querySelector('[data-last-edited-note]') : null;
+    if (noteEl) { noteEl.textContent = ''; noteEl.classList.add('hidden'); }
   }
 
   // Capture: piggyback on the row-click that opens the inline editor.
@@ -834,6 +838,7 @@ document.addEventListener('change', function (e) {
     var id = row.id.replace(/^item-row-/, '');
     writeLastEdited(id, row.dataset.itemDescription || '');
     renderLastEditedLink();
+    clearLastEditedNote();
   });
 
   // Render on full load and whenever htmx swaps the items tab back in.
