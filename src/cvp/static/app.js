@@ -777,6 +777,76 @@ document.addEventListener('change', function (e) {
   });
 })();
 
+// ---- Last-edited item: capture on edit-open, render a jump link ----
+(function () {
+  function LAST_EDITED_KEY(matterId) { return 'claimos:lastEdited:' + matterId; }
+
+  function getMatterId() {
+    var banner = document.getElementById('items-new-banner');
+    return banner ? banner.dataset.matterId : null;
+  }
+
+  function readLastEdited() {
+    var matterId = getMatterId();
+    if (!matterId) return null;
+    try {
+      var raw = localStorage.getItem(LAST_EDITED_KEY(matterId));
+      if (!raw) return null;
+      var val = JSON.parse(raw);
+      if (val && val.id) return val;
+    } catch (_) {}
+    return null;
+  }
+
+  function writeLastEdited(id, description) {
+    var matterId = getMatterId();
+    if (!matterId) return;
+    try {
+      localStorage.setItem(
+        LAST_EDITED_KEY(matterId),
+        JSON.stringify({ id: id, description: description || '' })
+      );
+    } catch (_) {}
+  }
+
+  function renderLastEditedLink() {
+    var container = document.getElementById('last-edited-link');
+    if (!container) return;
+    var entry = readLastEdited();
+    var descEl = container.querySelector('[data-last-edited-desc]');
+    var noteEl = container.querySelector('[data-last-edited-note]');
+    if (!entry) {
+      container.classList.add('hidden');
+      container.classList.remove('flex');
+      return;
+    }
+    if (descEl) descEl.textContent = entry.description || '(item)';
+    if (noteEl) { noteEl.textContent = ''; noteEl.classList.add('hidden'); }
+    container.classList.remove('hidden');
+    container.classList.add('flex');
+  }
+
+  // Capture: piggyback on the row-click that opens the inline editor.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('a, button, input, select, textarea, label, summary')) return;
+    var row = e.target.closest('tr[data-item-edit-url]');
+    if (!row) return;
+    var id = row.id.replace(/^item-row-/, '');
+    writeLastEdited(id, row.dataset.itemDescription || '');
+    renderLastEditedLink();
+  });
+
+  // Render on full load and whenever htmx swaps the items tab back in.
+  document.addEventListener('DOMContentLoaded', renderLastEditedLink);
+  document.addEventListener('htmx:afterSettle', function () {
+    if (document.getElementById('last-edited-link')) renderLastEditedLink();
+  });
+
+  // Expose for Task 2's jump handler (same file, later IIFE not needed —
+  // jump handler is added inside this IIFE in Task 2).
+  window.__lastEdited = { readLastEdited: readLastEdited, renderLastEditedLink: renderLastEditedLink };
+})();
+
 // ---- Custom export template builder ----
 (function () {
   function colList() { return document.getElementById('col-list'); }

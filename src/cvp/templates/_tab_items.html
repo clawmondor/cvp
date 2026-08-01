@@ -12,6 +12,17 @@
     </button>
   </div>
 
+  <!-- Last-edited jump link: shown/populated by app.js from localStorage -->
+  <div id="last-edited-link" class="hidden items-center gap-2 text-sm text-gray-600">
+    <span aria-hidden="true">→</span>
+    <span>Last edited:</span>
+    <span data-last-edited-desc class="font-medium text-gray-900"></span>
+    <span aria-hidden="true">·</span>
+    <button type="button" data-jump-last-edited
+            class="text-indigo-600 hover:text-indigo-500 hover:underline cursor-pointer">jump to it</button>
+    <span data-last-edited-note class="hidden text-xs text-gray-400"></span>
+  </div>
+
   <!-- Add item form -->
   <details id="add-item-details" class="rounded-lg border border-gray-200 bg-white shadow-sm">
     <summary class="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 select-none">
