@@ -820,7 +820,7 @@ document.addEventListener('change', function (e) {
       container.classList.remove('flex');
       return;
     }
-    if (descEl) descEl.textContent = entry.description || '(item)';
+    if (descEl) descEl.textContent = entry.description;
     if (noteEl) { noteEl.textContent = ''; noteEl.classList.add('hidden'); }
     container.classList.remove('hidden');
     container.classList.add('flex');
@@ -842,9 +842,32 @@ document.addEventListener('change', function (e) {
     if (document.getElementById('last-edited-link')) renderLastEditedLink();
   });
 
-  // Expose for Task 2's jump handler (same file, later IIFE not needed —
-  // jump handler is added inside this IIFE in Task 2).
-  window.__lastEdited = { readLastEdited: readLastEdited, renderLastEditedLink: renderLastEditedLink };
+  function flashRow(row) {
+    var classes = ['ring-2', 'ring-indigo-400', 'bg-indigo-50'];
+    row.classList.add.apply(row.classList, classes);
+    setTimeout(function () {
+      row.classList.remove.apply(row.classList, classes);
+    }, 1500);
+  }
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-jump-last-edited]');
+    if (!btn) return;
+    e.preventDefault();
+    var container = document.getElementById('last-edited-link');
+    var noteEl = container ? container.querySelector('[data-last-edited-note]') : null;
+    var entry = readLastEdited();
+    if (!entry) return;
+    var row = document.getElementById('item-row-' + entry.id);
+    if (row) {
+      if (noteEl) { noteEl.textContent = ''; noteEl.classList.add('hidden'); }
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      flashRow(row);
+    } else if (noteEl) {
+      noteEl.textContent = 'not in the current view';
+      noteEl.classList.remove('hidden');
+    }
+  });
 })();
 
 // ---- Custom export template builder ----
