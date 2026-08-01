@@ -42,6 +42,7 @@
   </main>
   {% if user and request.url.path not in ("/", "/login", "/register", "/splash") %}
   {% include "_feedback_widget.html" %}
+  {% include "_back_to_top.html" %}
   {% endif %}
   <div id="crop-editor-modal-root"></div>
 </body>
