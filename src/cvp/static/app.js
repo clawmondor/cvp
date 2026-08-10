@@ -440,6 +440,30 @@ document.addEventListener('keydown', function (e) {
   document.body.classList.remove('overflow-hidden');
 });
 
+// Esc closes an open inline item editor (discards unsaved edits, same as the X
+// button). Fires even while focused in a form field — the whole editor is fields,
+// so bailing on inputs would make Esc never work. Targets the editor containing
+// the focused element, falling back to the last open editor on the page.
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  // Crop-editor modal owns Esc while it's open (handler above); don't also close
+  // the row underneath it.
+  var cropRoot = document.getElementById('crop-editor-modal-root');
+  if (cropRoot && cropRoot.children.length > 0) return;
+  // An open item editor is an item-row that carries the "Close editor" button.
+  var focused = e.target;
+  var editor = focused && focused.closest && focused.closest('tr[id^="item-row-"]');
+  if (!editor || !editor.querySelector('button[aria-label="Close editor"]')) {
+    var openEditors = document.querySelectorAll(
+      'tr[id^="item-row-"] button[aria-label="Close editor"]'
+    );
+    if (openEditors.length === 0) return;
+    openEditors[openEditors.length - 1].click();
+    return;
+  }
+  editor.querySelector('button[aria-label="Close editor"]').click();
+});
+
 // Delegated click: data-serp-panel-close → remove serp panel row
 document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-serp-panel-close]');
