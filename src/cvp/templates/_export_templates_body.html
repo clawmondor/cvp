@@ -7,10 +7,16 @@
       <li class="flex items-center justify-between rounded border border-gray-200 bg-white p-2 text-sm"
           data-template-id="{{ t.id }}">
         <span>{{ t.name }} <span class="text-xs text-gray-400">({{ t.columns|length }} cols)</span></span>
-        <button type="button"
-                hx-delete="/api/matters/{{ matter_id }}/export-templates/{{ t.id }}"
-                hx-target="#builder-root" hx-swap="outerHTML"
-                class="text-xs text-red-500 hover:text-red-700">Delete</button>
+        <span class="flex gap-2">
+          <button type="button"
+                  hx-get="/api/matters/{{ matter_id }}/export-templates/{{ t.id }}/edit"
+                  hx-target="#builder-root" hx-swap="outerHTML"
+                  class="text-xs text-indigo-500 hover:text-indigo-700">Edit</button>
+          <button type="button"
+                  hx-delete="/api/matters/{{ matter_id }}/export-templates/{{ t.id }}"
+                  hx-target="#builder-root" hx-swap="outerHTML"
+                  class="text-xs text-red-500 hover:text-red-700">Delete</button>
+        </span>
       </li>
       {% endfor %}
     </ul>
@@ -19,26 +25,37 @@
     {% endif %}
   </section>
 
+  {% if editing %}
+  <div class="flex items-center justify-between">
+    <p class="text-sm font-semibold text-indigo-700">Editing: {{ editing.name }}</p>
+    <button type="button"
+            hx-get="/matters/{{ matter_id }}/export-templates"
+            hx-target="#builder-root" hx-swap="outerHTML" hx-select="#builder-root"
+            class="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+  </div>
+  {% endif %}
   <form id="builder-form"
-        hx-post="/api/matters/{{ matter_id }}/export-templates"
+        {% if editing %}hx-put="/api/matters/{{ matter_id }}/export-templates/{{ editing.id }}"{% else %}hx-post="/api/matters/{{ matter_id }}/export-templates"{% endif %}
         hx-target="#builder-root" hx-swap="outerHTML"
         class="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
     <div class="grid grid-cols-2 gap-3">
       <label class="text-xs font-semibold text-gray-600">Name
-        <input name="name" required class="mt-1 w-full rounded border px-2 py-1 text-sm">
+        <input name="name" required value="{{ editing.name if editing else '' }}"
+               class="mt-1 w-full rounded border px-2 py-1 text-sm">
       </label>
       <label class="text-xs font-semibold text-gray-600">Sort by
         <select name="sort_field" class="mt-1 w-full rounded border px-2 py-1 text-sm">
-          {% for s in sort_fields %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          {% for s in sort_fields %}<option value="{{ s }}"{% if editing and editing.sort_field == s %} selected{% endif %}>{{ s }}</option>{% endfor %}
         </select>
       </label>
     </div>
     <label class="text-xs font-semibold text-gray-600">Description
-      <input name="description" class="mt-1 w-full rounded border px-2 py-1 text-sm">
+      <input name="description" value="{{ editing.description if editing else '' }}"
+             class="mt-1 w-full rounded border px-2 py-1 text-sm">
     </label>
     <div class="flex gap-4 text-xs text-gray-600">
-      <label><input type="checkbox" name="include_needs_review" value="true"> Include needs-review items</label>
-      <label><input type="checkbox" name="include_excluded" value="true"> Include excluded items</label>
+      <label><input type="checkbox" name="include_needs_review" value="true"{% if editing and editing.include_needs_review %} checked{% endif %}> Include needs-review items</label>
+      <label><input type="checkbox" name="include_excluded" value="true"{% if editing and editing.include_excluded %} checked{% endif %}> Include excluded items</label>
     </div>
 
     <div class="grid grid-cols-2 gap-4">
@@ -64,13 +81,35 @@
       </div>
       <div>
         <p class="mb-1 text-xs font-semibold text-gray-600">Columns (in order)</p>
-        <ol id="col-list" class="space-y-1"></ol>
+        <ol id="col-list" class="space-y-1">
+          {% if editing %}
+          {% for c in editing.columns %}
+          {% if c.field_key %}
+          <li class="col-row flex items-center gap-2 rounded border border-gray-200 bg-white p-2" data-field-key="{{ c.field_key }}">
+            <span class="col-label flex-1 text-xs"><span class="font-mono text-gray-700">{{ c.field_key }}</span></span>
+            <input type="text" class="col-header w-36 rounded border px-1 text-xs" placeholder="header" value="{{ c.header_label or '' }}">
+            <button type="button" data-action="move-col-up" class="text-gray-400 hover:text-gray-700">↑</button>
+            <button type="button" data-action="move-col-down" class="text-gray-400 hover:text-gray-700">↓</button>
+            <button type="button" data-action="remove-col" class="text-red-400 hover:text-red-700">✕</button>
+          </li>
+          {% else %}
+          <li class="col-row flex items-center gap-2 rounded border border-gray-200 bg-white p-2" data-field-key="">
+            <span class="col-label flex-1 text-xs"><span class="font-semibold text-gray-500">Static:</span> <input type="text" class="col-static ml-1 rounded border px-1 text-xs" placeholder="fixed value" value="{{ c.static_value or '' }}"></span>
+            <input type="text" class="col-header w-36 rounded border px-1 text-xs" placeholder="header (required)" value="{{ c.header_label or '' }}">
+            <button type="button" data-action="move-col-up" class="text-gray-400 hover:text-gray-700">↑</button>
+            <button type="button" data-action="move-col-down" class="text-gray-400 hover:text-gray-700">↓</button>
+            <button type="button" data-action="remove-col" class="text-red-400 hover:text-red-700">✕</button>
+          </li>
+          {% endif %}
+          {% endfor %}
+          {% endif %}
+        </ol>
       </div>
     </div>
 
-    <input type="hidden" id="columns-json" name="columns_json" value="[]">
+    <input type="hidden" id="columns-json" name="columns_json" value='{% if editing %}{{ editing_columns | tojson }}{% else %}[]{% endif %}'>
     <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
-      Save template
+      {{ 'Update template' if editing else 'Save template' }}
     </button>
   </form>
 
