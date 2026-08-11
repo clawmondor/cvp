@@ -1,3 +1,18 @@
+{#- Single source of truth for a builder column row. Called three ways:
+    col_row(c)  -> pre-rendered field column (c.field_key set)
+    col_row(c)  -> pre-rendered static column (c.field_key falsy)
+    col_row()   -> empty skeleton cloned by app.js makeRow() for new rows.
+    The markup MUST stay in sync with serialize()/makeRow() in app.js. -#}
+{% macro col_row(c=none) %}
+{%- set is_static = c is not none and not c.field_key -%}
+<li class="col-row flex items-center gap-2 rounded border border-gray-200 bg-white p-2"{% if c is not none %} data-field-key="{{ c.field_key or '' }}"{% endif %}>
+  <span class="col-label flex-1 text-xs">{% if c is none %}{% elif is_static %}<span class="font-semibold text-gray-500">Static:</span> <input type="text" class="col-static ml-1 rounded border px-1 text-xs" placeholder="fixed value" value="{{ c.static_value or '' }}">{% else %}<span class="font-mono text-gray-700">{{ c.field_key }}</span>{% endif %}</span>
+  <input type="text" class="col-header w-36 rounded border px-1 text-xs" placeholder="{{ 'header (required)' if is_static else 'header' }}"{% if c is not none %} value="{{ c.header_label or '' }}"{% endif %}>
+  <button type="button" data-action="move-col-up" class="text-gray-400 hover:text-gray-700">↑</button>
+  <button type="button" data-action="move-col-down" class="text-gray-400 hover:text-gray-700">↓</button>
+  <button type="button" data-action="remove-col" class="text-red-400 hover:text-red-700">✕</button>
+</li>
+{% endmacro %}
 <div id="builder-root" class="mx-auto max-w-4xl space-y-6">
   <section class="space-y-2">
     <h2 class="text-sm font-semibold text-gray-700">Existing templates</h2>
@@ -82,27 +97,7 @@
       <div>
         <p class="mb-1 text-xs font-semibold text-gray-600">Columns (in order)</p>
         <ol id="col-list" class="space-y-1">
-          {% if editing %}
-          {% for c in editing.columns %}
-          {% if c.field_key %}
-          <li class="col-row flex items-center gap-2 rounded border border-gray-200 bg-white p-2" data-field-key="{{ c.field_key }}">
-            <span class="col-label flex-1 text-xs"><span class="font-mono text-gray-700">{{ c.field_key }}</span></span>
-            <input type="text" class="col-header w-36 rounded border px-1 text-xs" placeholder="header" value="{{ c.header_label or '' }}">
-            <button type="button" data-action="move-col-up" class="text-gray-400 hover:text-gray-700">↑</button>
-            <button type="button" data-action="move-col-down" class="text-gray-400 hover:text-gray-700">↓</button>
-            <button type="button" data-action="remove-col" class="text-red-400 hover:text-red-700">✕</button>
-          </li>
-          {% else %}
-          <li class="col-row flex items-center gap-2 rounded border border-gray-200 bg-white p-2" data-field-key="">
-            <span class="col-label flex-1 text-xs"><span class="font-semibold text-gray-500">Static:</span> <input type="text" class="col-static ml-1 rounded border px-1 text-xs" placeholder="fixed value" value="{{ c.static_value or '' }}"></span>
-            <input type="text" class="col-header w-36 rounded border px-1 text-xs" placeholder="header (required)" value="{{ c.header_label or '' }}">
-            <button type="button" data-action="move-col-up" class="text-gray-400 hover:text-gray-700">↑</button>
-            <button type="button" data-action="move-col-down" class="text-gray-400 hover:text-gray-700">↓</button>
-            <button type="button" data-action="remove-col" class="text-red-400 hover:text-red-700">✕</button>
-          </li>
-          {% endif %}
-          {% endfor %}
-          {% endif %}
+          {% if editing %}{% for c in editing.columns %}{{ col_row(c) }}{% endfor %}{% endif %}
         </ol>
       </div>
     </div>
@@ -113,13 +108,5 @@
     </button>
   </form>
 
-  <template id="col-row-template">
-    <li class="col-row flex items-center gap-2 rounded border border-gray-200 bg-white p-2">
-      <span class="col-label flex-1 text-xs"></span>
-      <input type="text" class="col-header w-36 rounded border px-1 text-xs" placeholder="header">
-      <button type="button" data-action="move-col-up" class="text-gray-400 hover:text-gray-700">↑</button>
-      <button type="button" data-action="move-col-down" class="text-gray-400 hover:text-gray-700">↓</button>
-      <button type="button" data-action="remove-col" class="text-red-400 hover:text-red-700">✕</button>
-    </li>
-  </template>
+  <template id="col-row-template">{{ col_row() }}</template>
 </div>
