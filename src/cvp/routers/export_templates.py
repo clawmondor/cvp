@@ -10,7 +10,7 @@ from fastapi.templating import Jinja2Templates
 
 from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, require_matter_role
-from cvp.models import Matter
+from cvp.models import ExportTemplate, Matter
 from cvp.services import export_templates as svc
 from cvp.services.export_fields import field_groups
 
@@ -54,7 +54,7 @@ def _builder_context(
     matter_id: str,
     group_id: str,
     user: CurrentUser,
-    editing=None,
+    editing: ExportTemplate | None = None,
 ) -> dict:
     tmpls = svc.list_templates(db, group_id)
     editing_columns: list[dict] = []
@@ -92,7 +92,12 @@ def _render_page(
 
 
 def _render_body(
-    request: Request, db, matter_id: str, group_id: str, user: CurrentUser, editing=None
+    request: Request,
+    db,
+    matter_id: str,
+    group_id: str,
+    user: CurrentUser,
+    editing: ExportTemplate | None = None,
 ) -> HTMLResponse:
     """Swappable ``#builder-root`` fragment only — create/update/delete/edit."""
     return templates.TemplateResponse(
