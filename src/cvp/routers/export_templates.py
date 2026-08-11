@@ -10,7 +10,7 @@ from fastapi.templating import Jinja2Templates
 
 from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, require_matter_role
-from cvp.models import Matter
+from cvp.models import ExportTemplate, Matter
 from cvp.services import export_templates as svc
 from cvp.services.export_fields import field_groups
 
@@ -49,9 +49,24 @@ def _parse_columns(columns_json: str) -> list[svc.ColumnSpec]:
 
 
 def _builder_context(
-    request: Request, db, matter_id: str, group_id: str, user: CurrentUser
+    request: Request,
+    db,
+    matter_id: str,
+    group_id: str,
+    user: CurrentUser,
+    editing: ExportTemplate | None = None,
 ) -> dict:
     tmpls = svc.list_templates(db, group_id)
+    editing_columns: list[dict] = []
+    if editing is not None:
+        editing_columns = [
+            {
+                "field_key": c.field_key,
+                "header_label": c.header_label,
+                "static_value": c.static_value,
+            }
+            for c in editing.columns
+        ]
     return {
         "request": request,
         "user": user,
@@ -60,6 +75,8 @@ def _builder_context(
         "field_groups": field_groups(),
         "sort_fields": svc.SORT_FIELDS,
         "xactimate_defaults": svc.xactimate_default_columns(),
+        "editing": editing,
+        "editing_columns": editing_columns,
     }
 
 
@@ -75,13 +92,18 @@ def _render_page(
 
 
 def _render_body(
-    request: Request, db, matter_id: str, group_id: str, user: CurrentUser
+    request: Request,
+    db,
+    matter_id: str,
+    group_id: str,
+    user: CurrentUser,
+    editing: ExportTemplate | None = None,
 ) -> HTMLResponse:
-    """Swappable ``#builder-root`` fragment only — used by create/update/delete."""
+    """Swappable ``#builder-root`` fragment only — create/update/delete/edit."""
     return templates.TemplateResponse(
         request,
         "_export_templates_body.html",
-        _builder_context(request, db, matter_id, group_id, user),
+        _builder_context(request, db, matter_id, group_id, user, editing),
     )
 
 
@@ -131,6 +153,24 @@ def create(
                 f'<p class="text-sm text-red-600">{html.escape(str(exc))}</p>', status_code=400
             )
         return _render_body(request, db, matter_id, group_id, user)
+    finally:
+        db.close()
+
+
+@router.get("/api/matters/{matter_id}/export-templates/{tid}/edit", response_class=HTMLResponse)
+def edit_form(
+    request: Request,
+    matter_id: str,
+    tid: str,
+    user: CurrentUser = Depends(require_matter_role("contributor")),
+) -> HTMLResponse:
+    db = SessionLocal()
+    try:
+        group_id = _matter_group_id(db, matter_id)
+        template = svc.get_template(db, tid, group_id)
+        if template is None:
+            raise HTTPException(status_code=404, detail="Template not found")
+        return _render_body(request, db, matter_id, group_id, user, editing=template)
     finally:
         db.close()
 

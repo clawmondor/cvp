@@ -196,3 +196,70 @@ def test_mutation_returns_fragment_not_full_page(seeded_db, make_client):
     lowered = r.text.lower()
     assert "<!doctype" not in lowered
     assert "<html" not in lowered
+
+
+def test_list_row_has_edit_button(seeded_db, make_client):
+    client, matter_id = make_client()
+    client.post(f"/api/matters/{matter_id}/export-templates", data=_payload())
+    page = client.get(f"/matters/{matter_id}/export-templates")
+    assert ">Edit<" in page.text
+    assert "/edit" in page.text
+
+
+def test_edit_form_prefills_and_is_put_mode(seeded_db, make_client):
+    client, matter_id = make_client()
+    client.post(
+        f"/api/matters/{matter_id}/export-templates",
+        data=_payload(
+            name="Editable",
+            columns=[
+                {"field_key": "description", "header_label": "Item", "static_value": None},
+                {"field_key": None, "header_label": "Note", "static_value": "n/a"},
+            ],
+        ),
+    )
+    page = client.get(f"/matters/{matter_id}/export-templates")
+    tid = re.search(r'data-template-id="([^"]+)"', page.text).group(1)
+
+    r = client.get(f"/api/matters/{matter_id}/export-templates/{tid}/edit")
+    assert r.status_code == 200
+    assert 'id="builder-root"' in r.text
+    assert f'hx-put="/api/matters/{matter_id}/export-templates/{tid}"' in r.text
+    assert "Update template" in r.text
+    assert 'value="Editable"' in r.text  # name prefilled
+    assert 'value="Item"' in r.text  # field-column header prefilled
+    assert 'value="n/a"' in r.text  # static-column value prefilled
+    # hidden columns-json is server-filled so a no-op update posts the real columns
+    assert '"field_key": "description"' in r.text or '"field_key":"description"' in r.text
+
+
+def test_edit_form_missing_template_404(seeded_db, make_client):
+    client, matter_id = make_client()
+    r = client.get(f"/api/matters/{matter_id}/export-templates/nope/edit")
+    assert r.status_code == 404
+
+
+def test_update_via_put_persists_and_resets_to_create(seeded_db, make_client):
+    client, matter_id = make_client()
+    client.post(f"/api/matters/{matter_id}/export-templates", data=_payload(name="Before"))
+    page = client.get(f"/matters/{matter_id}/export-templates")
+    tid = re.search(r'data-template-id="([^"]+)"', page.text).group(1)
+
+    r = client.put(
+        f"/api/matters/{matter_id}/export-templates/{tid}",
+        data=_payload(
+            name="After",
+            columns=[
+                {"field_key": "description", "header_label": None, "static_value": None},
+                {"field_key": "room", "header_label": None, "static_value": None},
+            ],
+        ),
+    )
+    assert r.status_code == 200
+    # response resets to blank create mode
+    assert "Save template" in r.text
+    assert "Update template" not in r.text
+
+    t = seeded_db.get(ExportTemplate, tid)
+    assert t.name == "After"
+    assert len(t.columns) == 2
