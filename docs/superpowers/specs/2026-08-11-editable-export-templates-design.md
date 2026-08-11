@@ -98,18 +98,20 @@ JS `<template>`, extract the row's inner markup into a Jinja macro or a small
 `{% include %}` partial that both the `<ol>` loop and the `<template>` element
 render. Keeping them in one source prevents the two from drifting.
 
-### 4. JS adjustment
+### 4. Hidden `columns-json` pre-fill (no JS change)
 
-In `app.js`, the hidden `columns-json` is only written when the user interacts
-with the builder. A pre-filled edit form that is submitted with no changes would
-otherwise post a stale `[]`. Fix: run `serialize()` once whenever the builder
-fragment loads with columns already present.
+In `app.js`, the hidden `columns-json` input is only rewritten when the user
+interacts with the builder (`serialize()` fires on click/input). A pre-filled
+edit form submitted with no changes would otherwise post a stale `[]`.
 
-Wire this via HTMX's `htmx:afterSwap` (or `htmx:load`) event on the document,
-checking for the presence of `#col-list` with rows — no inline handlers, no new
-`data-*` click actions. `serialize()` already reads field key, header, and static
-value from each `.col-row`, so pre-rendered rows serialize identically to
-JS-created ones.
+Rather than add a JS load hook, the edit fragment **pre-fills the hidden input's
+`value` server-side** with the template's columns already serialized (single-
+quoted attribute + Jinja `tojson`, matching the existing `data-keys` pattern in
+this file). So the correct payload is present the instant the fragment loads,
+with no reliance on a client event firing. If the user then edits any row,
+`serialize()` regenerates `columns-json` from the pre-rendered `.col-row`
+elements exactly as it does for JS-created rows. **This feature requires no
+`app.js` change.**
 
 ### After update
 
@@ -161,5 +163,6 @@ unchanged.
 - `src/cvp/templates/_export_templates_body.html` — Edit button, mode-aware form,
   pre-rendered col-list, Cancel control; shared col-row markup extracted to a
   macro/partial.
-- `src/cvp/static/app.js` — serialize-on-load for pre-filled builders.
-- `tests/` — one edit integration test.
+- `tests/` — edit-form + update integration tests.
+
+(No `app.js` change — the hidden `columns-json` is pre-filled server-side.)
