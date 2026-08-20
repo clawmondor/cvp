@@ -13,10 +13,11 @@ from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Query, Session, selectinload
 
 from cvp.config import settings
-from cvp.db import SessionLocal
+from cvp.db import SessionLocal, get_db
 from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.depreciation import compute_acv
 from cvp.models import Category, Item, ItemGroup, Room, SerpSearch
+from cvp.models_agent import AiRecommendation
 from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.item_groups import find_or_create
 from cvp.services.serp_display import extract_results
@@ -28,6 +29,9 @@ templates.env.filters["qplus"] = quote_plus
 templates.env.filters["pretty_json"] = lambda v: json.dumps(json.loads(v), indent=2) if v else ""
 
 router = APIRouter()
+
+# Single module-level dependency instance so tests can override it by identity.
+EDITOR_DEP = require_matter_role("editor")
 
 CONDITIONS = ["excellent", "above_average", "average", "below_average"]
 ITEMS_PAGE_SIZE = 50
@@ -488,6 +492,27 @@ def create_item(
     # Use HX-Trigger to nudge the client to refresh totals + drop empty-state row.
     headers = {"HX-Trigger": "item-created"}
     return HTMLResponse(row_html, headers=headers, status_code=200)
+
+
+@router.get("/api/items/{item_id}/ai-recommendations", response_class=HTMLResponse)
+def ai_recommendations_panel(
+    item_id: str,
+    user: CurrentUser = Depends(EDITOR_DEP),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    item = db.get(Item, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+    pending = (
+        db.query(AiRecommendation)
+        .filter(AiRecommendation.item_id == item_id, AiRecommendation.status == "pending")
+        .order_by(AiRecommendation.created_at)
+        .all()
+    )
+    html = templates.get_template("_ai_recommendations.html").render(
+        item=item, recommendations=pending
+    )
+    return HTMLResponse(html)
 
 
 @router.get("/api/items/{item_id}/edit", response_class=HTMLResponse)

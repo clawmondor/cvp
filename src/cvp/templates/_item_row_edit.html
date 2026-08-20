@@ -190,6 +190,11 @@
       <div id="comments-{{ item.id }}" class="mt-2"></div>
     </div>
 
+    <div hx-get="/api/items/{{ item.id }}/ai-recommendations"
+         hx-trigger="load"
+         hx-swap="innerHTML"
+         class="mt-3 border-t border-indigo-100 pt-3"></div>
+
     {% if item.crops %}
     {% set item_id = item.id %}
     <!-- Google Lens search -->

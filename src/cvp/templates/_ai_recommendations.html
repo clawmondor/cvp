@@ -20,14 +20,14 @@
         <div class="mt-2 flex gap-2">
           <button type="button"
                   class="px-2 py-1 rounded bg-green-600 text-white text-xs"
-                  data-action="accept-rec"
-                  data-item-id="{{ item.id }}"
-                  data-rec-id="{{ rec.id }}">Accept</button>
+                  hx-post="/api/items/{{ item.id }}/recommendations/{{ rec.id }}/accept"
+                  hx-target="#item-row-{{ item.id }}"
+                  hx-swap="outerHTML">Accept</button>
           <button type="button"
                   class="px-2 py-1 rounded bg-gray-200 text-gray-700 text-xs"
-                  data-action="dismiss-rec"
-                  data-item-id="{{ item.id }}"
-                  data-rec-id="{{ rec.id }}">Dismiss</button>
+                  hx-post="/api/items/{{ item.id }}/recommendations/{{ rec.id }}/dismiss"
+                  hx-target="#ai-recs-{{ item.id }}"
+                  hx-swap="outerHTML">Dismiss</button>
         </div>
       </li>
       {% endfor %}
