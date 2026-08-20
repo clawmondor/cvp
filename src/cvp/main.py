@@ -16,6 +16,7 @@ from cvp.middleware import SecurityHeadersMiddleware
 from cvp.models import Matter
 from cvp.models_access import MatterAccess
 from cvp.routers import (
+    agent,
     auth,
     comments,
     crops,
@@ -93,6 +94,7 @@ app.include_router(rooms.router)
 app.include_router(item_groups.router)
 app.include_router(items.router)
 app.include_router(vision.router)
+app.include_router(agent.router)
 app.include_router(serp.router)
 app.include_router(crops.router)
 app.include_router(exports.router)
