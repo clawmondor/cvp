@@ -1,19 +1,45 @@
 """JSON API for external AI agents (X-API-Key auth)."""
 
+from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session, selectinload
 
 from cvp.agent_auth import AgentPrincipal, require_agent_key
 from cvp.config import settings
 from cvp.db import get_db
 from cvp.models import Category, Item
+from cvp.models_agent import AiRecommendation
 from cvp.services import runtime_config
-from cvp.services.recommendation_feed import items_needing_recommendations
+from cvp.services.audit import write_audit_log
+from cvp.services.recommendation_feed import (
+    MAX_PENDING_PER_ITEM,
+    items_needing_recommendations,
+    pending_count,
+)
 
 router = APIRouter(prefix="/api/agent", tags=["agent"])
+
+
+class RecommendationIn(BaseModel):
+    proposed_retail_unit_cents: int
+    proposed_shipping_cents: int = 0
+    source_url: str
+    source_retailer: str
+    match_type: str = "exact"
+    product_title: str = ""
+    rationale: str = ""
+    item_crop_id: str | None = None
+
+    @field_validator("source_url", "source_retailer")
+    @classmethod
+    def _non_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be empty")
+        return v.strip()
 
 
 def _serialize_item(db: Session, item: Item) -> dict:
@@ -83,3 +109,50 @@ def serve_crop(
     if not requested.exists():
         raise HTTPException(status_code=404, detail="Crop not found")
     return FileResponse(str(requested))
+
+
+@router.post("/items/{item_id}/recommendations", status_code=201)
+def submit_recommendation(
+    item_id: str,
+    body: RecommendationIn,
+    background_tasks: BackgroundTasks,
+    principal: AgentPrincipal = Depends(require_agent_key),
+    db: Session = Depends(get_db),
+) -> dict:
+    item = db.get(Item, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    if pending_count(db, item_id) >= MAX_PENDING_PER_ITEM:
+        raise HTTPException(
+            status_code=409, detail="Item already has the maximum pending recommendations"
+        )
+
+    rec = AiRecommendation(
+        item_id=item_id,
+        item_crop_id=body.item_crop_id,
+        agent_key_id=principal.agent_key_id,
+        proposed_retail_unit_cents=body.proposed_retail_unit_cents,
+        proposed_shipping_cents=body.proposed_shipping_cents,
+        source_url=body.source_url,
+        source_retailer=body.source_retailer,
+        match_type=body.match_type,
+        product_title=body.product_title,
+        rationale=body.rationale,
+        status="pending",
+        source_captured_at=datetime.now(tz=timezone.utc),
+    )
+    db.add(rec)
+    db.commit()
+    db.refresh(rec)
+
+    background_tasks.add_task(
+        write_audit_log,
+        user_id=None,
+        action="agent.recommendation.create",
+        resource_type="ai_recommendation",
+        resource_id=rec.id,
+        matter_id=item.matter_id,
+        detail={"agent_key_id": principal.agent_key_id, "agent_name": principal.name},
+    )
+    return {"id": rec.id, "status": rec.status, "item_id": rec.item_id}
