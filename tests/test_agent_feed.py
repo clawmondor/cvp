@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import cvp.models_agent  # noqa: F401
-from cvp.models import Base, Category, Item, Matter
+from cvp.models import Base, Category, EvidenceFile, Item, ItemCrop, Matter
 from cvp.models_agent import AgentKey, AiRecommendation
 from cvp.services.agent_keys import generate_key
 from cvp.services.recommendation_feed import items_needing_recommendations
@@ -41,6 +41,20 @@ def _item(db, matter, confidence, source_url=""):
     db.add(it)
     db.flush()
     return it
+
+
+def _evidence(db, matter):
+    ev = EvidenceFile(matter_id=matter.id, filename="photo.jpg", stored_path="/tmp/photo.jpg")
+    db.add(ev)
+    db.flush()
+    return ev
+
+
+def _crop(db, item, evidence, crop_path):
+    c = ItemCrop(item_id=item.id, evidence_file_id=evidence.id, crop_path=crop_path)
+    db.add(c)
+    db.flush()
+    return c
 
 
 def test_feed_filters_by_confidence_source_and_cap(db_session):
@@ -110,5 +124,88 @@ def test_feed_endpoint_requires_key_and_returns_items(db_session):
         payload = resp.json()
         assert len(payload["items"]) == 1
         assert payload["items"][0]["vision_confidence"] == "high"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_detail_endpoint_returns_item_with_crops(db_session):
+    m = _seed(db_session)
+    item = _item(db_session, m, "high")
+    ev = _evidence(db_session, m)
+    crop = _crop(db_session, item, ev, "crops/abc123.jpg")
+    db_session.commit()
+    full = _make_key_row(db_session)
+    client, app = _client(db_session)
+    try:
+        resp = client.get(f"/api/agent/items/{item.id}", headers={"X-API-Key": full})
+        assert resp.status_code == 200
+        payload = resp.json()
+        assert payload["item_id"] == item.id
+        assert payload["vision_confidence"] == "high"
+        assert payload["matter_id"] == m.id
+        assert {"item_crop_id": crop.id, "image_url": "/api/agent/crops/crops/abc123.jpg"} in (
+            payload["crops"]
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_detail_endpoint_404_for_unknown_item(db_session):
+    _seed(db_session)
+    db_session.commit()
+    full = _make_key_row(db_session)
+    client, app = _client(db_session)
+    try:
+        resp = client.get("/api/agent/items/does-not-exist", headers={"X-API-Key": full})
+        assert resp.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_detail_endpoint_requires_key(db_session):
+    m = _seed(db_session)
+    item = _item(db_session, m, "high")
+    db_session.commit()
+    client, app = _client(db_session)
+    try:
+        resp = client.get(f"/api/agent/items/{item.id}")
+        assert resp.status_code == 401
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_feed_endpoint_min_confidence_query_param_overrides_default(db_session):
+    m = _seed(db_session)
+    medium_item = _item(db_session, m, "medium")
+    high_item = _item(db_session, m, "high")
+    db_session.commit()
+    full = _make_key_row(db_session)
+    client, app = _client(db_session)
+    try:
+        resp = client.get(
+            "/api/agent/items", params={"min_confidence": "medium"}, headers={"X-API-Key": full}
+        )
+        assert resp.status_code == 200
+        ids = {i["item_id"] for i in resp.json()["items"]}
+        assert ids == {medium_item.id, high_item.id}
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_crops_with_empty_crop_path_are_excluded(db_session):
+    m = _seed(db_session)
+    item = _item(db_session, m, "high")
+    ev = _evidence(db_session, m)
+    keep = _crop(db_session, item, ev, "crops/keep.jpg")
+    _crop(db_session, item, ev, "")
+    db_session.commit()
+    full = _make_key_row(db_session)
+    client, app = _client(db_session)
+    try:
+        resp = client.get(f"/api/agent/items/{item.id}", headers={"X-API-Key": full})
+        assert resp.status_code == 200
+        crops = resp.json()["crops"]
+        assert len(crops) == 1
+        assert crops[0]["item_crop_id"] == keep.id
     finally:
         app.dependency_overrides.clear()
