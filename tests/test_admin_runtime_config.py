@@ -91,3 +91,21 @@ def test_post_rejects_out_of_bounds(admin_client, db_session):
     )
     assert resp.status_code == 400
     assert db_session.query(AppSetting).filter_by(key="evidence_upload_concurrency").first() is None
+
+
+def test_confidence_knob_renders_and_updates(admin_client, db_session):
+    resp = admin_client.get("/admin/system/runtime-config")
+    assert "ai_recommendation_min_confidence" in resp.text
+
+    resp = admin_client.post(
+        "/admin/system/runtime-config",
+        data={"ai_recommendation_min_confidence": "medium"},
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+    from cvp.models_app_setting import AppSetting
+
+    row = db_session.query(AppSetting).filter_by(key="ai_recommendation_min_confidence").one()
+    import json
+
+    assert json.loads(row.value_json) == "medium"

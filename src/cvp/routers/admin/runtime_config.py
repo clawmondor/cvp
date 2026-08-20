@@ -30,6 +30,7 @@ def index(
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     rows = [{"key": k, "value": runtime_config.get_int(db, k)} for k in _KNOBS]
+    confidence = runtime_config.get_str(db, "ai_recommendation_min_confidence")
     return templates.TemplateResponse(
         request,
         "admin/system/runtime_config.html",
@@ -37,6 +38,7 @@ def index(
             "user": user,
             "rows": rows,
             "bounds": runtime_config._BOUNDS,
+            "ai_recommendation_min_confidence": confidence,
             "panel_title": "System Admin",
             "breadcrumbs": [
                 {"label": "System Admin", "url": "/admin/system/"},
@@ -52,6 +54,7 @@ def update(
     evidence_upload_concurrency: int | None = Form(None),
     evidence_upload_max_file_mb: int | None = Form(None),
     evidence_upload_max_batch_count: int | None = Form(None),
+    ai_recommendation_min_confidence: str | None = Form(None),
     user: CurrentUser = Depends(require_system_admin),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
@@ -67,4 +70,11 @@ def update(
             runtime_config.set_value(db, key, value, updated_by_user_id=user.id)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+    if ai_recommendation_min_confidence is not None:
+        runtime_config.set_value(
+            db,
+            "ai_recommendation_min_confidence",
+            ai_recommendation_min_confidence,
+            updated_by_user_id=user.id,
+        )
     return RedirectResponse(url="/admin/system/runtime-config", status_code=303)

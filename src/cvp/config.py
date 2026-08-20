@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     evidence_upload_max_file_mb: int = 10
     evidence_upload_max_batch_count: int = 500
 
+    # AI recommendation runtime knob — overridable via app_setting table
+    ai_recommendation_min_confidence: str = "high"
+
 
 @functools.lru_cache(maxsize=1)
 def get_settings() -> Settings:
