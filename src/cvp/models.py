@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -16,6 +17,12 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
+
+if TYPE_CHECKING:
+    # AiRecommendation lives in models_agent.py; this import is type-checking-only.
+    # At runtime, SQLAlchemy resolves the "AiRecommendation" string via its class
+    # registry once models_agent is imported at the bottom of this file.
+    from cvp.models_agent import AiRecommendation
 
 
 def _new_uuid() -> str:
@@ -195,6 +202,11 @@ class Item(Base):
     item_group: Mapped["ItemGroup | None"] = relationship("ItemGroup")
     crops: Mapped[list["ItemCrop"]] = relationship(
         "ItemCrop", back_populates="item", cascade="all, delete-orphan"
+    )
+    ai_recommendations: Mapped[list["AiRecommendation"]] = relationship(
+        "AiRecommendation",
+        cascade="all, delete-orphan",
+        order_by="AiRecommendation.created_at",
     )
 
 
