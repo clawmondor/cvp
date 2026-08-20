@@ -1,9 +1,12 @@
+import json
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from cvp.models import Base
+from cvp.models_app_setting import AppSetting
 from cvp.services import runtime_config
 
 
@@ -37,7 +40,17 @@ def test_get_str_returns_db_override(db_session):
 
 
 def test_get_str_ignores_out_of_set_value(db_session):
-    runtime_config.set_value(
-        db_session, "ai_recommendation_min_confidence", "bogus", updated_by_user_id=None
+    # Seed the invalid value directly, bypassing set_value's write-time guard,
+    # to cover the read-side fallback (e.g. legacy/manually-edited DB rows).
+    db_session.add(
+        AppSetting(key="ai_recommendation_min_confidence", value_json=json.dumps("bogus"))
     )
+    db_session.commit()
     assert runtime_config.get_str(db_session, "ai_recommendation_min_confidence") == "high"
+
+
+def test_set_value_rejects_out_of_set_value(db_session):
+    with pytest.raises(ValueError):
+        runtime_config.set_value(
+            db_session, "ai_recommendation_min_confidence", "bogus", updated_by_user_id=None
+        )

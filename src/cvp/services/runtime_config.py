@@ -94,6 +94,9 @@ def set_value(db: Session, key: str, value: Any, *, updated_by_user_id: str | No
         lo, hi = bounds
         if value < lo or value > hi:
             raise ValueError(f"{key}={value} out of bounds {bounds}")
+    allowed = _ALLOWED_STR.get(key)
+    if allowed and value not in allowed:
+        raise ValueError(f"{key}={value} not in {allowed}")
     row = db.query(AppSetting).filter_by(key=key).first()
     if row is None:
         row = AppSetting(

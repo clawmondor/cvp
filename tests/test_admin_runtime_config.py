@@ -109,3 +109,16 @@ def test_confidence_knob_renders_and_updates(admin_client, db_session):
     import json
 
     assert json.loads(row.value_json) == "medium"
+
+
+def test_post_rejects_out_of_set_confidence(admin_client, db_session):
+    resp = admin_client.post(
+        "/admin/system/runtime-config",
+        data={"ai_recommendation_min_confidence": "bogus"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 400
+    assert (
+        db_session.query(AppSetting).filter_by(key="ai_recommendation_min_confidence").first()
+        is None
+    )

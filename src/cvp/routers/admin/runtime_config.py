@@ -58,10 +58,11 @@ def update(
     user: CurrentUser = Depends(require_system_admin),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    submitted = {
+    submitted: dict[str, int | str] = {
         "evidence_upload_concurrency": evidence_upload_concurrency,
         "evidence_upload_max_file_mb": evidence_upload_max_file_mb,
         "evidence_upload_max_batch_count": evidence_upload_max_batch_count,
+        "ai_recommendation_min_confidence": ai_recommendation_min_confidence,
     }
     for key, value in submitted.items():
         if value is None:
@@ -70,11 +71,4 @@ def update(
             runtime_config.set_value(db, key, value, updated_by_user_id=user.id)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
-    if ai_recommendation_min_confidence is not None:
-        runtime_config.set_value(
-            db,
-            "ai_recommendation_min_confidence",
-            ai_recommendation_min_confidence,
-            updated_by_user_id=user.id,
-        )
     return RedirectResponse(url="/admin/system/runtime-config", status_code=303)
