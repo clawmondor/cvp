@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -16,6 +17,12 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
+
+if TYPE_CHECKING:
+    # AiRecommendation lives in models_agent.py; this import is type-checking-only.
+    # At runtime, SQLAlchemy resolves the "AiRecommendation" string via its class
+    # registry once models_agent is imported at the bottom of this file.
+    from cvp.models_agent import AiRecommendation
 
 
 def _new_uuid() -> str:
@@ -182,6 +189,7 @@ class Item(Base):
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     notes: Mapped[str] = mapped_column(Text, default="")
     search_hint: Mapped[str | None] = mapped_column(String, nullable=True)
+    vision_confidence: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
@@ -194,6 +202,11 @@ class Item(Base):
     item_group: Mapped["ItemGroup | None"] = relationship("ItemGroup")
     crops: Mapped[list["ItemCrop"]] = relationship(
         "ItemCrop", back_populates="item", cascade="all, delete-orphan"
+    )
+    ai_recommendations: Mapped[list["AiRecommendation"]] = relationship(
+        "AiRecommendation",
+        cascade="all, delete-orphan",
+        order_by="AiRecommendation.created_at",
     )
 
 
@@ -438,6 +451,7 @@ class SerpSearch(Base):
 
 
 import cvp.models_access as _access_models  # noqa: F401, E402 — register access tables with Base
+import cvp.models_agent as _agent_models  # noqa: F401, E402 — register agent tables with Base
 import cvp.models_app_setting as _app_setting_models  # noqa: F401, E402 — register app_setting table with Base
 import cvp.models_audit as _audit_models  # noqa: F401, E402
 import cvp.models_auth as _auth_models  # noqa: F401, E402 — register auth tables with Base

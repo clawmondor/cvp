@@ -2,6 +2,7 @@ import pytest
 
 import cvp.models  # noqa: F401
 import cvp.models_access  # noqa: F401
+import cvp.models_agent  # noqa: F401
 import cvp.models_audit  # noqa: F401
 import cvp.models_auth  # noqa: F401
 import cvp.models_comments  # noqa: F401

@@ -371,6 +371,12 @@ def process_one_image(job_image_id: str) -> None:
                     f"room_hint:{raw_item.get('room_hint') or ''}"
                     f"|confidence:{raw_item.get('confidence') or 'medium'}"
                 ),
+                vision_confidence=(
+                    str(raw_item.get("confidence") or "medium").lower()
+                    if str(raw_item.get("confidence") or "medium").lower()
+                    in ("high", "medium", "low")
+                    else "medium"
+                ),
             )
             db.add(item)
             db.flush()

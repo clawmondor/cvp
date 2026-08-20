@@ -30,6 +30,7 @@ def index(
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     rows = [{"key": k, "value": runtime_config.get_int(db, k)} for k in _KNOBS]
+    confidence = runtime_config.get_str(db, "ai_recommendation_min_confidence")
     return templates.TemplateResponse(
         request,
         "admin/system/runtime_config.html",
@@ -37,6 +38,7 @@ def index(
             "user": user,
             "rows": rows,
             "bounds": runtime_config._BOUNDS,
+            "ai_recommendation_min_confidence": confidence,
             "panel_title": "System Admin",
             "breadcrumbs": [
                 {"label": "System Admin", "url": "/admin/system/"},
@@ -52,13 +54,15 @@ def update(
     evidence_upload_concurrency: int | None = Form(None),
     evidence_upload_max_file_mb: int | None = Form(None),
     evidence_upload_max_batch_count: int | None = Form(None),
+    ai_recommendation_min_confidence: str | None = Form(None),
     user: CurrentUser = Depends(require_system_admin),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    submitted = {
+    submitted: dict[str, int | str] = {
         "evidence_upload_concurrency": evidence_upload_concurrency,
         "evidence_upload_max_file_mb": evidence_upload_max_file_mb,
         "evidence_upload_max_batch_count": evidence_upload_max_batch_count,
+        "ai_recommendation_min_confidence": ai_recommendation_min_confidence,
     }
     for key, value in submitted.items():
         if value is None:

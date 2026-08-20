@@ -1,0 +1,36 @@
+<div id="ai-recs-{{ item.id }}" class="ai-recommendations mb-4">
+  <h4 class="text-sm font-semibold text-gray-700 mb-2">AI Recommendations</h4>
+  {% if not recommendations %}
+    <p class="text-sm text-gray-500">No Existing Recommendations.</p>
+  {% else %}
+    <ul class="space-y-2">
+      {% for rec in recommendations %}
+      <li class="rounded border border-gray-200 p-3 text-sm">
+        <div class="font-medium text-gray-800">{{ rec.product_title or "(untitled match)" }}</div>
+        <div class="text-gray-600">
+          {{ rec.proposed_retail_unit_cents | cents }} unit
+          + {{ rec.proposed_shipping_cents | cents }} shipping
+          — {{ rec.source_retailer }}
+        </div>
+        {% if rec.source_url %}
+        <a href="{{ rec.source_url }}" target="_blank" rel="noopener"
+           class="text-blue-600 underline">source</a>
+        {% endif %}
+        {% if rec.rationale %}<p class="text-gray-500 mt-1">{{ rec.rationale }}</p>{% endif %}
+        <div class="mt-2 flex gap-2">
+          <button type="button"
+                  class="px-2 py-1 rounded bg-green-600 text-white text-xs"
+                  hx-post="/api/items/{{ item.id }}/recommendations/{{ rec.id }}/accept"
+                  hx-target="#item-row-{{ item.id }}"
+                  hx-swap="outerHTML">Accept</button>
+          <button type="button"
+                  class="px-2 py-1 rounded bg-gray-200 text-gray-700 text-xs"
+                  hx-post="/api/items/{{ item.id }}/recommendations/{{ rec.id }}/dismiss"
+                  hx-target="#ai-recs-{{ item.id }}"
+                  hx-swap="outerHTML">Dismiss</button>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>

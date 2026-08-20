@@ -11,6 +11,7 @@
 <a href="/admin/system/audit" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Audit Log</a>
 <a href="/admin/vision-models" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Vision Models</a>
 <a href="/admin/system/runtime-config" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Runtime Config</a>
+<a href="/admin/system/agent-keys" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Agent Keys</a>
 {% endblock %}
 {% block content %}
 <h1 class="text-2xl font-bold text-gray-900 mb-6">System Dashboard</h1>
@@ -33,6 +34,11 @@
      class="block max-w-sm rounded-lg border border-gray-200 bg-white p-4 hover:bg-gray-50">
     <p class="text-sm font-semibold text-gray-800">Runtime Config</p>
     <p class="text-xs text-gray-500">Evidence upload caps and concurrency.</p>
+  </a>
+  <a href="/admin/system/agent-keys"
+     class="block max-w-sm rounded-lg border border-gray-200 bg-white p-4 hover:bg-gray-50 mt-4">
+    <p class="text-sm font-semibold text-gray-800">Agent Keys</p>
+    <p class="text-xs text-gray-500">Create and revoke external agent API keys.</p>
   </a>
 </div>
 {% endblock %}

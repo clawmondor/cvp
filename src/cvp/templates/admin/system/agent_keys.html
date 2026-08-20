@@ -1,0 +1,78 @@
+{% extends "admin/base.html" %}
+{% block title %}Agent Keys{% endblock %}
+{% block sidebar %}
+<a href="/admin/system/" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Dashboard</a>
+<a href="/admin/system/users" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Users</a>
+<a href="/admin/system/groups" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Groups</a>
+<a href="/admin/system/matters" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Matters</a>
+<a href="/admin/system/feedback" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Feedback</a>
+<a href="/admin/system/audit" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Audit Log</a>
+<a href="/admin/vision-models" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Vision Models</a>
+<a href="/admin/system/runtime-config" class="block px-3 py-2 rounded text-sm text-slate-300 hover:bg-slate-700 hover:text-white">Runtime Config</a>
+<a href="/admin/system/agent-keys" class="block px-3 py-2 rounded text-sm bg-slate-700 text-white">Agent Keys</a>
+{% endblock %}
+{% block content %}
+<div class="space-y-4">
+  <h1 class="text-xl font-semibold text-gray-800">Agent Keys</h1>
+  <p class="text-sm text-gray-600">
+    API keys used by external AI agents to submit pricing recommendations.
+    Revoked keys can no longer authenticate.
+  </p>
+
+  {% if new_key %}
+  <div class="mb-4 rounded border border-amber-300 bg-amber-50 p-4">
+    <p class="text-sm font-semibold text-amber-800">Copy this key now — it won't be shown again.</p>
+    <code class="block mt-2 break-all text-sm">{{ new_key }}</code>
+  </div>
+  {% endif %}
+
+  <form method="post" action="/admin/system/agent-keys" class="mb-6 flex gap-2">
+    <input type="hidden" name="_csrf" value="{{ request.cookies.get('cvp_csrf', '') }}">
+    <input name="name" placeholder="Key name (e.g. Pricing Bot A)"
+           class="rounded border-gray-300 text-sm" required>
+    <button type="submit" class="px-3 py-2 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-500">
+      Create key
+    </button>
+  </form>
+
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-left text-gray-500">
+        <th class="py-1">Name</th>
+        <th>Prefix</th>
+        <th>Created by</th>
+        <th>Created</th>
+        <th>Last used</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for k in keys %}
+      <tr class="border-t border-gray-100">
+        <td class="py-1">{{ k.name }}</td>
+        <td><code>{{ k.key_prefix }}</code></td>
+        <td>{{ creator_emails.get(k.created_by_id, "—") }}</td>
+        <td>{{ k.created_at.strftime("%Y-%m-%d") if k.created_at else "" }}</td>
+        <td>{{ k.last_used_at.strftime("%Y-%m-%d %H:%M") if k.last_used_at else "—" }}</td>
+        <td>
+          {% if k.revoked_at %}
+          <span class="text-red-600">Revoked</span>
+          {% else %}
+          <span class="text-green-600">Active</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if not k.revoked_at %}
+          <form method="post" action="/admin/system/agent-keys/{{ k.id }}/revoke">
+            <input type="hidden" name="_csrf" value="{{ request.cookies.get('cvp_csrf', '') }}">
+            <button type="submit" class="text-red-600 underline">Revoke</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

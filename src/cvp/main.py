@@ -16,6 +16,7 @@ from cvp.middleware import SecurityHeadersMiddleware
 from cvp.models import Matter
 from cvp.models_access import MatterAccess
 from cvp.routers import (
+    agent,
     auth,
     comments,
     crops,
@@ -28,11 +29,13 @@ from cvp.routers import (
     items,
     matters,
     profile,
+    recommendations,
     rooms,
     serp,
     sharing,
     vision,
 )
+from cvp.routers.admin import agent_keys as admin_agent_keys
 from cvp.routers.admin import feedback as admin_feedback
 from cvp.routers.admin import internal as admin_internal
 from cvp.routers.admin import org as admin_org
@@ -92,7 +95,9 @@ app.include_router(evidence.router)
 app.include_router(rooms.router)
 app.include_router(item_groups.router)
 app.include_router(items.router)
+app.include_router(recommendations.router)
 app.include_router(vision.router)
+app.include_router(agent.router)
 app.include_router(serp.router)
 app.include_router(crops.router)
 app.include_router(exports.router)
@@ -106,6 +111,7 @@ app.include_router(admin_internal.router)
 app.include_router(admin_org.router)
 app.include_router(admin_vision_models.router)
 app.include_router(admin_runtime_config.router)
+app.include_router(admin_agent_keys.router)
 app.include_router(admin_feedback.router, dependencies=[Depends(require_active_user)])
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")

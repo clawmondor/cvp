@@ -29,6 +29,11 @@ _BOUNDS: dict[str, tuple[int, int]] = {
     "evidence_upload_max_batch_count": (1, 5000),
 }
 
+# Allowed values for string-valued knobs; a DB value outside the set is ignored.
+_ALLOWED_STR: dict[str, tuple[str, ...]] = {
+    "ai_recommendation_min_confidence": ("high", "medium", "low"),
+}
+
 
 def _now() -> float:
     """Wall clock — split out so tests can monkeypatch."""
@@ -52,6 +57,9 @@ def _load_from_db(db: Session, key: str) -> Any:
         lo, hi = bounds
         if value < lo or value > hi:
             return _env_default(key)
+    allowed = _ALLOWED_STR.get(key)
+    if allowed and (not isinstance(value, str) or value not in allowed):
+        return _env_default(key)
     return value
 
 
@@ -67,6 +75,18 @@ def get_int(db: Session, key: str) -> int:
     return int(value)
 
 
+def get_str(db: Session, key: str) -> str:
+    """Return the current str value for `key`, using the DB override if valid."""
+    cached = _cache.get(key)
+    if cached is not None:
+        loaded_at, value = cached
+        if (_now() - loaded_at) < _TTL_SECONDS:
+            return str(value)
+    value = _load_from_db(db, key)
+    _cache[key] = (_now(), value)
+    return str(value)
+
+
 def set_value(db: Session, key: str, value: Any, *, updated_by_user_id: str | None) -> None:
     """Write a value to `app_setting`, invalidating the in-process cache."""
     bounds = _BOUNDS.get(key)
@@ -74,6 +94,9 @@ def set_value(db: Session, key: str, value: Any, *, updated_by_user_id: str | No
         lo, hi = bounds
         if value < lo or value > hi:
             raise ValueError(f"{key}={value} out of bounds {bounds}")
+    allowed = _ALLOWED_STR.get(key)
+    if allowed and value not in allowed:
+        raise ValueError(f"{key}={value} not in {allowed}")
     row = db.query(AppSetting).filter_by(key=key).first()
     if row is None:
         row = AppSetting(
