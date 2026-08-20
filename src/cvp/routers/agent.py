@@ -1,9 +1,13 @@
 """JSON API for external AI agents (X-API-Key auth)."""
 
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, selectinload
 
 from cvp.agent_auth import AgentPrincipal, require_agent_key
+from cvp.config import settings
 from cvp.db import get_db
 from cvp.models import Category, Item
 from cvp.services import runtime_config
@@ -64,3 +68,18 @@ def get_item(
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found")
     return _serialize_item(db, item)
+
+
+@router.get("/crops/{crop_path:path}")
+def serve_crop(
+    crop_path: str,
+    principal: AgentPrincipal = Depends(require_agent_key),
+    db: Session = Depends(get_db),
+) -> FileResponse:
+    crop_dir = Path(settings.crop_dir).resolve()
+    requested = (crop_dir / crop_path).resolve()
+    if not str(requested).startswith(str(crop_dir)):
+        raise HTTPException(status_code=403, detail="Access denied")
+    if not requested.exists():
+        raise HTTPException(status_code=404, detail="Crop not found")
+    return FileResponse(str(requested))
