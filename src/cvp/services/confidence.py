@@ -1,8 +1,9 @@
 """Extract vision confidence from the legacy notes string.
 
 Vision historically encoded confidence into Item.notes as
-`...|confidence:high`. This helper is the single source of truth for reading
-that value, used both by the migration backfill and going-forward writes.
+`...|confidence:high`. This helper reads that value back out and is used by
+the Alembic backfill migration; it's also available to any other code that
+needs to read confidence out of a legacy notes blob.
 """
 
 import re
