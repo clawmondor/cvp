@@ -81,6 +81,16 @@ def test_submit_requires_source_fields(ctx):
     assert resp.status_code == 422
 
 
+def test_submit_rejects_negative_retail_cents(ctx):
+    client, key, item_id, db = ctx
+    resp = client.post(
+        f"/api/agent/items/{item_id}/recommendations",
+        json=_body(proposed_retail_unit_cents=-100),
+        headers={"X-API-Key": key},
+    )
+    assert resp.status_code == 422
+
+
 def test_submit_rejects_sixth_pending_with_409(ctx):
     client, key, item_id, db = ctx
     for _ in range(5):

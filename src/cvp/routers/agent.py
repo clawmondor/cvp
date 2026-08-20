@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session, selectinload
 
 from cvp.agent_auth import AgentPrincipal, require_agent_key
@@ -25,8 +25,8 @@ router = APIRouter(prefix="/api/agent", tags=["agent"])
 
 
 class RecommendationIn(BaseModel):
-    proposed_retail_unit_cents: int
-    proposed_shipping_cents: int = 0
+    proposed_retail_unit_cents: int = Field(ge=0)
+    proposed_shipping_cents: int = Field(default=0, ge=0)
     source_url: str
     source_retailer: str
     match_type: str = "exact"
