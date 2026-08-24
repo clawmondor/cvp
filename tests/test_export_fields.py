@@ -66,6 +66,7 @@ def test_registry_covers_all_expected_keys():
         "confirmed_at",
         "source_notes",
         "item_notes",
+        "crop_image_url",
         "category",
         "room",
         "item_group",
@@ -120,6 +121,13 @@ def test_empty_optionals_render_blank():
     assert ef.FIELD_REGISTRY["brand"].render(ctx) == ""
     assert ef.FIELD_REGISTRY["source_captured_at"].render(ctx) == ""
     assert ef.FIELD_REGISTRY["needs_review"].render(ctx) == "no"
+
+
+def test_crop_image_url_renders_precomputed_value():
+    ctx = _ctx()
+    assert ef.FIELD_REGISTRY["crop_image_url"].render(ctx) == ""
+    ctx.crop_image_url = "https://example.com/crops/abc.jpg"
+    assert ef.FIELD_REGISTRY["crop_image_url"].render(ctx) == "https://example.com/crops/abc.jpg"
 
 
 def test_field_groups_ordered_and_complete():

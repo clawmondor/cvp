@@ -10,6 +10,7 @@ from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.models import Category, ExportTemplate, Item, ItemGroup, Matter
 from cvp.services.export_fields import FIELD_REGISTRY, RowContext
+from cvp.services.serp import build_crop_url
 
 # Exact column names required for Xactimate import compatibility
 CSV_HEADERS = [
@@ -118,7 +119,10 @@ def generate_custom_csv(matter_id: str, template_id: str) -> Path:
     try:
         matter = (
             db.query(Matter)
-            .options(selectinload(Matter.items), selectinload(Matter.rooms))
+            .options(
+                selectinload(Matter.items).selectinload(Item.crops),
+                selectinload(Matter.rooms),
+            )
             .filter(Matter.id == matter_id)
             .first()
         )
@@ -176,12 +180,19 @@ def generate_custom_csv(matter_id: str, template_id: str) -> Path:
             writer = csv.writer(f)
             writer.writerow(headers)
             for item in rows:
+                crop_url = ""
+                for crop in item.crops:
+                    url = build_crop_url(crop)
+                    if url:
+                        crop_url = url
+                        break
                 ctx = RowContext(
                     item=item,
                     room_name=room_map.get(item.room_id or "", "Unassigned"),
                     category_name=cat_map.get(item.category_id, ""),
                     item_group_name=group_map.get(item.item_group_id or "", ""),
                     matter=matter,
+                    crop_image_url=crop_url,
                 )
                 writer.writerow(
                     [
