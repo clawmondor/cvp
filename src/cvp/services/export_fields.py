@@ -14,6 +14,7 @@ class RowContext:
     category_name: str
     item_group_name: str
     matter: object  # cvp.models.Matter
+    crop_image_url: str = ""  # precomputed public URL of the item's crop (blank if none)
 
 
 @dataclass(frozen=True)
@@ -77,6 +78,7 @@ _FIELDS: list[tuple[str, str, str, Callable[[RowContext], str]]] = [
     ("Source", "confirmed_at", "ConfirmedAt", lambda c: _date(c.item.confirmed_at)),
     ("Source", "source_notes", "Notes", _source_notes),
     ("Source", "item_notes", "ItemNotes", lambda c: c.item.notes or ""),
+    ("Source", "crop_image_url", "CropImageURL", lambda c: c.crop_image_url),
     ("Context", "category", "Category", lambda c: c.category_name),
     ("Context", "room", "Room", lambda c: c.room_name),
     ("Context", "item_group", "Group", lambda c: c.item_group_name),
