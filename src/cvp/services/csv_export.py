@@ -163,8 +163,8 @@ def generate_custom_csv(matter_id: str, template_id: str) -> Path:
 
         export_dir = Path(settings.export_dir) / matter_id
         export_dir.mkdir(parents=True, exist_ok=True)
-        # Include time (HHMM) so multiple exports on the same day don't clobber each other.
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+        # Include time (HHMMSS) so multiple exports on the same day don't clobber each other.
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         out_path = export_dir / f"contents_{_slugify(template.name)}_{timestamp}.csv"
 
         headers = [
