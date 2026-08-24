@@ -1,6 +1,7 @@
 """Unit tests for custom-template CSV export (generate_custom_csv)."""
 
 import csv
+import re
 
 import pytest
 from sqlalchemy import create_engine
@@ -134,6 +135,18 @@ def test_custom_csv_columns_headers_and_default_filter(db_session, tmp_path, mon
     # default filter: confirmed & not excluded & not needs_review -> only Sofa (i1)
     assert rows[1] == ["1", "Sofa", "600.00", "Roe LLP"]
     assert len(rows) == 2
+
+
+def test_custom_csv_filename_includes_time(db_session, tmp_path, monkeypatch):
+    """Filename embeds date + HHMM so same-day re-exports don't clobber each other."""
+    _seed(db_session, tmp_path, monkeypatch)
+    monkeypatch.setattr(csv_export, "SessionLocal", lambda: db_session)
+    path = csv_export.generate_custom_csv("m1", "t1")
+    # Expected suffix: contents_<slug>_YYYYMMDD_HHMMSS.csv
+    stem = path.stem  # e.g. "contents_my-template_20260824_143059"
+    date_part, time_part = stem.rsplit("_", 2)[-2:]
+    assert re.fullmatch(r"\d{8}", date_part)
+    assert re.fullmatch(r"\d{6}", time_part)
 
 
 def test_include_toggles_add_rows(db_session, tmp_path, monkeypatch):
