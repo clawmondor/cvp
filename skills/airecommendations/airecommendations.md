@@ -77,11 +77,17 @@ List items needing a recommendation.
 
 Query params:
 
-| param            | type | default | notes                                        |
-|------------------|------|---------|----------------------------------------------|
-| `min_confidence` | str  | server  | `high` / `medium` / `low`; overrides default |
-| `limit`          | int  | 50      | 1–200                                        |
-| `offset`         | int  | 0       | paging offset                                |
+| param            | type | default | notes                                            |
+|------------------|------|---------|--------------------------------------------------|
+| `min_confidence` | str  | server  | `high` / `medium` / `low`; overrides default     |
+| `matter_id`      | str  | —       | scope the feed to one matter                     |
+| `item_id`        | str  | —       | scope the feed to one item                       |
+| `limit`          | int  | 50      | 1–200                                            |
+| `offset`         | int  | 0       | paging offset                                    |
+
+`matter_id` and `item_id` still respect the eligibility rules (unpriced, above
+the confidence threshold, below the 5-pending cap), so a matter or item whose
+work is already done returns an empty list.
 
 Response `200`:
 

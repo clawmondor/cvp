@@ -77,6 +77,24 @@ def seeded_item(db_session):
 
 
 @pytest.fixture
+def second_item(db_session, seeded_item):
+    """A second eligible item in a different matter."""
+    m = Matter(firm_name="G")
+    db_session.add(m)
+    db_session.flush()
+    it = Item(
+        matter_id=m.id,
+        category_id=1,
+        description="pine desk",
+        quantity=1,
+        vision_confidence="high",
+    )
+    db_session.add(it)
+    db_session.commit()
+    return it
+
+
+@pytest.fixture
 def client(db_session, api_key):
     """A reference client whose _send seam is routed to the FastAPI TestClient."""
 
@@ -108,6 +126,26 @@ def test_list_items_sends_key_and_returns_items(client, seeded_item):
     assert any(i["item_id"] == seeded_item.id for i in items)
     got = next(i for i in items if i["item_id"] == seeded_item.id)
     assert got["vision_confidence"] == "high"
+
+
+def test_list_items_filter_by_matter(client, seeded_item, second_item):
+    items = client.list_items(matter_id=second_item.matter_id)
+    ids = {i["item_id"] for i in items}
+    assert ids == {second_item.id}
+
+
+def test_list_items_filter_by_item(client, seeded_item, second_item):
+    items = client.list_items(item_id=seeded_item.id)
+    ids = {i["item_id"] for i in items}
+    assert ids == {seeded_item.id}
+
+
+def test_list_items_filter_respects_eligibility(client, db_session, seeded_item):
+    """A priced item is excluded even when explicitly requested by id."""
+    seeded_item.source_url = "https://retailer.example/x"
+    db_session.commit()
+    items = client.list_items(item_id=seeded_item.id)
+    assert items == []
 
 
 def test_get_item_returns_detail(client, seeded_item):
