@@ -66,11 +66,20 @@ def list_items(
     principal: AgentPrincipal = Depends(require_agent_key),
     db: Session = Depends(get_db),
     min_confidence: str | None = Query(None),
+    matter_id: str | None = Query(None),
+    item_id: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> dict:
     threshold = min_confidence or runtime_config.get_str(db, "ai_recommendation_min_confidence")
-    items = items_needing_recommendations(db, threshold, limit=limit, offset=offset)
+    items = items_needing_recommendations(
+        db,
+        threshold,
+        limit=limit,
+        offset=offset,
+        matter_id=matter_id,
+        item_id=item_id,
+    )
     # Eager-load crops to avoid N+1 in serialization.
     ids = [i.id for i in items]
     if ids:

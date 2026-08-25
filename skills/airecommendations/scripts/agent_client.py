@@ -80,6 +80,8 @@ class AiRecommendationsClient:
         self,
         *,
         min_confidence: str | None = None,
+        matter_id: str | None = None,
+        item_id: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
@@ -87,11 +89,18 @@ class AiRecommendationsClient:
 
         Items are high-confidence, still unpriced, and below the 5-pending cap.
         ``min_confidence`` (``"high"``/``"medium"``/``"low"``) overrides the
-        server's configured default threshold. Page with ``limit``/``offset``.
+        server's configured default threshold. Optionally scope the feed to a
+        single ``matter_id`` or ``item_id`` (both still respect eligibility, so
+        an already-priced matter or item returns nothing). Page with
+        ``limit``/``offset``.
         """
         params: dict[str, Any] = {"limit": limit, "offset": offset}
         if min_confidence is not None:
             params["min_confidence"] = min_confidence
+        if matter_id is not None:
+            params["matter_id"] = matter_id
+        if item_id is not None:
+            params["item_id"] = item_id
         payload = self._request("GET", "/api/agent/items", params=params)
         return payload["items"]
 

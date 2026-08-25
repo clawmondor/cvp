@@ -20,7 +20,9 @@ API key: `CVP_AGENT_KEY` env var. Base URL: `https://cvp.cmondor.com`.
 ## Workflow
 
 1. **Poll items** — use `client.list_items(limit=N)` from the airecommendations
-   client. Default limit is **5** unless the user specifies otherwise.
+   client. Default limit is **5** unless the user specifies otherwise. To scope a
+   run, pass `matter_id="…"` (all eligible items in one matter) or `item_id="…"`
+   (a single item); both still return only items that need pricing.
 
 2. **For each item**, search the web (Brave) for two product matches:
    - Search query: `{brand} {description} price buy online`
@@ -48,4 +50,6 @@ API key: `CVP_AGENT_KEY` env var. Base URL: `https://cvp.cmondor.com`.
 ## Prompting tip
 
 When the user says "make recommendations" or "price the next N items" without
-specifying a number, use the default limit of 5.
+specifying a number, use the default limit of 5. If they name a specific matter
+or item (e.g. "price matter X" or "price this item"), pass `matter_id` or
+`item_id` to `list_items` to scope the run.

@@ -28,9 +28,19 @@ def pending_count(db: Session, item_id: str) -> int:
 
 
 def items_needing_recommendations(
-    db: Session, min_confidence: str, limit: int, offset: int
+    db: Session,
+    min_confidence: str,
+    limit: int,
+    offset: int,
+    matter_id: str | None = None,
+    item_id: str | None = None,
 ) -> list[Item]:
-    """Items above the confidence threshold, unpriced, with < 5 pending recs."""
+    """Items above the confidence threshold, unpriced, with < 5 pending recs.
+
+    Optionally narrow the feed to a single matter (``matter_id``) or a single
+    item (``item_id``). Both filters still respect the eligibility rules above,
+    so a matter or item whose work is already done returns nothing.
+    """
     allowed = _at_or_above(min_confidence)
 
     pending_sub = (
@@ -49,8 +59,10 @@ def items_needing_recommendations(
         .filter(Item.vision_confidence.in_(allowed))
         .filter(Item.source_url == "")
         .filter(func.coalesce(pending_sub.c.n, 0) < MAX_PENDING_PER_ITEM)
-        .order_by(Item.created_at, Item.id)
-        .limit(limit)
-        .offset(offset)
     )
+    if matter_id is not None:
+        q = q.filter(Item.matter_id == matter_id)
+    if item_id is not None:
+        q = q.filter(Item.id == item_id)
+    q = q.order_by(Item.created_at, Item.id).limit(limit).offset(offset)
     return q.all()
