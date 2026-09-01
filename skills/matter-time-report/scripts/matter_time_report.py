@@ -28,6 +28,7 @@ from pathlib import Path
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def run(cmd: list[str], capture=True, timeout=30):
     result = subprocess.run(cmd, capture_output=capture, text=True, timeout=timeout)
     if result.returncode != 0 and capture:
@@ -169,7 +170,10 @@ def run_query(port: int, pgpassword: str, matter_id: str) -> list[dict]:
     psql_cmd = [
         "psql",
         f"postgresql://postgres:{pgpassword}@127.0.0.1:{port}/railway",
-        "-t", "-A", "-c", sql,
+        "-t",
+        "-A",
+        "-c",
+        sql,
     ]
 
     result = run(psql_cmd, capture=True)
@@ -182,13 +186,15 @@ def run_query(port: int, pgpassword: str, matter_id: str) -> list[dict]:
             continue
         parts = line.split("|")
         if len(parts) >= 5:
-            rows.append({
-                "day": parts[0].strip(),
-                "user_name": parts[1].strip(),
-                "num_sessions": int(parts[2].strip()),
-                "total_time": parts[3].strip(),
-                "total_hours": float(parts[4].strip()),
-            })
+            rows.append(
+                {
+                    "day": parts[0].strip(),
+                    "user_name": parts[1].strip(),
+                    "num_sessions": int(parts[2].strip()),
+                    "total_time": parts[3].strip(),
+                    "total_hours": float(parts[4].strip()),
+                }
+            )
     return rows
 
 
@@ -201,6 +207,7 @@ def format_duration(hours: float) -> str:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -277,6 +284,7 @@ def main():
 
     # Per-user totals
     from collections import defaultdict
+
     user_totals: dict = defaultdict(lambda: {"sessions": 0, "hours": 0.0})
     for r in rows:
         user_totals[r["user_name"]]["sessions"] += r["num_sessions"]
@@ -299,13 +307,15 @@ def main():
             )
             w.writeheader()
             for r in rows:
-                w.writerow({
-                    "Date": r["day"],
-                    "User": r["user_name"],
-                    "Sessions": r["num_sessions"],
-                    "Time (HH:MM:SS)": r["total_time"],
-                    "Time (Hours)": r["total_hours"],
-                })
+                w.writerow(
+                    {
+                        "Date": r["day"],
+                        "User": r["user_name"],
+                        "Sessions": r["num_sessions"],
+                        "Time (HH:MM:SS)": r["total_time"],
+                        "Time (Hours)": r["total_hours"],
+                    }
+                )
         print(f"\nCSV written to: {out_path.resolve()}")
 
 
