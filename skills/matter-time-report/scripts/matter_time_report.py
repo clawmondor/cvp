@@ -22,7 +22,7 @@ import re
 import subprocess
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -225,11 +225,11 @@ def main():
 
     matter_id = args.matter_id.strip()
 
-    print(f"Reading Railway variables for service 'cvp'...")
+    print("Reading Railway variables for service 'cvp'...")
     rail_vars = get_railway_variables()
     pgpassword = rail_vars["PGPASSWORD"]
 
-    print(f"Opening Railway Postgres tunnel...")
+    print("Opening Railway Postgres tunnel...")
     tunnel_proc, port = open_tunnel()
     print(f"Tunnel open on port {port}")
 
