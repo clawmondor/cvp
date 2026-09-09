@@ -59,6 +59,7 @@ def serp_panel(
             public_base_url=settings.public_base_url,
             latest_by_crop=latest_by_crop,
             display_by_crop=display_by_crop,
+            default_query=build_query(item),
         )
     finally:
         db.close()
