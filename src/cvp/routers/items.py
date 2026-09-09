@@ -16,10 +16,11 @@ from cvp.config import settings
 from cvp.db import SessionLocal, get_db
 from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.depreciation import compute_acv
-from cvp.models import Category, Item, ItemGroup, Room
+from cvp.models import MATCH_TYPES, Category, Item, ItemGroup, Room
 from cvp.models_agent import AiRecommendation
 from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.item_groups import find_or_create
+from cvp.services.serp_display import serp_error_message
 from cvp.services.serp_runner import empty_panel_context, panel_context
 
 BASE_DIR = Path(__file__).parent.parent
@@ -27,6 +28,7 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 templates.env.filters["cents"] = lambda c: f"${c / 100:,.2f}" if c else "$0.00"
 templates.env.filters["qplus"] = quote_plus
 templates.env.filters["pretty_json"] = lambda v: json.dumps(json.loads(v), indent=2) if v else ""
+templates.env.globals["serp_error_message"] = serp_error_message
 
 router = APIRouter()
 
@@ -289,6 +291,7 @@ def _item_row_edit_html(
         rooms=rooms,
         item_groups=item_groups,
         conditions=CONDITIONS,
+        match_types=MATCH_TYPES,
         public_base_url=settings.public_base_url,
         **(serp_context or empty_panel_context()),
     )

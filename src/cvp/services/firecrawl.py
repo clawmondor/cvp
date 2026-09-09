@@ -85,9 +85,6 @@ def call_firecrawl(query: str) -> tuple[str, dict, dict, int]:
     try:
         with httpx.Client(timeout=_TIMEOUT_SECONDS) as client:
             response = client.post(FIRECRAWL_SEARCH_URL, json=body, headers=headers)
-        status_code = response.status_code
-        ct = response.headers.get("content-type", "")
-        response_data = response.json() if "json" in ct else {"raw": response.text}
     except httpx.TimeoutException:
         logger.warning("Firecrawl timeout | query=%s", query)
         return (
@@ -99,6 +96,17 @@ def call_firecrawl(query: str) -> tuple[str, dict, dict, int]:
     except Exception as exc:  # noqa: BLE001
         logger.exception("Firecrawl call failed | query=%s", query)
         return FIRECRAWL_SEARCH_URL, body, {"error": str(exc)}, 0
+
+    # Parsed outside the try above so a malformed body keeps the real HTTP
+    # status instead of collapsing into the generic status_code=0 branch.
+    status_code = response.status_code
+    ct = response.headers.get("content-type", "")
+    response_data: dict[str, Any] = {"raw": response.text}
+    if "json" in ct:
+        try:
+            response_data = response.json()
+        except ValueError:
+            logger.warning("Firecrawl returned unparseable JSON | status=%d", status_code)
 
     logger.debug(
         "Firecrawl response | query=%s status=%d credits=%s",

@@ -147,8 +147,8 @@
           <label class="text-xs font-medium text-gray-600">Match type</label>
           <select name="match_type"
                   class="mt-0.5 block w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-indigo-500 focus:outline-none">
-            {% for mt in [("exact", "Exact"), ("nearest_comparable", "Nearest comparable"), ("category_average", "Category average")] %}
-            <option value="{{ mt[0] }}" {% if item.match_type == mt[0] %}selected{% endif %}>{{ mt[1] }}</option>
+            {% for mt in match_types %}
+            <option value="{{ mt }}" {% if item.match_type == mt %}selected{% endif %}>{{ mt.replace("_", " ") | capitalize }}</option>
             {% endfor %}
           </select>
         </div>
