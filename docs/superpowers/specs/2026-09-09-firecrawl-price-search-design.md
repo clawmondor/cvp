@@ -238,6 +238,13 @@ recording:
   default is a bare `"exact"` string. Anything validating `match_type` should
   introduce a module-level constant rather than repeat the literals a fourth
   time.
+
+  *Correction (final review):* implementation initially left the Jinja loop
+  hardcoded, on the recorded rationale that a template cannot see a Python
+  tuple without adding a Jinja context processor. That rationale is wrong.
+  `_item_row_edit_html` (`routers/items.py`) renders the template with explicit
+  keyword arguments, so `match_types=MATCH_TYPES` is a one-line addition and no
+  new surface is involved. `MATCH_TYPES` is now the template's source of truth.
 - **`skills/MakeAIRecommendations/SKILL.md:34` instructs agents to submit
   `match_type` of `"brand"`** — not a member of the enum. Nothing validates it,
   so an accepted recommendation writes an invalid value straight into the

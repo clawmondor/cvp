@@ -1,6 +1,8 @@
 """Tests for SerpAPI result extraction."""
 
-from cvp.services.serp_display import extract_results
+import json
+
+from cvp.services.serp_display import extract_results, serp_error_message
 
 GOOGLE_LENS_FIXTURE = {
     "visual_matches": [
@@ -171,3 +173,59 @@ def test_extract_google_lens_match_type_is_nearest_comparable():
     resp = {"visual_matches": [{"title": "Chair", "link": "https://x.example"}]}
     [r] = extract_results("google_lens", resp)
     assert r["match_type"] == "nearest_comparable"
+
+
+def test_extract_firecrawl_tolerates_null_web_key():
+    """A present-but-null `web` key must not raise — the row is already persisted."""
+    assert extract_results("firecrawl", {"success": True, "data": {"web": None}}) == []
+
+
+def test_extract_firecrawl_tolerates_non_list_web_key():
+    assert extract_results("firecrawl", {"success": True, "data": {"web": {}}}) == []
+
+
+def test_extract_firecrawl_drops_hits_without_a_url():
+    """Rule 2: a price with no source_url is invalid, so the hit is dropped entirely."""
+    assert extract_results("firecrawl", _fc([_hit(url="")])) == []
+    assert extract_results("firecrawl", _fc([{"title": "t", "json": {"price": 9.0}}])) == []
+    assert extract_results("firecrawl", _fc([_hit(url="   ")])) == []
+
+
+# ---------------------------------------------------------------------------
+# serp_error_message — spec §7 failure surfacing
+# ---------------------------------------------------------------------------
+
+
+def test_serp_error_message_none_on_success():
+    assert serp_error_message("firecrawl", json.dumps(_fc([_hit()])), 200) == ""
+
+
+def test_serp_error_message_unconfigured_key():
+    payload = json.dumps({"error": "Firecrawl is not configured. Set FIRECRAWL_API_KEY."})
+    assert serp_error_message("firecrawl", payload, 0) == "Firecrawl is not configured"
+
+
+def test_serp_error_message_timeout():
+    payload = json.dumps({"error": "Request timed out after 30 seconds"})
+    assert serp_error_message("firecrawl", payload, 0) == "Search timed out"
+
+
+def test_serp_error_message_non_2xx_surfaces_status_and_message():
+    payload = json.dumps({"warning": "Insufficient credits"})
+    message = serp_error_message("firecrawl", payload, 402)
+    assert "402" in message
+    assert "Insufficient credits" in message
+
+
+def test_serp_error_message_success_false_surfaces_warning():
+    payload = json.dumps({"success": False, "warning": "Scrape was blocked"})
+    assert serp_error_message("firecrawl", payload, 200) == "Scrape was blocked"
+
+
+def test_serp_error_message_ignores_google_lens():
+    assert serp_error_message("google_lens", json.dumps({"error": "boom"}), 500) == ""
+
+
+def test_serp_error_message_tolerates_unparseable_row():
+    assert serp_error_message("firecrawl", "<html>", 200) == ""
+    assert serp_error_message("firecrawl", "", 200) == ""

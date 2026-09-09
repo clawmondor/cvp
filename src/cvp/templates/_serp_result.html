@@ -1,5 +1,11 @@
 <div class="space-y-2 text-xs">
 
+  {# ── Failure surfacing (spec §7) ────────────────────────────────────── #}
+  {% set serp_error = serp_error_message(s.service, s.response_json, s.status_code) %}
+  {% if serp_error %}
+    <p data-serp-error class="text-red-600">{{ serp_error }}</p>
+  {% endif %}
+
   {# ── Formatted results grid ─────────────────────────────────────────── #}
   {% if display_results %}
     <div class="divide-y divide-gray-100">
@@ -64,8 +70,14 @@
       {% endfor %}
     </div>
 
-  {% else %}
-    <p class="text-gray-400 italic">No results found.</p>
+  {% elif not serp_error %}
+    <p class="text-gray-400 italic">
+      {%- if s.service == "firecrawl" -%}
+        No priced product pages found — try editing the query
+      {%- else -%}
+        No results found.
+      {%- endif -%}
+    </p>
   {% endif %}
 
   {# ── Raw response toggle ─────────────────────────────────────────────── #}

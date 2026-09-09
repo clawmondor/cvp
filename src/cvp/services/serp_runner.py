@@ -20,31 +20,58 @@ from cvp.models import Item, ItemCrop, SerpSearch
 from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.serp_display import extract_results
 
+# Template variable prefix for each search service the crop panel can display.
+_PANEL_SERVICES: tuple[tuple[str, str], ...] = (("google_lens", "lens"), ("firecrawl", "firecrawl"))
+
 
 def latest_search_results_by_crop(
-    db: Session, item: Item
+    db: Session, item: Item, service: str
 ) -> tuple[dict[str, SerpSearch | None], dict[str, list[dict]]]:
-    """Look up each crop's most recent SerpSearch and its normalized display results.
+    """Look up each crop's most recent SerpSearch *for one service* and its display results.
 
-    Used by the SERP panel to show, per crop, the latest search run (if any)
-    without re-running it.
+    The `service` filter is load-bearing: a crop can carry runs from several
+    services, and the panel keys each tab's state off its own service's row.
     """
     latest_by_crop: dict[str, SerpSearch | None] = {}
     display_by_crop: dict[str, list[dict]] = {}
     for crop in item.crops:
         latest = (
             db.query(SerpSearch)
-            .filter(SerpSearch.item_crop_id == crop.id)
+            .filter(SerpSearch.item_crop_id == crop.id, SerpSearch.service == service)
             .order_by(SerpSearch.ran_at.desc())
             .first()
         )
         latest_by_crop[crop.id] = latest
         if latest and latest.response_json:
             response_dict = json.loads(latest.response_json)
-            display_by_crop[crop.id] = extract_results(latest.service, response_dict)
+            display_by_crop[crop.id] = extract_results(latest.service, response_dict, item.brand)
         else:
             display_by_crop[crop.id] = []
     return latest_by_crop, display_by_crop
+
+
+def panel_context(db: Session, item: Item) -> dict[str, dict]:
+    """Per-service latest-search maps for the crop panel and the inline edit row.
+
+    Returns `latest_<prefix>_by_crop` / `display_<prefix>_by_crop` for every
+    displayable service, so a template never has to guess which service a row
+    came from.
+    """
+    context = empty_panel_context()
+    for service, prefix in _PANEL_SERVICES:
+        latest, display = latest_search_results_by_crop(db, item, service)
+        context[f"latest_{prefix}_by_crop"] = latest
+        context[f"display_{prefix}_by_crop"] = display
+    return context
+
+
+def empty_panel_context() -> dict[str, dict]:
+    """The same key shape as `panel_context`, all empty — for renders that skip the lookup."""
+    return {
+        f"{kind}_{prefix}_by_crop": {}
+        for _service, prefix in _PANEL_SERVICES
+        for kind in ("latest", "display")
+    }
 
 
 def run_and_render(

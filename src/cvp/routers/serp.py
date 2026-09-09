@@ -18,13 +18,15 @@ from cvp.models import MATCH_TYPES, Category, Item, ItemGroup, Room
 from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.firecrawl import build_query, call_firecrawl
 from cvp.services.serp import build_crop_url, call_serp
-from cvp.services.serp_runner import latest_search_results_by_crop, run_and_render
+from cvp.services.serp_display import serp_error_message
+from cvp.services.serp_runner import panel_context, run_and_render
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 templates.env.filters["pretty_json"] = lambda v: json.dumps(json.loads(v), indent=2) if v else ""
 templates.env.filters["cents"] = lambda c: f"${c / 100:,.2f}" if c else "$0.00"
 templates.env.filters["qplus"] = quote_plus
+templates.env.globals["serp_error_message"] = serp_error_message
 
 router = APIRouter()
 
@@ -52,14 +54,12 @@ def serp_panel(
         if item is None:
             raise HTTPException(status_code=404, detail="Item not found")
 
-        latest_by_crop, display_by_crop = latest_search_results_by_crop(db, item)
-
         html = templates.get_template("_serp_panel.html").render(
             item=item,
             public_base_url=settings.public_base_url,
-            latest_by_crop=latest_by_crop,
-            display_by_crop=display_by_crop,
             default_query=build_query(item),
+            firecrawl_configured=bool(settings.firecrawl_api_key),
+            **panel_context(db, item),
         )
     finally:
         db.close()
