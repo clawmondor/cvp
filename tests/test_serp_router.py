@@ -172,3 +172,38 @@ def test_firecrawl_search_surfaces_error_without_500(client):
         resp = c.post("/api/items/item1/crops/crop1/serp/firecrawl", data={"query": "x"})
     assert resp.status_code == 200
     assert "No results found." in resp.text
+
+
+def test_serp_apply_honors_submitted_match_type(client):
+    c, Session = client
+    resp = c.post(
+        "/api/items/item1/serp-apply",
+        data={
+            "source_url": "https://shop.example/p/1",
+            "source_retailer": "Shop Example",
+            "rcv_unit_cents": "12999",
+            "match_type": "nearest_comparable",
+        },
+    )
+    assert resp.status_code == 200
+
+    db = Session()
+    item = db.get(Item, "item1")
+    assert item.match_type == "nearest_comparable"
+    assert item.source_url == "https://shop.example/p/1"
+    assert item.source_captured_at is not None
+    db.close()
+
+
+def test_serp_apply_rejects_invalid_match_type(client):
+    c, _ = client
+    resp = c.post(
+        "/api/items/item1/serp-apply",
+        data={
+            "source_url": "https://shop.example/p/2",
+            "source_retailer": "Shop Example",
+            "rcv_unit_cents": "100",
+            "match_type": "brand",
+        },
+    )
+    assert resp.status_code == 422

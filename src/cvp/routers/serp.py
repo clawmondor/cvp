@@ -14,7 +14,7 @@ from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, optional_user, require_matter_role
 from cvp.depreciation import compute_acv
-from cvp.models import Category, Item, ItemGroup, Room
+from cvp.models import MATCH_TYPES, Category, Item, ItemGroup, Room
 from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.firecrawl import build_query, call_firecrawl
 from cvp.services.serp import build_crop_url, call_serp
@@ -127,8 +127,12 @@ def serp_apply(
     source_url: str = Form(""),
     source_retailer: str = Form(""),
     rcv_unit_cents: str = Form(""),
+    match_type: str = Form("nearest_comparable"),
 ) -> HTMLResponse:
     """Apply a SERP search result to an item, updating its pricing and source fields."""
+    if match_type not in MATCH_TYPES:
+        raise HTTPException(status_code=422, detail=f"Invalid match_type: {match_type}")
+
     db = SessionLocal()
     try:
         item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
@@ -138,7 +142,7 @@ def serp_apply(
         item.source_url = source_url.strip()
         item.source_retailer = source_retailer.strip()
         item.source_captured_at = datetime.now(tz=timezone.utc)
-        item.match_type = "exact"
+        item.match_type = match_type
 
         if rcv_unit_cents.strip():
             item.retail_unit_cents = int(rcv_unit_cents.strip())
