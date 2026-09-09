@@ -14,12 +14,11 @@ from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, optional_user, require_matter_role
 from cvp.depreciation import compute_acv
-from cvp.models import Category, Item, ItemGroup, Room, SerpSearch
+from cvp.models import Category, Item, ItemGroup, Room
 from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.firecrawl import build_query, call_firecrawl
 from cvp.services.serp import build_crop_url, call_serp
-from cvp.services.serp_display import extract_results
-from cvp.services.serp_runner import run_and_render
+from cvp.services.serp_runner import latest_search_results_by_crop, run_and_render
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -53,22 +52,7 @@ def serp_panel(
         if item is None:
             raise HTTPException(status_code=404, detail="Item not found")
 
-        latest_by_crop: dict[str, SerpSearch | None] = {}
-        display_by_crop: dict[str, list[dict]] = {}
-
-        for crop in item.crops:
-            latest = (
-                db.query(SerpSearch)
-                .filter(SerpSearch.item_crop_id == crop.id)
-                .order_by(SerpSearch.ran_at.desc())
-                .first()
-            )
-            latest_by_crop[crop.id] = latest
-            if latest and latest.response_json:
-                response_dict = json.loads(latest.response_json)
-                display_by_crop[crop.id] = extract_results(latest.service, response_dict)
-            else:
-                display_by_crop[crop.id] = []
+        latest_by_crop, display_by_crop = latest_search_results_by_crop(db, item)
 
         html = templates.get_template("_serp_panel.html").render(
             item=item,
@@ -95,7 +79,9 @@ def run_google_lens(
     return run_and_render(
         SessionLocal,
         templates,
-        (request, background_tasks, user),
+        request,
+        background_tasks,
+        user,
         item_id,
         crop_id,
         service="google_lens",
@@ -122,7 +108,9 @@ def run_firecrawl(
     return run_and_render(
         SessionLocal,
         templates,
-        (request, background_tasks, user),
+        request,
+        background_tasks,
+        user,
         item_id,
         crop_id,
         service="firecrawl",

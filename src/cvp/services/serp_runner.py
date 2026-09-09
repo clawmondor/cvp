@@ -21,10 +21,38 @@ from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.serp_display import extract_results
 
 
+def latest_search_results_by_crop(
+    db: Session, item: Item
+) -> tuple[dict[str, SerpSearch | None], dict[str, list[dict]]]:
+    """Look up each crop's most recent SerpSearch and its normalized display results.
+
+    Used by the SERP panel to show, per crop, the latest search run (if any)
+    without re-running it.
+    """
+    latest_by_crop: dict[str, SerpSearch | None] = {}
+    display_by_crop: dict[str, list[dict]] = {}
+    for crop in item.crops:
+        latest = (
+            db.query(SerpSearch)
+            .filter(SerpSearch.item_crop_id == crop.id)
+            .order_by(SerpSearch.ran_at.desc())
+            .first()
+        )
+        latest_by_crop[crop.id] = latest
+        if latest and latest.response_json:
+            response_dict = json.loads(latest.response_json)
+            display_by_crop[crop.id] = extract_results(latest.service, response_dict)
+        else:
+            display_by_crop[crop.id] = []
+    return latest_by_crop, display_by_crop
+
+
 def run_and_render(
     session_factory: Callable[[], Session],
     templates: Jinja2Templates,
-    req_ctx: tuple[Request, BackgroundTasks, CurrentUser],
+    request: Request,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser,
     item_id: str,
     crop_id: str,
     service: str,
@@ -35,10 +63,8 @@ def run_and_render(
 
     `caller` receives the loaded crop and item and returns the shared 4-tuple
     (request_url, params, response_dict, status_code). Both callables run
-    inside this function's single session — do not open another. `req_ctx`
-    bundles the three request-scoped values so call sites stay short.
+    inside this function's single session — do not open another.
     """
-    request, background_tasks, user = req_ctx
     db = session_factory()
     try:
         crop = db.get(ItemCrop, crop_id)
