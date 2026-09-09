@@ -1,4 +1,4 @@
-"""SERP search endpoints: crop file serving, panel, google_lens search, and apply result."""
+"""SERP search endpoints: crop file serving, panel, google_lens/firecrawl search, apply result."""
 
 import json
 from datetime import datetime, timezone
@@ -14,10 +14,11 @@ from cvp.config import settings
 from cvp.db import SessionLocal
 from cvp.dependencies import CurrentUser, optional_user, require_matter_role
 from cvp.depreciation import compute_acv
-from cvp.models import Category, Item, ItemCrop, ItemGroup, Room, SerpSearch
+from cvp.models import MATCH_TYPES, Category, Item, ItemGroup, Room
 from cvp.services.audit import get_client_ip, write_audit_log
+from cvp.services.firecrawl import build_query, call_firecrawl
 from cvp.services.serp import build_crop_url, call_serp
-from cvp.services.serp_display import extract_results
+from cvp.services.serp_runner import latest_search_results_by_crop, run_and_render
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -51,28 +52,14 @@ def serp_panel(
         if item is None:
             raise HTTPException(status_code=404, detail="Item not found")
 
-        latest_by_crop: dict[str, SerpSearch | None] = {}
-        display_by_crop: dict[str, list[dict]] = {}
-
-        for crop in item.crops:
-            latest = (
-                db.query(SerpSearch)
-                .filter(SerpSearch.item_crop_id == crop.id)
-                .order_by(SerpSearch.ran_at.desc())
-                .first()
-            )
-            latest_by_crop[crop.id] = latest
-            if latest and latest.response_json:
-                response_dict = json.loads(latest.response_json)
-                display_by_crop[crop.id] = extract_results(latest.service, response_dict)
-            else:
-                display_by_crop[crop.id] = []
+        latest_by_crop, display_by_crop = latest_search_results_by_crop(db, item)
 
         html = templates.get_template("_serp_panel.html").render(
             item=item,
             public_base_url=settings.public_base_url,
             latest_by_crop=latest_by_crop,
             display_by_crop=display_by_crop,
+            default_query=build_query(item),
         )
     finally:
         db.close()
@@ -88,55 +75,48 @@ def run_google_lens(
     user: CurrentUser = Depends(require_matter_role("editor")),
     image_url: str = Form(""),
 ) -> HTMLResponse:
-    """Run a Google Lens search for a specific item crop and persist the result."""
-    db = SessionLocal()
-    try:
-        crop = db.get(ItemCrop, crop_id)
-        if crop is None:
-            raise HTTPException(status_code=404, detail="Crop not found")
-        if crop.item_id != item_id:
-            raise HTTPException(status_code=403, detail="Crop does not belong to this item")
-
-        image_url_val = image_url.strip() or None
-        request_url, params_dict, response_dict, status_code = call_serp(
-            "google_lens", crop, image_url_val
-        )
-
-        search = SerpSearch(
-            item_crop_id=crop.id,
-            service="google_lens",
-            image_url=image_url_val or build_crop_url(crop) or "",
-            request_url=request_url,
-            request_params=json.dumps(params_dict),
-            response_json=json.dumps(response_dict),
-            status_code=status_code,
-        )
-        db.add(search)
-        db.commit()
-        db.refresh(search)
-
-        display_results = extract_results("google_lens", response_dict)
-
-        item = db.get(Item, item_id)
-        matter_id = item.matter_id if item else None
-
-        html = templates.get_template("_serp_result.html").render(
-            s=search,
-            display_results=display_results,
-            item_id=item_id,
-        )
-    finally:
-        db.close()
-    background_tasks.add_task(
-        write_audit_log,
-        user_id=user.id,
-        action="serp.run",
-        resource_type="item",
-        resource_id=item_id,
-        matter_id=matter_id,
-        ip_address=get_client_ip(request),
+    """Run a Google Lens reverse-image search for one crop and persist the result."""
+    pasted = image_url.strip() or None
+    return run_and_render(
+        SessionLocal,
+        templates,
+        request,
+        background_tasks,
+        user,
+        item_id,
+        crop_id,
+        service="google_lens",
+        caller=lambda crop, _item: call_serp("google_lens", crop, pasted),
+        image_url_fn=lambda crop: pasted or build_crop_url(crop) or "",
     )
-    return HTMLResponse(html)
+
+
+@router.post("/api/items/{item_id}/crops/{crop_id}/serp/firecrawl", response_class=HTMLResponse)
+def run_firecrawl(
+    request: Request,
+    item_id: str,
+    crop_id: str,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(require_matter_role("editor")),
+    query: str = Form(""),
+) -> HTMLResponse:
+    """Run a Firecrawl web product search for one item and persist the result.
+
+    An empty query falls back to the item's own fields, so the endpoint is
+    usable without the pre-filled input.
+    """
+    typed = query.strip()
+    return run_and_render(
+        SessionLocal,
+        templates,
+        request,
+        background_tasks,
+        user,
+        item_id,
+        crop_id,
+        service="firecrawl",
+        caller=lambda _crop, item: call_firecrawl(typed or (build_query(item) if item else "")),
+    )
 
 
 @router.post("/api/items/{item_id}/serp-apply", response_class=HTMLResponse)
@@ -148,8 +128,12 @@ def serp_apply(
     source_url: str = Form(""),
     source_retailer: str = Form(""),
     rcv_unit_cents: str = Form(""),
+    match_type: str = Form("nearest_comparable"),
 ) -> HTMLResponse:
     """Apply a SERP search result to an item, updating its pricing and source fields."""
+    if match_type not in MATCH_TYPES:
+        raise HTTPException(status_code=422, detail=f"Invalid match_type: {match_type}")
+
     db = SessionLocal()
     try:
         item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
@@ -159,7 +143,7 @@ def serp_apply(
         item.source_url = source_url.strip()
         item.source_retailer = source_retailer.strip()
         item.source_captured_at = datetime.now(tz=timezone.utc)
-        item.match_type = "exact"
+        item.match_type = match_type
 
         if rcv_unit_cents.strip():
             item.retail_unit_cents = int(rcv_unit_cents.strip())

@@ -146,6 +146,9 @@ class Category(Base):
     items: Mapped[list["Item"]] = relationship("Item", back_populates="category")
 
 
+MATCH_TYPES: tuple[str, ...] = ("exact", "nearest_comparable", "category_average")
+
+
 class Item(Base):
     """A line item in the contents inventory."""
 

@@ -479,6 +479,26 @@ document.addEventListener('click', function (e) {
     if (btn) showCropPanel(btn.dataset.showCropPanelItem, btn.dataset.showCropPanelCrop);
 });
 
+// Delegated click: data-serp-tab-target → switch panes within one crop's panel
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-serp-tab-target]');
+    if (!btn) return;
+    var group = btn.dataset.serpTabGroup;
+
+    document.querySelectorAll('[data-serp-pane-group="' + group + '"]').forEach(function (pane) {
+        pane.classList.add('hidden');
+    });
+    var pane = document.getElementById('serp-pane-' + btn.dataset.serpTabTarget);
+    if (pane) pane.classList.remove('hidden');
+
+    document.querySelectorAll('[data-serp-tab-group="' + group + '"]').forEach(function (tab) {
+        tab.classList.remove('border-violet-500', 'text-violet-800', 'font-medium');
+        tab.classList.add('border-transparent', 'text-gray-500');
+    });
+    btn.classList.remove('border-transparent', 'text-gray-500');
+    btn.classList.add('border-violet-500', 'text-violet-800', 'font-medium');
+});
+
 // Delegated click: data-show-edit-crop-item / data-show-edit-crop-crop → showEditCrop
 document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-show-edit-crop-item]');

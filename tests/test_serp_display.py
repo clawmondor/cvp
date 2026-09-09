@@ -81,3 +81,93 @@ def test_extract_google_lens_empty_response():
 def test_extract_unknown_service_returns_empty():
     results = extract_results("unknown_service", GOOGLE_LENS_FIXTURE)
     assert results == []
+
+
+def _fc(results):
+    return {"success": True, "data": {"web": results}}
+
+
+def _hit(url="https://shop.example/p/1", title="Result", **extracted):
+    payload = {
+        "product_title": "Oak Dining Chair",
+        "price": 129.99,
+        "currency": "USD",
+        "retailer": "Shop Example",
+        "is_product_page": True,
+    }
+    payload.update(extracted)
+    return {"url": url, "title": title, "json": payload}
+
+
+def test_extract_firecrawl_maps_fields():
+    [r] = extract_results("firecrawl", _fc([_hit()]))
+    assert r["title"] == "Oak Dining Chair"
+    assert r["source"] == "Shop Example"
+    assert r["link"] == "https://shop.example/p/1"
+    assert r["price_cents"] == 12999
+    assert r["thumbnail"] is None
+    assert r["source_icon"] is None
+
+
+def test_extract_firecrawl_falls_back_to_result_title_and_hostname():
+    hit = _hit(product_title=None, retailer=None)
+    [r] = extract_results("firecrawl", _fc([hit]))
+    assert r["title"] == "Result"
+    assert r["source"] == "shop.example"
+
+
+def test_extract_firecrawl_drops_non_product_pages():
+    assert extract_results("firecrawl", _fc([_hit(is_product_page=False)])) == []
+
+
+def test_extract_firecrawl_drops_non_usd():
+    assert extract_results("firecrawl", _fc([_hit(currency="GBP")])) == []
+
+
+def test_extract_firecrawl_keeps_missing_currency():
+    [r] = extract_results("firecrawl", _fc([_hit(currency=None)]))
+    assert r["price_cents"] == 12999
+
+
+def test_extract_firecrawl_drops_missing_price():
+    assert extract_results("firecrawl", _fc([_hit(price=None)])) == []
+
+
+def test_extract_firecrawl_drops_zero_price():
+    assert extract_results("firecrawl", _fc([_hit(price=0)])) == []
+
+
+def test_extract_firecrawl_drops_results_without_extraction():
+    assert extract_results("firecrawl", _fc([{"url": "https://x.example", "title": "X"}])) == []
+
+
+def test_extract_firecrawl_caps_at_5():
+    assert len(extract_results("firecrawl", _fc([_hit() for _ in range(9)]))) == 5
+
+
+def test_extract_firecrawl_empty_response():
+    assert extract_results("firecrawl", {}) == []
+
+
+def test_extract_firecrawl_match_type_exact_when_brand_in_title():
+    [r] = extract_results(
+        "firecrawl", _fc([_hit(product_title="Stickley Oak Chair")]), brand="Stickley"
+    )
+    assert r["match_type"] == "exact"
+
+
+def test_extract_firecrawl_match_type_nearest_when_brand_absent():
+    [r] = extract_results("firecrawl", _fc([_hit()]), brand="Stickley")
+    assert r["match_type"] == "nearest_comparable"
+
+
+def test_extract_firecrawl_match_type_nearest_when_no_brand_known():
+    [r] = extract_results("firecrawl", _fc([_hit()]))
+    assert r["match_type"] == "nearest_comparable"
+
+
+def test_extract_google_lens_match_type_is_nearest_comparable():
+    """A visual match is a resemblance, not a confirmed exact product."""
+    resp = {"visual_matches": [{"title": "Chair", "link": "https://x.example"}]}
+    [r] = extract_results("google_lens", resp)
+    assert r["match_type"] == "nearest_comparable"

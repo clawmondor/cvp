@@ -36,3 +36,18 @@ def test_settings_openrouter_defaults():
     assert s.openrouter_api_key == ""
     assert s.openrouter_referer == ""
     assert s.openrouter_app_title == "CVP"
+
+
+def test_firecrawl_api_key_defaults_to_empty():
+    from cvp.config import Settings
+
+    s = Settings(_env_file=None)
+    assert s.firecrawl_api_key == ""
+
+
+def test_firecrawl_api_key_reads_env(monkeypatch):
+    from cvp.config import Settings
+
+    monkeypatch.setenv("FIRECRAWL_API_KEY", "fc-test-123")
+    s = Settings(_env_file=None)
+    assert s.firecrawl_api_key == "fc-test-123"

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     export_dir: str = "./data/exports"
     crop_dir: str = "./data/crops"
     serp_api_key: str = ""
+    firecrawl_api_key: str = ""
     public_base_url: str = ""
     company_name: str = "Contents Valuation LLC"
     company_address: str = ""

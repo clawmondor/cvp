@@ -50,6 +50,7 @@
               hx-on::after-request="document.getElementById('serp-panel-{{ item_id }}')?.remove()">
           <input type="hidden" name="source_url" value="{{ result.link or '' }}">
           <input type="hidden" name="source_retailer" value="{{ result.source or '' }}">
+          <input type="hidden" name="match_type" value="{{ result.match_type or 'nearest_comparable' }}">
           {% if result.price_cents %}
           <input type="hidden" name="rcv_unit_cents" value="{{ result.price_cents }}">
           {% endif %}
