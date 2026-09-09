@@ -118,11 +118,13 @@
                   class="flex items-center gap-2 mb-3">
               <input type="text" name="query" value="{{ default_query }}"
                      placeholder="Search terms"
+                     {% if not firecrawl_configured %}disabled{% endif %}
                      class="flex-1 text-xs border border-gray-300 rounded px-2 py-1.5
                             focus:outline-none focus:ring-1 focus:ring-violet-400" />
               <button type="submit"
-                      class="text-xs px-3 py-1.5 rounded transition text-white
-                             bg-violet-600 hover:bg-violet-700 whitespace-nowrap">
+                      {% if not firecrawl_configured %}disabled{% endif %}
+                      class="text-xs px-3 py-1.5 rounded transition text-white whitespace-nowrap
+                             {% if firecrawl_configured %}bg-violet-600 hover:bg-violet-700{% else %}bg-gray-400 cursor-not-allowed{% endif %}">
                 Search web
               </button>
               <svg id="firecrawl-spinner-{{ crop.id }}"
@@ -132,6 +134,9 @@
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
               </svg>
             </form>
+            {% if not firecrawl_configured %}
+              <p class="text-xs text-amber-700 italic mb-2">Firecrawl is not configured</p>
+            {% endif %}
             <div id="firecrawl-result-{{ crop.id }}">
               {% if latest_firecrawl_by_crop.get(crop.id) %}
                 {% set s = latest_firecrawl_by_crop[crop.id] %}

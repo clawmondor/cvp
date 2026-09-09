@@ -18,10 +18,16 @@ Each result dict has these keys (all values may be None unless noted):
     match_type  : str          — "exact" or "nearest_comparable"
 """
 
+import json
 from collections.abc import Callable
 from urllib.parse import urlparse
 
 _RESULT_LIMIT = 5
+
+# Spec §7 copy. Kept verbatim — these strings are what the specialist reads.
+NOT_CONFIGURED_MESSAGE = "Firecrawl is not configured"
+TIMEOUT_MESSAGE = "Search timed out"
+NO_PRICED_PAGES_MESSAGE = "No priced product pages found — try editing the query"
 
 
 def extract_results(service: str, response_dict: dict, brand: str | None = None) -> list[dict]:
@@ -100,8 +106,15 @@ def _extract_firecrawl(response_dict: dict, brand: str | None = None) -> list[di
     if not isinstance(data, dict):
         return []
 
+    # A present-but-null "web" key is not the same as a missing one, and the
+    # SerpSearch row is already committed by the time we parse it — a TypeError
+    # here would make the item permanently unopenable.
+    web = data.get("web")
+    if not isinstance(web, list):
+        return []
+
     results: list[dict] = []
-    for hit in data.get("web", []):
+    for hit in web:
         if not isinstance(hit, dict):
             continue
         extracted = hit.get("json")
@@ -118,7 +131,13 @@ def _extract_firecrawl(response_dict: dict, brand: str | None = None) -> list[di
         if price_cents is None:
             continue
 
-        link = hit.get("url") or ""
+        # Rule 2: a price with no source URL is an invalid audit trail, so the
+        # whole hit is dropped rather than offered as an appliable price.
+        link = hit.get("url")
+        if not isinstance(link, str) or not link.strip():
+            continue
+        link = link.strip()
+
         title = extracted.get("product_title") or hit.get("title")
         results.append(
             {
@@ -134,6 +153,46 @@ def _extract_firecrawl(response_dict: dict, brand: str | None = None) -> list[di
         if len(results) >= _RESULT_LIMIT:
             break
     return results
+
+
+# ---------------------------------------------------------------------------
+# Failure surfacing (spec §7)
+# ---------------------------------------------------------------------------
+
+
+def _text(value: object) -> str:
+    return value.strip() if isinstance(value, str) and value.strip() else ""
+
+
+def serp_error_message(service: str, response_json: str | None, status_code: int | None) -> str:
+    """Human-readable failure text for a stored search row, or "" when it succeeded.
+
+    Takes the persisted column values rather than the ORM row so the display
+    layer stays free of model imports and stays trivially unit-testable.
+    """
+    if service != "firecrawl":
+        return ""
+    try:
+        payload = json.loads(response_json) if response_json else {}
+    except ValueError:
+        return ""
+    if not isinstance(payload, dict):
+        return ""
+
+    error = _text(payload.get("error"))
+    warning = _text(payload.get("warning"))
+    if error:
+        if "timed out" in error.lower():
+            return TIMEOUT_MESSAGE
+        if "not configured" in error.lower():
+            return NOT_CONFIGURED_MESSAGE
+        return error
+    if status_code is not None and not 200 <= status_code < 300:
+        suffix = f": {warning}" if warning else ""
+        return f"Search failed (HTTP {status_code}){suffix}"
+    if payload.get("success") is False:
+        return warning or "Search failed"
+    return warning
 
 
 # Dispatch table — add new services here as they are implemented

@@ -5,6 +5,7 @@ from unittest.mock import patch
 import httpx
 import pytest
 
+from cvp.config import settings
 from cvp.models import Item
 from cvp.services.firecrawl import FIRECRAWL_SEARCH_URL, build_query, call_firecrawl
 
@@ -102,3 +103,21 @@ def test_call_firecrawl_unexpected_error_returns_error(_key):
         _url, _body, data, status = call_firecrawl("lamp")
     assert status == 0
     assert "kaboom" in data["error"]
+
+
+def test_malformed_json_body_keeps_the_real_http_status():
+    """A json content-type with an unparseable body must not masquerade as status 0."""
+    response = httpx.Response(
+        502,
+        headers={"content-type": "application/json"},
+        text="<html>Bad Gateway</html>",
+        request=httpx.Request("POST", FIRECRAWL_SEARCH_URL),
+    )
+    with (
+        patch.object(settings, "firecrawl_api_key", "fc-test-key"),
+        patch("httpx.Client.post", return_value=response),
+    ):
+        _url, _body, data, status = call_firecrawl("oak chair")
+
+    assert status == 502
+    assert data == {"raw": "<html>Bad Gateway</html>"}
