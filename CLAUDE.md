@@ -75,11 +75,10 @@ Full layout in `@docs/PRD.md` section 17.
 2. **Every RCV must have a source.** An item with a price but no `source_url`, `source_retailer`, `source_captured_at`, and `match_type` is invalid and must fail validation. The audit trail is the whole product.
 3. **ACV is computed, not entered.** The ACV of an item is always derived from the formula in `src/cvp/depreciation.py` unless an explicit `acv_override_cents` with a non-empty `acv_override_reason` is set. The UI must make overrides visually obvious.
 4. **Depreciation methodology is the one in `@docs/depreciation-schedule.md`.** Do not invent new useful lives, new categories, or new floor percentages without a code review and a note in the docs file.
-5. **No live retailer scraping in v0.** The specialist pastes URLs and captures screenshots manually (or via Playwright if it's already wired up). Scrapers are a v1 topic.
-6. **No public registration. Attorneys do not log in (they receive PDF/CSV by email). Internal specialists and approved external collaborators authenticate via the existing auth/MFA/RBAC system.**
-7. **Approved cloud services: Anthropic API, Railway (web + Postgres + volume), Cloudflare (DNS, registrar, proxy).** Not approved without re-discussion: S3/R2, Redis, Vercel, Celery, additional managed services. Docker is approved as the production runtime; local development still runs on host Python.
-8. **Vision calls are sequential with a 500ms pause.** Do not parallelize them in v0 — rate limits and cost predictability come first.
-9. **Never commit `.env`, `./data/`, or `./backups/`.** All of these are in `.gitignore`.
+5. **No public registration. Attorneys do not log in (they receive PDF/CSV by email). Internal specialists and approved external collaborators authenticate via the existing auth/MFA/RBAC system.**
+6. **Approved cloud services: Anthropic API, OpenRouter (Claude Vision calls and model-catalog discovery), Railway (web + Postgres + volume), Cloudflare (DNS, registrar, proxy).** Not approved without re-discussion: S3/R2, Redis, Vercel, Celery, additional managed services. Docker is approved as the production runtime; local development still runs on host Python.
+7. **Vision calls are sequential with a 500ms pause.** Do not parallelize them in v0 — rate limits and cost predictability come first.
+8. **Never commit `.env`, `./data/`, or `./backups/`.** All of these are in `.gitignore`.
 
 ## Legal and compliance language (important — attorneys will read generated reports)
 
