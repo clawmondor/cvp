@@ -16,11 +16,11 @@ from cvp.config import settings
 from cvp.db import SessionLocal, get_db
 from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.depreciation import compute_acv
-from cvp.models import Category, Item, ItemGroup, Room, SerpSearch
+from cvp.models import Category, Item, ItemGroup, Room
 from cvp.models_agent import AiRecommendation
 from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.item_groups import find_or_create
-from cvp.services.serp_display import extract_results
+from cvp.services.serp_runner import empty_panel_context, panel_context
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -281,8 +281,7 @@ def _item_row_edit_html(
     categories: list,
     rooms: list,
     item_groups: list,
-    latest_by_crop: dict | None = None,
-    display_by_crop: dict | None = None,
+    serp_context: dict[str, dict] | None = None,
 ) -> str:
     return templates.get_template("_item_row_edit.html").render(
         item=item,
@@ -291,8 +290,7 @@ def _item_row_edit_html(
         item_groups=item_groups,
         conditions=CONDITIONS,
         public_base_url=settings.public_base_url,
-        latest_by_crop=latest_by_crop or {},
-        display_by_crop=display_by_crop or {},
+        **(serp_context or empty_panel_context()),
     )
 
 
@@ -526,26 +524,7 @@ def item_edit_form(
             raise HTTPException(status_code=404)
         categories, rooms, item_groups = _get_context(item.matter_id, db)
 
-        latest_by_crop: dict = {}
-        display_by_crop: dict = {}
-        for crop in item.crops:
-            latest = (
-                db.query(SerpSearch)
-                .filter(SerpSearch.item_crop_id == crop.id)
-                .order_by(SerpSearch.ran_at.desc())
-                .first()
-            )
-            latest_by_crop[crop.id] = latest
-            if latest and latest.response_json:
-                display_by_crop[crop.id] = extract_results(
-                    latest.service, json.loads(latest.response_json)
-                )
-            else:
-                display_by_crop[crop.id] = []
-
-        html = _item_row_edit_html(
-            item, categories, rooms, item_groups, latest_by_crop, display_by_crop
-        )
+        html = _item_row_edit_html(item, categories, rooms, item_groups, panel_context(db, item))
     finally:
         db.close()
     return HTMLResponse(html)

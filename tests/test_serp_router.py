@@ -1,5 +1,7 @@
 """Integration tests for the SERP router's Firecrawl endpoint."""
 
+import json
+import re
 from unittest.mock import patch
 
 import pytest
@@ -207,3 +209,44 @@ def test_serp_apply_rejects_invalid_match_type(client):
         },
     )
     assert resp.status_code == 422
+
+
+def test_panel_keeps_lens_available_after_a_web_search(client):
+    """A firecrawl row must not disable the Lens button or hijack the Lens pane."""
+    c, Session = client
+    db = Session()
+    db.add(
+        SerpSearch(
+            id="ss-panel-fc",
+            item_crop_id="crop1",
+            service="firecrawl",
+            request_url="https://api.firecrawl.dev/v2/search",
+            request_params="{}",
+            response_json=json.dumps(_PAYLOAD),
+            status_code=200,
+        )
+    )
+    db.commit()
+    db.close()
+
+    resp = c.get("/api/items/item1/serp-panel")
+    assert resp.status_code == 200
+    html = resp.text
+
+    # (a) every tab target has a matching pane id
+    targets = re.findall(r'data-serp-tab-target="([^"]+)"', html)
+    assert targets
+    for target in targets:
+        assert f'id="serp-pane-{target}"' in html
+
+    # (b) the Lens button is not disabled — Lens was never run for this crop
+    lens_buttons = re.findall(r"<button[^>]*data-lens-btn[^>]*>", html)
+    assert lens_buttons
+    for button in lens_buttons:
+        assert "disabled" not in button
+
+    # (c) the firecrawl results render in the web pane, not under the Lens heading
+    assert "Stickley Oak Dining Chair" in html
+    assert html.index('id="lens-result-crop1"') < html.index("No search run yet.")
+    assert html.index("No search run yet.") < html.index('id="firecrawl-result-crop1"')
+    assert html.index('id="firecrawl-result-crop1"') < html.index("Stickley Oak Dining Chair")

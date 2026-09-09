@@ -43,12 +43,14 @@
         <div class="flex-1 min-w-0">
           {# ── Tab strip ─────────────────────────────────────────────── #}
           <div class="flex gap-1 mb-3 border-b border-violet-200">
-            <button data-serp-tab-target="lens-{{ crop.id }}"
+            <button type="button"
+                    data-serp-tab-target="lens-{{ crop.id }}"
                     data-serp-tab-group="{{ crop.id }}"
                     class="serp-tab text-xs px-3 py-1.5 border-b-2 border-violet-500 text-violet-800 font-medium">
               Google Lens
             </button>
-            <button data-serp-tab-target="web-{{ crop.id }}"
+            <button type="button"
+                    data-serp-tab-target="web-{{ crop.id }}"
                     data-serp-tab-group="{{ crop.id }}"
                     class="serp-tab text-xs px-3 py-1.5 border-b-2 border-transparent text-gray-500 hover:text-violet-700">
               Web search
@@ -69,10 +71,10 @@
                      value="{{ public_base_url.rstrip('/') }}/crops/{{ crop.crop_path }}">
               <button type="submit"
                       data-lens-btn
-                      {% if latest_by_crop.get(crop.id) %}disabled{% endif %}
+                      {% if latest_lens_by_crop.get(crop.id) %}disabled{% endif %}
                       class="text-xs px-3 py-1.5 rounded transition text-white
-                             {% if latest_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-violet-600 hover:bg-violet-700{% endif %}">
-                {% if latest_by_crop.get(crop.id) %}Searched{% else %}Search Google Lens{% endif %}
+                             {% if latest_lens_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-violet-600 hover:bg-violet-700{% endif %}">
+                {% if latest_lens_by_crop.get(crop.id) %}Searched{% else %}Search Google Lens{% endif %}
               </button>
             {% else %}
               <input type="url" name="image_url"
@@ -80,10 +82,10 @@
                      class="flex-1 text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-violet-400" />
               <button type="submit"
                       data-lens-btn
-                      {% if latest_by_crop.get(crop.id) %}disabled{% endif %}
+                      {% if latest_lens_by_crop.get(crop.id) %}disabled{% endif %}
                       class="text-xs px-3 py-1.5 rounded transition text-white
-                             {% if latest_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-violet-600 hover:bg-violet-700{% endif %}">
-                {% if latest_by_crop.get(crop.id) %}Searched{% else %}Search{% endif %}
+                             {% if latest_lens_by_crop.get(crop.id) %}bg-gray-400 cursor-not-allowed{% else %}bg-violet-600 hover:bg-violet-700{% endif %}">
+                {% if latest_lens_by_crop.get(crop.id) %}Searched{% else %}Search{% endif %}
               </button>
             {% endif %}
             <svg id="lens-spinner-{{ crop.id }}"
@@ -95,9 +97,9 @@
           </form>
 
           <div id="lens-result-{{ crop.id }}">
-            {% if latest_by_crop.get(crop.id) %}
-              {% set s = latest_by_crop[crop.id] %}
-              {% set display_results = display_by_crop.get(crop.id, []) %}
+            {% if latest_lens_by_crop.get(crop.id) %}
+              {% set s = latest_lens_by_crop[crop.id] %}
+              {% set display_results = display_lens_by_crop.get(crop.id, []) %}
               {% set item_id = item.id %}
               {% include "_serp_result.html" %}
             {% else %}
@@ -130,7 +132,14 @@
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
               </svg>
             </form>
-            <div id="firecrawl-result-{{ crop.id }}"></div>
+            <div id="firecrawl-result-{{ crop.id }}">
+              {% if latest_firecrawl_by_crop.get(crop.id) %}
+                {% set s = latest_firecrawl_by_crop[crop.id] %}
+                {% set display_results = display_firecrawl_by_crop.get(crop.id, []) %}
+                {% set item_id = item.id %}
+                {% include "_serp_result.html" %}
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>
