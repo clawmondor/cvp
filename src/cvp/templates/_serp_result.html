@@ -52,8 +52,7 @@
         {# Use this button #}
         <form hx-post="/api/items/{{ item_id }}/serp-apply"
               hx-target="#item-row-{{ item_id }}"
-              hx-swap="outerHTML"
-              hx-on::after-request="document.getElementById('serp-panel-{{ item_id }}')?.remove()">
+              hx-swap="outerHTML">
           <input type="hidden" name="source_url" value="{{ result.link or '' }}">
           <input type="hidden" name="source_retailer" value="{{ result.source or '' }}">
           <input type="hidden" name="match_type" value="{{ result.match_type or 'nearest_comparable' }}">

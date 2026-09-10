@@ -19,7 +19,7 @@ from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.firecrawl import build_query, call_firecrawl
 from cvp.services.serp import build_crop_url, call_serp
 from cvp.services.serp_display import serp_error_message
-from cvp.services.serp_runner import panel_context, run_and_render
+from cvp.services.serp_runner import run_and_render
 
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -41,29 +41,6 @@ def serve_crop(crop_path: str, user: CurrentUser | None = Depends(optional_user)
     if not requested.exists():
         raise HTTPException(status_code=404, detail="Crop not found")
     return FileResponse(str(requested))
-
-
-@router.get("/api/items/{item_id}/serp-panel", response_class=HTMLResponse)
-def serp_panel(
-    item_id: str, user: CurrentUser = Depends(require_matter_role("editor"))
-) -> HTMLResponse:
-    """Render the SERP panel for an item showing all crops and their latest search results."""
-    db = SessionLocal()
-    try:
-        item = db.query(Item).options(selectinload(Item.crops)).filter(Item.id == item_id).first()
-        if item is None:
-            raise HTTPException(status_code=404, detail="Item not found")
-
-        html = templates.get_template("_serp_panel.html").render(
-            item=item,
-            public_base_url=settings.public_base_url,
-            default_query=build_query(item),
-            firecrawl_configured=bool(settings.firecrawl_api_key),
-            **panel_context(db, item),
-        )
-    finally:
-        db.close()
-    return HTMLResponse(html)
 
 
 @router.post("/api/items/{item_id}/crops/{crop_id}/serp/google_lens", response_class=HTMLResponse)

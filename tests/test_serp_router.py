@@ -1,6 +1,5 @@
 """Integration tests for the SERP router's Firecrawl endpoint."""
 
-import json
 import re
 from unittest.mock import patch
 
@@ -11,7 +10,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 import cvp.dependencies as deps
-from cvp.config import settings
 from cvp.db import get_db
 from cvp.dependencies import CurrentUser, require_active_user
 from cvp.models import Base, Category, EvidenceFile, Item, ItemCrop, Matter, SerpSearch
@@ -219,47 +217,6 @@ def test_serp_apply_rejects_invalid_match_type(client):
     assert resp.status_code == 422
 
 
-def test_panel_keeps_lens_available_after_a_web_search(client):
-    """A firecrawl row must not disable the Lens button or hijack the Lens pane."""
-    c, Session = client
-    db = Session()
-    db.add(
-        SerpSearch(
-            id="ss-panel-fc",
-            item_crop_id="crop1",
-            service="firecrawl",
-            request_url="https://api.firecrawl.dev/v2/search",
-            request_params="{}",
-            response_json=json.dumps(_PAYLOAD),
-            status_code=200,
-        )
-    )
-    db.commit()
-    db.close()
-
-    resp = c.get("/api/items/item1/serp-panel")
-    assert resp.status_code == 200
-    html = resp.text
-
-    # (a) every tab target has a matching pane id
-    targets = re.findall(r'data-serp-tab-target="([^"]+)"', html)
-    assert targets
-    for target in targets:
-        assert f'id="serp-pane-{target}"' in html
-
-    # (b) the Lens button is not disabled — Lens was never run for this crop
-    lens_buttons = re.findall(r"<button[^>]*data-lens-btn[^>]*>", html)
-    assert lens_buttons
-    for button in lens_buttons:
-        assert "disabled" not in button
-
-    # (c) the firecrawl results render in the web pane, not under the Lens heading
-    assert "Stickley Oak Dining Chair" in html
-    assert html.index('id="lens-result-crop1"') < html.index("No search run yet.")
-    assert html.index("No search run yet.") < html.index('id="firecrawl-result-crop1"')
-    assert html.index('id="firecrawl-result-crop1"') < html.index("Stickley Oak Dining Chair")
-
-
 def test_firecrawl_empty_results_suggest_editing_the_query(client):
     c, _ = client
     with patch(
@@ -270,44 +227,3 @@ def test_firecrawl_empty_results_suggest_editing_the_query(client):
     assert resp.status_code == 200
     assert "No priced product pages found — try editing the query" in resp.text
     assert "No results found." not in resp.text
-
-
-def test_panel_disables_web_search_when_firecrawl_is_unconfigured(client):
-    c, _ = client
-    with patch.object(settings, "firecrawl_api_key", ""):
-        resp = c.get("/api/items/item1/serp-panel")
-    assert resp.status_code == 200
-    assert "Firecrawl is not configured" in resp.text
-    web_form = resp.text.split('id="serp-pane-web-crop1"')[1]
-    assert "disabled" in web_form.split("Search web")[0]
-
-
-def test_panel_enables_web_search_when_firecrawl_is_configured(client):
-    c, _ = client
-    with patch.object(settings, "firecrawl_api_key", "fc-test-key"):
-        resp = c.get("/api/items/item1/serp-panel")
-    assert resp.status_code == 200
-    assert "Firecrawl is not configured" not in resp.text
-
-
-def test_panel_reuses_the_items_brand_for_match_type(client):
-    """The stored-row path must pass brand, or a reload downgrades exact -> nearest."""
-    c, Session = client
-    db = Session()
-    db.add(
-        SerpSearch(
-            id="ss-panel-brand",
-            item_crop_id="crop1",
-            service="firecrawl",
-            request_url="u",
-            request_params="{}",
-            response_json=json.dumps(_PAYLOAD),
-            status_code=200,
-        )
-    )
-    db.commit()
-    db.close()
-
-    resp = c.get("/api/items/item1/serp-panel")
-    assert resp.status_code == 200
-    assert 'name="match_type" value="exact"' in resp.text
