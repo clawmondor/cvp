@@ -64,36 +64,6 @@ document.addEventListener('htmx:afterSwap', function (e) {
     addCsrfToPlainForms(e.detail.elt, csrf);
 });
 
-// ── Serp panel toggle ────────────────────────────────────────────────────
-function toggleSerpPanel(itemId) {
-  const existing = document.getElementById('serp-panel-' + itemId);
-  if (existing) {
-    existing.remove();
-    return;
-  }
-  htmx.ajax('GET', '/api/items/' + itemId + '/serp-panel', {
-    target: document.getElementById('item-row-' + itemId),
-    swap: 'afterend',
-  });
-}
-
-function showCropPanel(itemId, cropId) {
-  // Hide all crop panels for this item, show the selected one
-  const panel = document.getElementById('serp-panel-' + itemId);
-  if (!panel) return;
-  panel.querySelectorAll('[id^="crop-panel-"]').forEach(el => el.classList.add('hidden'));
-  panel.querySelectorAll('[id^="crop-tab-"]').forEach(el => {
-    el.classList.remove('border-violet-500');
-    el.classList.add('border-transparent');
-  });
-  const target = document.getElementById('crop-panel-' + cropId);
-  if (target) target.classList.remove('hidden');
-  const tab = document.getElementById('crop-tab-' + cropId);
-  if (tab) {
-    tab.classList.remove('border-transparent');
-    tab.classList.add('border-violet-500');
-  }
-}
 
 // ── Edit-form crop selector (Google Lens section) ────────────────────────
 function showEditCrop(itemId, cropId) {
@@ -462,41 +432,6 @@ document.addEventListener('keydown', function (e) {
     return;
   }
   editor.querySelector('button[aria-label="Close editor"]').click();
-});
-
-// Delegated click: data-serp-panel-close → remove serp panel row
-document.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-serp-panel-close]');
-    if (btn) {
-        var el = document.getElementById('serp-panel-' + btn.dataset.serpPanelClose);
-        if (el) el.remove();
-    }
-});
-
-// Delegated click: data-show-crop-panel-item / data-show-crop-panel-crop → showCropPanel
-document.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-show-crop-panel-item]');
-    if (btn) showCropPanel(btn.dataset.showCropPanelItem, btn.dataset.showCropPanelCrop);
-});
-
-// Delegated click: data-serp-tab-target → switch panes within one crop's panel
-document.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-serp-tab-target]');
-    if (!btn) return;
-    var group = btn.dataset.serpTabGroup;
-
-    document.querySelectorAll('[data-serp-pane-group="' + group + '"]').forEach(function (pane) {
-        pane.classList.add('hidden');
-    });
-    var pane = document.getElementById('serp-pane-' + btn.dataset.serpTabTarget);
-    if (pane) pane.classList.remove('hidden');
-
-    document.querySelectorAll('[data-serp-tab-group="' + group + '"]').forEach(function (tab) {
-        tab.classList.remove('border-violet-500', 'text-violet-800', 'font-medium');
-        tab.classList.add('border-transparent', 'text-gray-500');
-    });
-    btn.classList.remove('border-transparent', 'text-gray-500');
-    btn.classList.add('border-violet-500', 'text-violet-800', 'font-medium');
 });
 
 // Delegated click: data-show-edit-crop-item / data-show-edit-crop-crop → showEditCrop
