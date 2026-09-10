@@ -19,6 +19,7 @@ from cvp.depreciation import compute_acv
 from cvp.models import MATCH_TYPES, Category, Item, ItemGroup, Room
 from cvp.models_agent import AiRecommendation
 from cvp.services.audit import get_client_ip, write_audit_log
+from cvp.services.firecrawl import build_query
 from cvp.services.item_groups import find_or_create
 from cvp.services.serp_display import serp_error_message
 from cvp.services.serp_runner import empty_panel_context, panel_context
@@ -293,6 +294,8 @@ def _item_row_edit_html(
         conditions=CONDITIONS,
         match_types=MATCH_TYPES,
         public_base_url=settings.public_base_url,
+        default_query=build_query(item),
+        firecrawl_configured=bool(settings.firecrawl_api_key),
         **(serp_context or empty_panel_context()),
     )
 
