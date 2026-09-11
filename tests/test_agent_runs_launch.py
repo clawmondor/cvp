@@ -93,6 +93,7 @@ def test_launch_rejects_when_run_already_in_flight(ctx):
     r = client.post(f"/api/items/{item_id}/agent-runs")
     assert r.status_code == 409
     assert launched == []
+    assert db.query(AgentRun).count() == 1
 
 
 def test_launch_rejects_at_pending_cap(ctx):
@@ -120,3 +121,13 @@ def test_launch_404s_for_unknown_item(ctx):
     client, _db, _item_id, _key_id, _launched = ctx
     r = client.post("/api/items/does-not-exist/agent-runs")
     assert r.status_code == 404
+
+
+def test_launch_rejects_when_no_agent_key_configured(ctx, monkeypatch):
+    client, db, item_id, _key_id, launched = ctx
+    monkeypatch.setattr(agent_runs_router.settings, "cloudflare_agent_key_id", "", raising=False)
+
+    r = client.post(f"/api/items/{item_id}/agent-runs")
+    assert r.status_code == 503
+    assert db.query(AgentRun).count() == 0
+    assert launched == []
