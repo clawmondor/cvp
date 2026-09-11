@@ -1,7 +1,7 @@
 import { Container, getContainer } from "@cloudflare/containers";
 
 interface Env {
-  CUSTOM_PYTHON_AGENT: DurableObjectNamespace;
+  CUSTOM_PYTHON_AGENT: DurableObjectNamespace<CustomPythonAgent>;
   LAUNCH_HMAC_SECRET: string;
   CVP_BASE_URL: string;
   CVP_AGENT_KEY: string;
@@ -18,7 +18,7 @@ interface Job {
   agent_impl: string;
 }
 
-export class CustomPythonAgent extends Container {
+export class CustomPythonAgent extends Container<Env> {
   // The run is a one-shot batch job: no port, no request forwarding.
   sleepAfter = "30s";
   private launched = false;
