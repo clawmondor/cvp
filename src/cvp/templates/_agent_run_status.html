@@ -1,1 +1,56 @@
-<div id="agent-run-{{ item.id }}" data-run-status="{{ run.status }}"></div>
+{# Polling status for one agent run. Modeled on _scan_progress.html: the
+   element re-fetches itself while the run is live and simply stops emitting
+   hx-trigger once terminal. No JavaScript — CSP forbids inline handlers and
+   connect-src is 'self', so a direct socket to the Worker is not an option. #}
+{% set terminal = run.status in ["succeeded", "failed"] %}
+{% set labels = {
+     "queued": "Queued",
+     "running": "Starting…",
+     "searching": "Searching retailers…",
+     "submitting": "Submitting…",
+     "succeeded": "Done",
+     "failed": "Failed",
+   } %}
+<div id="agent-run-{{ item.id }}"
+     data-run-status="{{ run.status }}"
+     {% if not terminal %}
+     hx-get="/api/items/{{ item.id }}/agent-runs/{{ run.id }}"
+     hx-trigger="every 2s"
+     hx-target="this"
+     hx-swap="outerHTML"
+     {% endif %}
+     class="mt-2 rounded border p-2 text-xs
+            {% if run.status == 'failed' %}border-red-200 bg-red-50 text-red-700
+            {% elif run.status == 'succeeded' %}border-green-200 bg-green-50 text-green-700
+            {% else %}border-indigo-200 bg-indigo-50 text-indigo-700{% endif %}">
+
+  <div class="flex items-center justify-between">
+    <span class="font-medium">{{ labels.get(run.status, run.status) }}</span>
+    {% if not terminal %}<span class="animate-pulse">●</span>
+    {% elif run.status == "succeeded" %}<span>✓</span>
+    {% else %}<span>⚠</span>{% endif %}
+  </div>
+
+  {% if run.status_message and not terminal %}
+    <p class="mt-1 text-gray-600">{{ run.status_message }}</p>
+  {% endif %}
+
+  {% if run.status == "failed" and run.error %}
+    <p class="mt-1">{{ run.error }}</p>
+  {% endif %}
+
+  {% if terminal %}
+    <p class="mt-1 text-gray-500">
+      {{ run.model_slug }} · {{ run.agent_impl }}
+      {%- if run.latency_ms %} · {{ (run.latency_ms / 1000) | round(1) }}s{% endif %}
+    </p>
+  {% endif %}
+</div>
+
+{# On success, refresh the recommendations list in place rather than making the
+   specialist reload the page. #}
+{% if run.status == "succeeded" %}
+<div id="ai-recs-{{ item.id }}" hx-swap-oob="true">
+  {% include "_ai_recommendations.html" %}
+</div>
+{% endif %}

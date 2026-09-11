@@ -187,3 +187,25 @@ def progress(
 
     db.commit()
     return {"status": run.status}
+
+
+@router.get("/api/items/{item_id}/agent-runs/{run_id}", response_class=HTMLResponse)
+def status(
+    request: Request,
+    item_id: str,
+    run_id: str,
+    user: CurrentUser = Depends(EDITOR),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    """Render the polling partial. Stops polling once the run is terminal."""
+    item = _load_item(db, item_id)
+    run = db.get(AgentRun, run_id)
+    if run is None or run.item_id != item_id:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    recommendations = [r for r in item.ai_recommendations if r.status == "pending"]
+    return HTMLResponse(
+        templates.get_template("_agent_run_status.html").render(
+            request=request, run=run, item=item, recommendations=recommendations
+        )
+    )
