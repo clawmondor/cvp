@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from cvp.config import settings
 from cvp.models_app_setting import AppSetting
+from cvp.services.agent_model_slugs import ALLOWED_MODEL_SLUGS
 
 _TTL_SECONDS: float = 30.0
 _cache: dict[str, tuple[float, Any]] = {}  # key -> (loaded_at, value)
@@ -32,6 +33,7 @@ _BOUNDS: dict[str, tuple[int, int]] = {
 # Allowed values for string-valued knobs; a DB value outside the set is ignored.
 _ALLOWED_STR: dict[str, tuple[str, ...]] = {
     "ai_recommendation_min_confidence": ("high", "medium", "low"),
+    "ai_recommendation_model": ALLOWED_MODEL_SLUGS,
 }
 
 
