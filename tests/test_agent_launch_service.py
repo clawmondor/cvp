@@ -1,3 +1,4 @@
+import httpx
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -127,4 +128,58 @@ def test_unconfigured_worker_marks_failed(run_id, session_factory, monkeypatch):
     run = db.get(AgentRun, run_id)
     assert run.status == "failed"
     assert "not configured" in run.error
+    db.close()
+
+
+def test_unreachable_worker_marks_failed(run_id, session_factory, monkeypatch):
+    """Transport failure — e.g. the Worker is down or DNS fails — is the
+    money-at-risk path: a launch that silently drops here would strand a
+    run with no record of what happened."""
+
+    class _Client:
+        def __init__(self, **kw):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def post(self, url, content=None, headers=None):
+            raise httpx.ConnectError("connection refused")
+
+    monkeypatch.setattr(agent_launch.httpx, "Client", _Client)
+    monkeypatch.setattr(agent_launch.settings, "cloudflare_agent_worker_url", "https://w.example")
+    monkeypatch.setattr(agent_launch.settings, "cloudflare_launch_hmac_secret", "s3cret")
+
+    agent_launch.launch_run(run_id)
+
+    db = session_factory()
+    run = db.get(AgentRun, run_id)
+    assert run.status == "failed"
+    assert "reach" in run.error.lower()
+    db.close()
+
+
+def test_unexpected_error_marks_failed_without_raising(run_id, session_factory, monkeypatch):
+    """launch_run runs in a BackgroundTask with no caller to observe an
+    exception, so nothing may propagate — not even a failure that happens
+    before the outbound POST (e.g. signing blows up). This exercises the
+    outer catch-all rather than the transport-specific except."""
+
+    monkeypatch.setattr(agent_launch.settings, "cloudflare_agent_worker_url", "https://w.example")
+    monkeypatch.setattr(agent_launch.settings, "cloudflare_launch_hmac_secret", "s3cret")
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("signing exploded")
+
+    monkeypatch.setattr(agent_launch, "sign_payload", _boom)
+
+    agent_launch.launch_run(run_id)  # must return normally, not raise
+
+    db = session_factory()
+    run = db.get(AgentRun, run_id)
+    assert run.status == "failed"
+    assert "signing exploded" in run.error
     db.close()
