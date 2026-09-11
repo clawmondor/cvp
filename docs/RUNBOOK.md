@@ -117,3 +117,61 @@ railway run uv run seed
 ```
 
 Idempotent; safe to run anytime.
+
+## Cloudflare agent runs
+
+**Prerequisite:** Workers **Paid** plan. Browser Run's free tier allows only
+10 browser-minutes/day and 3 concurrent browsers, which cannot support this.
+
+### First deploy
+
+1. Mint an agent key in the app under **System Admin → Agent Keys**, named
+   `cloudflare-agent`. The full key is shown once — copy it.
+2. Record its **id** (not the key) in CVP's environment as
+   `CLOUDFLARE_AGENT_KEY_ID`. Runs are bound to this key at creation, so the
+   progress endpoint can use a strict equality check.
+3. Generate a launch secret: `openssl rand -hex 32`. Set it in CVP's
+   environment as `CLOUDFLARE_LAUNCH_HMAC_SECRET`.
+4. Set the Cloudflare secrets — these never pass through CI:
+
+   ```bash
+   cd cloudflare
+   wrangler secret put LAUNCH_HMAC_SECRET       # same value as step 3
+   wrangler secret put CVP_AGENT_KEY            # the key from step 1
+   wrangler secret put OPENROUTER_API_KEY
+   wrangler secret put BROWSER_RUN_ACCOUNT_ID
+   wrangler secret put BROWSER_RUN_TOKEN
+   ```
+
+5. Deploy: `wrangler deploy`.
+6. Set `CLOUDFLARE_AGENT_WORKER_URL` in CVP to the deployed Worker URL.
+
+### Rotating the agent key
+
+Sequenced, and only when no runs are in flight — runs created before the
+rotation will reject progress from the new key:
+
+1. Mint a new key; 2. `wrangler secret put CVP_AGENT_KEY`; 3. update
+`CLOUDFLARE_AGENT_KEY_ID` in CVP; 4. revoke the old key. Revocation fails
+launches loudly at the existing auth check rather than silently.
+
+### Pruning images
+
+The registry has a **50 GB per-account cap and no automatic garbage
+collection**. Every merge pushes a new image, so prune periodically:
+
+```bash
+wrangler containers images list
+wrangler containers images delete <IMAGE>:<TAG>
+```
+
+Keep the currently deployed tag and the last few for rollback. Deleting an
+image a deployed Worker still references will break that Worker.
+
+### Diagnosing a stuck run
+
+Container storage is ephemeral and logs live on Cloudflare, so CVP cannot
+interrogate a dead container — it only notices that nothing arrived. A run
+stuck in a non-terminal state is reaped on app startup by
+`agent_run_sweeper.sweep_stale_runs` after `AGENT_RUN_STALE_MINUTES`
+(default 15). For the container's own output use `wrangler tail`.

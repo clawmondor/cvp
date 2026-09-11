@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, cvp-legacy]
   pull_request:
 
 concurrency:
@@ -52,3 +52,28 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  containers:
+    name: containers
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: [custom-python]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: |
+          docker build \
+            -f cloudflare/images/${{ matrix.image }}/Dockerfile \
+            --build-arg IMAGE_TAG=${{ github.sha }} \
+            -t cvp-agent-${{ matrix.image }}:${{ github.sha }} .
+      # PRs build only. Pushing on every review round would consume the
+      # 50 GB per-account registry budget, which has no automatic GC.
+      - name: Push to Cloudflare registry
+        if: github.event_name == 'push'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx wrangler containers push \
+            cvp-agent-${{ matrix.image }}:${{ github.sha }}
