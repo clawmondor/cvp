@@ -8,6 +8,7 @@ tmp
 __pycache__
 *.pyc
 .pytest_cache
+**/node_modules
 .ruff_cache
 .env
 .env.*
@@ -15,3 +16,4 @@ __pycache__
 docs
 tests
 .github
+cloudflare/images/*/Dockerfile

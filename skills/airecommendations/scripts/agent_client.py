@@ -134,6 +134,7 @@ class AiRecommendationsClient:
         product_title: str = "",
         rationale: str = "",
         item_crop_id: str | None = None,
+        agent_run_id: str | None = None,
     ) -> dict[str, Any]:
         """Submit a pricing recommendation for an item.
 
@@ -142,6 +143,9 @@ class AiRecommendationsClient:
         Raises AgentApiError on 404 (unknown item), 409 (item already has 5
         pending recommendations), or 422 (validation, e.g. missing source /
         negative cents).
+
+        ``agent_run_id`` attributes the submission to a CVP-launched agent run.
+        Leave it None when running as a standalone external agent.
         """
         body = {
             "proposed_retail_unit_cents": retail_unit_cents,
@@ -152,6 +156,7 @@ class AiRecommendationsClient:
             "product_title": product_title,
             "rationale": rationale,
             "item_crop_id": item_crop_id,
+            "agent_run_id": agent_run_id,
         }
         return self._request("POST", f"/api/agent/items/{item_id}/recommendations", json_body=body)
 

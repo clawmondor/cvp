@@ -8,7 +8,7 @@ import cvp.models_agent  # noqa: F401
 from cvp.db import get_db
 from cvp.main import app
 from cvp.models import Base, Category, Item, Matter
-from cvp.models_agent import AgentKey, AiRecommendation
+from cvp.models_agent import AgentKey, AgentRun, AiRecommendation
 from cvp.services.agent_keys import generate_key
 
 
@@ -118,3 +118,46 @@ def test_submit_unknown_item_404(ctx):
         headers={"X-API-Key": key},
     )
     assert resp.status_code == 404
+
+
+def _agent_run(db, item_id):
+    """A run row to attribute a submission to (FK target for agent_run_id)."""
+    item = db.get(Item, item_id)
+    key = db.query(AgentKey).one()
+    run = AgentRun(
+        item_id=item_id,
+        matter_id=item.matter_id,
+        agent_impl="custom-python",
+        model_slug="anthropic/claude-haiku-4.5",
+        agent_key_id=key.id,
+    )
+    db.add(run)
+    db.commit()
+    return run.id
+
+
+def test_submit_records_agent_run_id_when_supplied(ctx):
+    """Without this the A/B join in the design spec (5.3) returns zero rows."""
+    client, key, item_id, db = ctx
+    run_id = _agent_run(db, item_id)
+
+    resp = client.post(
+        f"/api/agent/items/{item_id}/recommendations",
+        json=_body(agent_run_id=run_id),
+        headers={"X-API-Key": key},
+    )
+    assert resp.status_code == 201
+    rec = db.query(AiRecommendation).one()
+    assert rec.agent_run_id == run_id
+
+
+def test_submit_leaves_agent_run_id_none_for_external_agents(ctx):
+    """The external-agent path has no run; it must stay untouched."""
+    client, key, item_id, db = ctx
+    resp = client.post(
+        f"/api/agent/items/{item_id}/recommendations",
+        json=_body(),
+        headers={"X-API-Key": key},
+    )
+    assert resp.status_code == 201
+    assert db.query(AiRecommendation).one().agent_run_id is None

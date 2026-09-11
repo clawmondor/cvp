@@ -17,6 +17,7 @@ from cvp.models import Matter
 from cvp.models_access import MatterAccess
 from cvp.routers import (
     agent,
+    agent_runs,
     auth,
     comments,
     crops,
@@ -51,6 +52,16 @@ BASE_DIR = Path(__file__).parent
 async def lifespan(app: FastAPI):
     vision_worker.recover_stale_jobs()
     vision_worker.start_worker()
+
+    from cvp.db import SessionLocal
+    from cvp.services.agent_run_sweeper import sweep_stale_runs
+
+    _db = SessionLocal()
+    try:
+        sweep_stale_runs(_db, older_than_minutes=settings.agent_run_stale_minutes)
+    finally:
+        _db.close()
+
     yield
 
 
@@ -98,6 +109,7 @@ app.include_router(items.router)
 app.include_router(recommendations.router)
 app.include_router(vision.router)
 app.include_router(agent.router)
+app.include_router(agent_runs.router)
 app.include_router(serp.router)
 app.include_router(crops.router)
 app.include_router(exports.router)

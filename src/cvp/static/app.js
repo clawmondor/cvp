@@ -1006,3 +1006,44 @@ document.addEventListener('change', function (e) {
         }
     });
 })();
+
+// ── Agent run launch errors ───────────────────────────────────────────────
+// htmx drops non-2xx responses, so every launch guard rejection (409 a run is
+// already in flight or the item is at the five-pending cap, 400 a disallowed
+// model, 503 no agent key configured) produced a good `detail` string that
+// went nowhere: the button flickered and the specialist could not tell "you
+// already have five" from "the server is broken". Render it instead.
+//
+// Delegated and data-* keyed — CSP script-src has no unsafe-inline, so an
+// inline handler would be hard-blocked in production.
+function agentRunErrorBox(elt) {
+    var form = elt && elt.closest ? elt.closest('[data-agent-run-form]') : null;
+    if (!form) return null;
+    return document.getElementById(form.getAttribute('data-agent-run-error'));
+}
+
+document.addEventListener('htmx:beforeRequest', function (e) {
+    var box = agentRunErrorBox(e.detail.elt);
+    if (!box) return;
+    box.textContent = '';
+    box.classList.add('hidden');
+});
+
+document.addEventListener('htmx:responseError', function (e) {
+    var box = agentRunErrorBox(e.detail.elt);
+    if (!box) return;
+
+    var xhr = e.detail.xhr;
+    var message = '';
+    try {
+        var parsed = JSON.parse(xhr.responseText);
+        if (typeof parsed.detail === 'string') message = parsed.detail;
+    } catch (err) {
+        message = ''; // non-JSON error body (proxy page, empty response)
+    }
+    if (!message) message = 'Could not start the agent run (HTTP ' + xhr.status + ').';
+
+    // textContent, never innerHTML: this string comes off the wire.
+    box.textContent = message;
+    box.classList.remove('hidden');
+});

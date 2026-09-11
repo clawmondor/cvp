@@ -266,3 +266,27 @@ Add a row to this table for every migration. A future operator reading this file
 - Do we need a `policyholders` table? Right now the policyholder name lives inline on the matter. If one policyholder ever has multiple matters (plausible for a family rebuilding in Palisades after a separate water loss), we might want to normalize. Not for v0.
 - Do we need versioned `items` history (e.g., via a separate `item_revisions` table) for full auditability? Today, `updated_at` and the `exports` snapshot are enough. Revisit if a carrier formally requests a diff.
 - Where do we store the methodology document used for a given matter? Today it's implicit in the report template. If methodology evolves, we need to version it and link a matter to the methodology that was in effect when the report was generated.
+
+## agent_runs (2026-09-10)
+
+One row per "Get AI Recommendations" click. Records which architecture
+(`agent_impl`) and which model (`model_slug`) produced a recommendation, so
+A/B comparison is a SQL query rather than an impression.
+
+`ai_recommendations.agent_run_id` is a **nullable** FK to this table. Nullable
+is load-bearing: recommendations submitted by external agents through the
+documented `skills/airecommendations` flow have no run, and that path must keep
+working.
+
+`agent_runs.agent_key_id` is set at row creation from the configured
+`cloudflare_agent_key_id`, never on first contact, so the progress endpoint can
+use a strict equality check with no trust-on-first-use window.
+
+### Deliberate deviation from immutable rule 1
+
+`cost_micro_usd` is integer **micro-USD**, not cents. A measured agent run costs
+$0.0098, which rounds to 1 cent and quantizes away the entire signal the A/B
+exists to capture. Rule 1 governs *claim* currency — anything reaching an item
+valuation, a report, or an export. This is operational telemetry that never
+appears in a PDF or CSV. Integer micros keep the value integer-valued and
+float-free, honoring the rule's intent.

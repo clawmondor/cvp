@@ -1,0 +1,31 @@
+name = "cvp-agents"
+main = "src/index.ts"
+compatibility_date = "2026-09-10"
+
+# CVP_BASE_URL is not secret; the rest are set with `wrangler secret put`.
+[vars]
+CVP_BASE_URL = "https://cvp.cmondor.com"
+
+[[containers]]
+class_name = "CustomPythonAgent"
+# `wrangler deploy` builds this Dockerfile locally with the REPOSITORY ROOT as
+# the build context. That is required, not cosmetic: the Dockerfile COPYs from
+# both cloudflare/images/shared/ and skills/airecommendations/scripts/, and
+# wrangler otherwise defaults the context to the Dockerfile's own directory,
+# where neither path exists.
+#
+# To deploy an exact CI-built image instead of building locally, replace both
+# lines with:
+#   image = "registry.cloudflare.com/<ACCOUNT_ID>/cvp-agent-custom-python:<sha>"
+image = "./images/custom-python/Dockerfile"
+image_build_context = "../"
+max_instances = 20
+instance_type = "basic"
+
+[[durable_objects.bindings]]
+name = "CUSTOM_PYTHON_AGENT"
+class_name = "CustomPythonAgent"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["CustomPythonAgent"]

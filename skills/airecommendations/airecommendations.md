@@ -133,12 +133,15 @@ Submit a recommendation. Request body:
   "match_type": "exact",
   "product_title": "Oak dining chair, set of 1",
   "rationale": "Same maker and silhouette as the crop",
-  "item_crop_id": "…"
+  "item_crop_id": "…",
+  "agent_run_id": "…"
 }
 ```
 
 `proposed_shipping_cents` defaults to `0`; `match_type` defaults to `"exact"`;
-`product_title`, `rationale`, and `item_crop_id` are optional.
+`product_title`, `rationale`, `item_crop_id`, and `agent_run_id` are optional.
+`agent_run_id` attributes the submission to a CVP-launched agent run; a
+standalone external agent has no run and omits it.
 
 Responses:
 

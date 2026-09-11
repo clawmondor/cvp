@@ -22,6 +22,14 @@ class Settings(BaseSettings):
     crop_dir: str = "./data/crops"
     serp_api_key: str = ""
     firecrawl_api_key: str = ""
+
+    # Cloudflare agent runs
+    cloudflare_agent_worker_url: str = ""
+    cloudflare_launch_hmac_secret: str = ""
+    cloudflare_agent_key_id: str = ""
+    agent_run_stale_minutes: int = 15
+    ai_recommendation_model: str = "anthropic/claude-haiku-4.5"
+
     public_base_url: str = ""
     company_name: str = "Contents Valuation LLC"
     company_address: str = ""

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -38,6 +38,9 @@ class AiRecommendation(Base):
         String, ForeignKey("item_crops.id"), nullable=True
     )
     agent_key_id: Mapped[str] = mapped_column(String, ForeignKey("agent_keys.id"), nullable=False)
+    agent_run_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("agent_runs.id"), nullable=True, index=True
+    )
     proposed_retail_unit_cents: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     proposed_shipping_cents: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
@@ -56,3 +59,39 @@ class AiRecommendation(Base):
     resolved_by_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("users.id"), nullable=True
     )
+
+
+class AgentRun(Base):
+    """One launch of an ephemeral pricing agent for a single item.
+
+    Records which architecture and model produced a recommendation so that
+    A/B comparison is a query. CVP is the only durable store for a run —
+    the Cloudflare container keeps nothing.
+    """
+
+    __tablename__ = "agent_runs"
+
+    #: Statuses after which no further progress is accepted.
+    TERMINAL = frozenset({"succeeded", "failed"})
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_new_uuid)
+    item_id: Mapped[str] = mapped_column(String, ForeignKey("items.id"), nullable=False, index=True)
+    matter_id: Mapped[str] = mapped_column(String, ForeignKey("matters.id"), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String, nullable=False, default="queued", server_default="queued"
+    )
+    status_message: Mapped[str | None] = mapped_column(String, nullable=True)
+    agent_impl: Mapped[str] = mapped_column(String, nullable=False)
+    model_slug: Mapped[str] = mapped_column(String, nullable=False)
+    image_tag: Mapped[str | None] = mapped_column(String, nullable=True)
+    cost_micro_usd: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    browser_run_used: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_by_id: Mapped[str | None] = mapped_column(String, ForeignKey("users.id"), nullable=True)
+    agent_key_id: Mapped[str] = mapped_column(String, ForeignKey("agent_keys.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
