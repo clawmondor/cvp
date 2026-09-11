@@ -130,6 +130,9 @@ def launch(
             item=item,
             recommendations=[],
             terminal=run.status in AgentRun.TERMINAL,
+            # A fresh run is never terminal, so there is nothing to swap out
+            # of band and no #ai-recs-<id> guaranteed on the page yet.
+            oob=False,
         )
     )
 
@@ -224,5 +227,8 @@ def status(
             item=item,
             recommendations=recommendations,
             terminal=run.status in AgentRun.TERMINAL,
+            # This partial is the whole response to a poll, so the OOB swap has
+            # a live #ai-recs-<id> to land on.
+            oob=True,
         )
     )

@@ -229,6 +229,9 @@
         {% set run = latest_agent_run %}
         {% set recommendations = latest_agent_run_recommendations %}
         {% set terminal = latest_agent_run_terminal %}
+        {# Rendered inline: #ai-recs-<id> below has not loaded yet, so the
+           partial must not emit its out-of-band swap. #}
+        {% set oob = false %}
         {% include "_agent_run_status.html" %}
       {% else %}
         <div id="agent-run-{{ item.id }}"></div>

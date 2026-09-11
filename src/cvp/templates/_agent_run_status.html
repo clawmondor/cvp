@@ -47,8 +47,10 @@
 </div>
 
 {# On success, refresh the recommendations list in place rather than making the
-   specialist reload the page. #}
-{% if run.status == "succeeded" %}
+   specialist reload the page. Only when this partial is the whole response
+   (`oob`): rendered inline inside the edit row, #ai-recs-<id> does not exist
+   yet, and htmx drops the swap with an oobErrorNoTarget in the console. #}
+{% if run.status == "succeeded" and oob %}
 <div id="ai-recs-{{ item.id }}" hx-swap-oob="true">
   {% include "_ai_recommendations.html" %}
 </div>

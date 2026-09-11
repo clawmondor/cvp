@@ -130,7 +130,10 @@ def _submit_recommendation(cfg: Config, body: dict) -> None:
 def run(cfg: Config) -> int:
     """Execute one run. Returns a process exit code."""
     started = time.monotonic()
-    cost_micro = 0
+    # None, not 0: a run that throws after a paid OpenRouter call has a cost we
+    # do not know, and reporting 0 would make it indistinguishable from a free
+    # one — silently understating the A/B cost comparison.
+    cost_micro: int | None = None
     used_browser = False
     error: str | None = None
 
@@ -173,14 +176,17 @@ def run(cfg: Config) -> int:
         error = str(exc)
 
     latency_ms = int((time.monotonic() - started) * 1000)
-    telemetry = {
+    telemetry: dict[str, object] = {
         "agent_impl": cfg.agent_impl,
         "image_tag": cfg.image_tag,
         "model_slug": cfg.model_slug,
-        "cost_micro_usd": cost_micro,
         "latency_ms": latency_ms,
         "browser_run_used": used_browser,
     }
+    # Omitted when unknown; both the column and the Pydantic field are optional,
+    # so an absent cost stays NULL instead of reading as "this run was free".
+    if cost_micro is not None:
+        telemetry["cost_micro_usd"] = cost_micro
 
     if error is None:
         post_progress(cfg, "succeeded", **telemetry)

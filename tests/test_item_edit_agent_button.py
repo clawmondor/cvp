@@ -130,3 +130,28 @@ def test_app_js_renders_launch_errors_without_inline_handlers(client, db_session
     assert "htmx:responseError" in app_js
     assert "data-agent-run-form" in app_js
     assert "data-agent-run-error" in app_js
+
+
+def test_succeeded_run_in_edit_row_omits_the_out_of_band_swap(client, db_session):
+    """Inline in the edit row, #ai-recs-<id> has not loaded yet — an OOB swap
+    here is dropped by htmx with oobErrorNoTarget."""
+    item = _item(db_session)
+    _, prefix, key_hash = generate_key()
+    key = AgentKey(name="cf", key_prefix=prefix, key_hash=key_hash)
+    db_session.add(key)
+    db_session.commit()
+    db_session.add(
+        AgentRun(
+            item_id=item.id,
+            matter_id=item.matter_id,
+            agent_impl="custom-python",
+            model_slug="anthropic/claude-haiku-4.5",
+            agent_key_id=key.id,
+            status="succeeded",
+        )
+    )
+    db_session.commit()
+
+    html = client.get(f"/api/items/{item.id}/edit").text
+    assert "Done" in html
+    assert "hx-swap-oob" not in html

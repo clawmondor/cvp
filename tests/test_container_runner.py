@@ -108,6 +108,9 @@ def test_exception_still_reports_terminal_status(cfg, monkeypatch):
     assert runner.run(cfg) == 1
     assert progress[-1]["status"] == "failed"
     assert "openrouter exploded" in progress[-1]["error"]
+    # Cost is unknown, not zero — reporting 0 would read as a free run and
+    # silently understate the A/B cost comparison.
+    assert "cost_micro_usd" not in progress[-1]
 
 
 def test_unsourced_result_is_never_submitted(cfg, monkeypatch):
