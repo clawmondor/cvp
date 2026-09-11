@@ -143,7 +143,16 @@ Idempotent; safe to run anytime.
    wrangler secret put BROWSER_RUN_TOKEN
    ```
 
-5. Deploy: `wrangler deploy`.
+5. Deploy from `cloudflare/`: `wrangler deploy`. This builds the container
+   image locally, so Docker must be running. The build context is the
+   repository root (`image_build_context = "../"` in `wrangler.toml`) because
+   the Dockerfile COPYs from both `cloudflare/images/shared/` and
+   `skills/airecommendations/scripts/`.
+
+   To deploy an exact image CI already pushed rather than building locally,
+   set `image` in `wrangler.toml` to
+   `registry.cloudflare.com/<ACCOUNT_ID>/cvp-agent-custom-python:<sha>` and
+   drop `image_build_context`.
 6. Set `CLOUDFLARE_AGENT_WORKER_URL` in CVP to the deployed Worker URL.
 
 ### Rotating the agent key
