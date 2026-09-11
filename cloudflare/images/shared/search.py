@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
 import httpx
@@ -40,11 +40,43 @@ PROMPT = (
 @dataclass
 class SearchResult:
     product_title: str
-    price_usd: float
+    #: As the model reported it, minus currency formatting — never coerced to
+    #: float. `dollars_to_cents` takes it from here through Decimal.
+    price_usd: str | float
     retailer: str
     source_url: str
     match_type: str
     rationale: str
+
+
+#: Everything that is not a digit, a decimal point, or a leading minus.
+_PRICE_JUNK = re.compile(r"[^0-9.\-]")
+
+
+def clean_price(value: Any) -> str | int | float | None:
+    """Normalise a model-supplied price, or return None if it is not a price.
+
+    A model replying `"price_usd": "$1,299.99"` is ordinary output, and
+    `float(price)` raised ValueError on it — wasting a paid search and showing
+    the specialist a Python traceback. Numbers pass through untouched; strings
+    lose their currency symbols and thousands separators and stay strings, so
+    `dollars_to_cents` hands Decimal the exact digits the model wrote.
+    """
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return value
+    if not isinstance(value, str):
+        return None
+    stripped = _PRICE_JUNK.sub("", value.strip())
+    if not stripped:
+        return None
+    try:
+        Decimal(stripped)
+    except InvalidOperation:
+        # A range ("$100-$200"), a stray word, anything not a single amount.
+        return None
+    return stripped
 
 
 def dollars_to_cents(amount: str | int | float | Decimal) -> int:
@@ -128,7 +160,7 @@ def search_for_item(
 
     source_url = str(parsed.get("source_url") or "").strip()
     retailer = str(parsed.get("retailer") or "").strip()
-    price = parsed.get("price_usd")
+    price = clean_price(parsed.get("price_usd"))
     if not source_url or not retailer or price is None:
         return None, cost_micro, False
 
@@ -139,7 +171,7 @@ def search_for_item(
     return (
         SearchResult(
             product_title=str(parsed.get("product_title") or "").strip(),
-            price_usd=float(price),
+            price_usd=price,
             retailer=retailer,
             source_url=source_url,
             match_type=match_type,

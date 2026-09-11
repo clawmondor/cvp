@@ -90,3 +90,54 @@ def test_rejects_result_missing_source_url(monkeypatch):
         browser_token="",
     )
     assert result is None
+
+
+def test_price_keeps_currency_formatting_out_of_the_conversion():
+    """`"$1,299.99"` is ordinary model output; float() raised ValueError on it,
+    wasting a paid search and surfacing a traceback to the specialist."""
+    assert search.clean_price("$1,299.99") == "1299.99"
+    assert search.dollars_to_cents(search.clean_price("$1,299.99")) == 129999
+    assert search.clean_price("USD 89") == "89"
+
+
+def test_plain_numeric_price_is_passed_through_unconverted():
+    assert search.clean_price(1249.0) == 1249.0
+    assert search.clean_price(1249) == 1249
+    assert search.dollars_to_cents(search.clean_price(1249.0)) == 124900
+
+
+def test_unusable_price_is_discarded_rather_than_raising():
+    for junk in (None, "", "$", "call for pricing", "$100-$200", True, {"amount": 1}):
+        assert search.clean_price(junk) is None
+
+
+def test_formatted_price_survives_a_full_search(monkeypatch):
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(
+                        {
+                            "product_title": "Chair",
+                            "price_usd": "$1,299.99",
+                            "retailer": "Shop",
+                            "source_url": "https://s.example/c",
+                        }
+                    )
+                }
+            }
+        ],
+        "usage": {"cost": 0.001},
+    }
+    monkeypatch.setattr(search, "_post_openrouter", lambda *a, **k: payload)
+
+    result, _cost, _ = search.search_for_item(
+        description="chair",
+        brand=None,
+        model=None,
+        model_slug="anthropic/claude-haiku-4.5",
+        openrouter_key="k",
+        browser_account_id="",
+        browser_token="",
+    )
+    assert search.dollars_to_cents(result.price_usd) == 129999
