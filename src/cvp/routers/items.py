@@ -17,7 +17,7 @@ from cvp.db import SessionLocal, get_db
 from cvp.dependencies import CurrentUser, require_matter_role
 from cvp.depreciation import compute_acv
 from cvp.models import MATCH_TYPES, Category, Item, ItemGroup, Room
-from cvp.models_agent import AiRecommendation
+from cvp.models_agent import AgentRun, AiRecommendation
 from cvp.services.audit import get_client_ip, write_audit_log
 from cvp.services.firecrawl import build_query
 from cvp.services.item_groups import find_or_create
@@ -285,7 +285,24 @@ def _item_row_edit_html(
     rooms: list,
     item_groups: list,
     serp_context: dict[str, dict] | None = None,
+    db: Session | None = None,
 ) -> str:
+    latest_agent_run = None
+    latest_agent_run_terminal = False
+    latest_agent_run_recommendations: list = []
+    if db is not None:
+        latest_agent_run = (
+            db.query(AgentRun)
+            .filter(AgentRun.item_id == item.id)
+            .order_by(AgentRun.created_at.desc())
+            .first()
+        )
+        if latest_agent_run is not None:
+            latest_agent_run_terminal = latest_agent_run.status in AgentRun.TERMINAL
+            latest_agent_run_recommendations = [
+                r for r in item.ai_recommendations if r.status == "pending"
+            ]
+
     return templates.get_template("_item_row_edit.html").render(
         item=item,
         categories=categories,
@@ -296,6 +313,9 @@ def _item_row_edit_html(
         public_base_url=settings.public_base_url,
         default_query=build_query(item),
         firecrawl_configured=bool(settings.firecrawl_api_key),
+        latest_agent_run=latest_agent_run,
+        latest_agent_run_terminal=latest_agent_run_terminal,
+        latest_agent_run_recommendations=latest_agent_run_recommendations,
         **(serp_context or empty_panel_context()),
     )
 
@@ -530,7 +550,9 @@ def item_edit_form(
             raise HTTPException(status_code=404)
         categories, rooms, item_groups = _get_context(item.matter_id, db)
 
-        html = _item_row_edit_html(item, categories, rooms, item_groups, panel_context(db, item))
+        html = _item_row_edit_html(
+            item, categories, rooms, item_groups, panel_context(db, item), db=db
+        )
     finally:
         db.close()
     return HTMLResponse(html)
