@@ -52,6 +52,16 @@ BASE_DIR = Path(__file__).parent
 async def lifespan(app: FastAPI):
     vision_worker.recover_stale_jobs()
     vision_worker.start_worker()
+
+    from cvp.db import SessionLocal
+    from cvp.services.agent_run_sweeper import sweep_stale_runs
+
+    _db = SessionLocal()
+    try:
+        sweep_stale_runs(_db, older_than_minutes=settings.agent_run_stale_minutes)
+    finally:
+        _db.close()
+
     yield
 
 
