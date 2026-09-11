@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -131,3 +133,29 @@ def test_launch_rejects_when_no_agent_key_configured(ctx, monkeypatch):
     assert r.status_code == 503
     assert db.query(AgentRun).count() == 0
     assert launched == []
+
+
+def test_launch_reaps_a_stale_run_and_proceeds(ctx):
+    """A container that died without reporting must not make the item
+    permanently unpriceable — the sweeper runs on launch, not just at boot."""
+    client, db, item_id, key_id, launched = ctx
+    stale = AgentRun(
+        item_id=item_id,
+        matter_id=db.query(Item).first().matter_id,
+        agent_impl="custom-python",
+        model_slug="anthropic/claude-haiku-4.5",
+        agent_key_id=key_id,
+        status="running",
+        created_at=datetime.now(tz=timezone.utc) - timedelta(minutes=60),
+    )
+    db.add(stale)
+    db.commit()
+
+    r = client.post(f"/api/items/{item_id}/agent-runs")
+    assert r.status_code == 200
+
+    db.refresh(stale)
+    assert stale.status == "failed"
+    assert "timed out" in stale.error
+    assert len(launched) == 1
+    assert db.query(AgentRun).count() == 2

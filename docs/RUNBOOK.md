@@ -172,6 +172,9 @@ image a deployed Worker still references will break that Worker.
 
 Container storage is ephemeral and logs live on Cloudflare, so CVP cannot
 interrogate a dead container — it only notices that nothing arrived. A run
-stuck in a non-terminal state is reaped on app startup by
+stuck in a non-terminal state is reaped by
 `agent_run_sweeper.sweep_stale_runs` after `AGENT_RUN_STALE_MINUTES`
-(default 15). For the container's own output use `wrangler tail`.
+(default 15) — on app startup, and again on every launch attempt, so a
+stranded run clears itself the next time a specialist presses the button
+rather than blocking that item until the next redeploy. For the
+container's own output use `wrangler tail`.

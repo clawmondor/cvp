@@ -22,6 +22,7 @@ from cvp.models import Item
 from cvp.models_agent import AgentRun
 from cvp.services import agent_launch
 from cvp.services.agent_models import resolve_model
+from cvp.services.agent_run_sweeper import sweep_stale_runs
 from cvp.services.recommendation_feed import MAX_PENDING_PER_ITEM, pending_count
 
 BASE_DIR = Path(__file__).parent.parent
@@ -35,8 +36,20 @@ EDITOR = require_matter_role("editor")
 
 AGENT_IMPL = "custom-python"
 
-#: Statuses that mean a run still occupies the item.
-IN_FLIGHT = ("queued", "running", "searching", "submitting")
+#: Every status a run may report. The progress endpoint validates against it.
+_VALID_STATUSES = (
+    "queued",
+    "running",
+    "searching",
+    "submitting",
+    "succeeded",
+    "failed",
+)
+
+#: Statuses that mean a run still occupies the item. Derived rather than
+#: hand-listed: "in flight" is exactly "not terminal", and spelling it out
+#: twice is how the two drift apart.
+IN_FLIGHT = tuple(s for s in _VALID_STATUSES if s not in AgentRun.TERMINAL)
 
 
 def _load_item(db: Session, item_id: str) -> Item:
@@ -66,6 +79,12 @@ def launch(
     click, or an item already at the pending cap must not cost a container
     start and an LLM call.
     """
+    # Reap stranded runs before the in-flight guard reads them. The sweeper
+    # otherwise only runs at process start, so a run whose container died
+    # without reporting would block this item until the next redeploy. One
+    # indexed query on a user-initiated action is a fair price for that.
+    sweep_stale_runs(db, older_than_minutes=settings.agent_run_stale_minutes)
+
     item = _load_item(db, item_id)
 
     try:
@@ -113,16 +132,6 @@ def launch(
             terminal=run.status in AgentRun.TERMINAL,
         )
     )
-
-
-_VALID_STATUSES = (
-    "queued",
-    "running",
-    "searching",
-    "submitting",
-    "succeeded",
-    "failed",
-)
 
 
 class ProgressIn(BaseModel):
