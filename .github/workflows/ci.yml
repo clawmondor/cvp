@@ -64,11 +64,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      # No package-lock.json is committed, so there is nothing for `npm ci` to
-      # install from; commit a lockfile and switch to `npm ci` if the Worker's
-      # dependency versions ever need pinning.
       - name: Install deps
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Type-check the Worker
         run: npx tsc --noEmit
 
@@ -109,5 +106,5 @@ jobs:
           LOCAL="cvp-agent-${{ matrix.image }}:${{ github.sha }}"
           REF="registry.cloudflare.com/${CLOUDFLARE_ACCOUNT_ID}/${LOCAL}"
           docker tag "$LOCAL" "$REF"
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npx wrangler containers push "$REF"
