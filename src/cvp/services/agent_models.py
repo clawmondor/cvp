@@ -16,10 +16,14 @@ avoid a circular import with `runtime_config`, which also needs the
 allowlist.
 """
 
+import logging
+
 from sqlalchemy.orm import Session
 
 from cvp.services import runtime_config
 from cvp.services.agent_model_slugs import ALLOWED_MODEL_SLUGS, DEFAULT_MODEL_SLUG
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "ALLOWED_MODEL_SLUGS",
@@ -34,12 +38,28 @@ def is_allowed(slug: str) -> bool:
 
 
 def resolve_model(db: Session, requested: str | None) -> str:
-    """Return the model slug to run, validating any caller-supplied override.
+    """Return the model slug to run, validating it against the allowlist.
 
-    Raises ValueError if the override is not on the allowlist.
+    Raises ValueError if a caller-supplied override is not allowed. A
+    *configured* default that is not allowed is not the caller's fault, so it
+    falls back to `DEFAULT_MODEL_SLUG` with a warning rather than failing the
+    launch — but it never reaches the Worker. `runtime_config` only applies the
+    allowlist to a DB row; with no row it hands back the env default unchecked,
+    so `AI_RECOMMENDATION_MODEL=<anything>` in the environment would otherwise
+    walk straight past the guard that exists to bound spend, and the Worker
+    validates nothing by design.
     """
     if requested:
         if not is_allowed(requested):
             raise ValueError(f"model {requested!r} is not allowed")
         return requested
-    return runtime_config.get_str(db, "ai_recommendation_model")
+
+    configured = runtime_config.get_str(db, "ai_recommendation_model")
+    if not is_allowed(configured):
+        logger.warning(
+            "configured ai_recommendation_model %r is not on the allowlist; using %s",
+            configured,
+            DEFAULT_MODEL_SLUG,
+        )
+        return DEFAULT_MODEL_SLUG
+    return configured
