@@ -10,6 +10,7 @@ via monkeypatch rather than `app.dependency_overrides[get_db]`.
 """
 
 import inspect
+import pathlib
 
 import pytest
 from fastapi.testclient import TestClient
@@ -109,3 +110,23 @@ def test_edit_row_shows_existing_run_status(client, db_session):
     html = client.get(f"/api/items/{item.id}/edit").text
     assert "Looking for retail matches" in html
     assert 'hx-trigger="every 2s"' in html
+
+
+def test_edit_row_wires_launch_errors_to_an_error_box(client, db_session):
+    """A rejected launch must be visible: htmx discards non-2xx bodies, so the
+    guard's `detail` only reaches the specialist through this wiring."""
+    item = _item(db_session)
+    html = client.get(f"/api/items/{item.id}/edit").text
+    assert "data-agent-run-form" in html
+    assert f'data-agent-run-error="agent-run-error-{item.id}"' in html
+    assert f'id="agent-run-error-{item.id}"' in html
+
+
+def test_app_js_renders_launch_errors_without_inline_handlers(client, db_session):
+    """The listener has to live in app.js: CSP script-src has no unsafe-inline."""
+    app_js = (
+        pathlib.Path(__file__).resolve().parents[1] / "src" / "cvp" / "static" / "app.js"
+    ).read_text()
+    assert "htmx:responseError" in app_js
+    assert "data-agent-run-form" in app_js
+    assert "data-agent-run-error" in app_js

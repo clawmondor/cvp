@@ -159,3 +159,26 @@ def test_launch_reaps_a_stale_run_and_proceeds(ctx):
     assert "timed out" in stale.error
     assert len(launched) == 1
     assert db.query(AgentRun).count() == 2
+
+
+def test_rejected_launch_returns_a_detail_message_for_the_ui(ctx):
+    """The error box in the edit row renders `detail`; an empty or non-string
+    body would leave the specialist with a flickering button and no reason."""
+    client, db, item_id, key_id, _launched = ctx
+    db.add(
+        AgentRun(
+            item_id=item_id,
+            matter_id=db.query(Item).first().matter_id,
+            agent_impl="custom-python",
+            model_slug="anthropic/claude-haiku-4.5",
+            agent_key_id=key_id,
+            status="running",
+        )
+    )
+    db.commit()
+
+    r = client.post(f"/api/items/{item_id}/agent-runs")
+    assert r.status_code == 409
+    detail = r.json()["detail"]
+    assert isinstance(detail, str)
+    assert "already in progress" in detail
