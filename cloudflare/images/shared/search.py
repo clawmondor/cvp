@@ -20,6 +20,10 @@ from typing import Any
 import httpx
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+# COUPLED with `sleepAfter` on CustomPythonAgent in cloudflare/src/index.ts.
+# The container has no port, so nothing refreshes its inactivity timer: this
+# timeout must stay comfortably under `sleepAfter` or a slow search gets the
+# instance reclaimed mid-run. Raise one, raise the other.
 _TIMEOUT_SECONDS = 120.0
 _MAX_RESULTS = 5
 

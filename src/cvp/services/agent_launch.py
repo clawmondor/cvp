@@ -20,7 +20,11 @@ from cvp.models_agent import AgentRun
 
 logger = logging.getLogger(__name__)
 
-_TIMEOUT_SECONDS = 10.0
+# Comfortably past a container cold start (~14s observed). The Worker answers
+# 202 before awaiting the start, so this should never be approached — but if
+# the Worker is slow, a false "failed" here is worse than waiting: the
+# container still runs, still spends money, and still posts its recommendation.
+_TIMEOUT_SECONDS = 30.0
 
 
 def sign_payload(secret: str, timestamp: str, body: str) -> str:

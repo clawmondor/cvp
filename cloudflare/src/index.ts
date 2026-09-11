@@ -19,8 +19,15 @@ interface Job {
 }
 
 export class CustomPythonAgent extends Container<Env> {
-  // The run is a one-shot batch job: no port, no request forwarding.
-  sleepAfter = "30s";
+  // The run is a one-shot batch job: no port, no request forwarding — so no
+  // traffic ever refreshes this inactivity timer. It must therefore exceed the
+  // runner's worst-case wall time, or a slow-but-healthy run is reclaimed
+  // mid-flight and strands itself with no terminal status.
+  //
+  // COUPLED with the timeouts in cloudflare/images/shared/{runner,search}.py:
+  // progress 30s + item fetch 30s + search 120s + submit 30s + terminal
+  // progress 30s = 240s worst case. Change one of those and change this.
+  sleepAfter = "6m";
   private launched = false;
 
   async launch(job: Job, secrets: Record<string, string>): Promise<void> {
@@ -81,7 +88,7 @@ async function verify(req: Request, secret: string): Promise<string | null> {
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
     if (req.method !== "POST" || url.pathname !== "/runs") {
       return new Response("not found", { status: 404 });
@@ -101,13 +108,24 @@ export default {
     }
 
     const stub = getContainer(env.CUSTOM_PYTHON_AGENT, job.run_id);
-    await stub.launch(job, {
-      CVP_BASE_URL: env.CVP_BASE_URL,
-      CVP_AGENT_KEY: env.CVP_AGENT_KEY,
-      OPENROUTER_API_KEY: env.OPENROUTER_API_KEY,
-      BROWSER_RUN_ACCOUNT_ID: env.BROWSER_RUN_ACCOUNT_ID,
-      BROWSER_RUN_TOKEN: env.BROWSER_RUN_TOKEN,
-    });
+    // Answer 202 BEFORE the container starts. A cold start runs to ~14s, and
+    // awaiting it here raced CVP's launch timeout: CVP marked the run failed
+    // while the container kept going, spent money, and posted a recommendation
+    // the specialist saw appear next to a "Failed" badge. waitUntil keeps the
+    // start alive past the response, so the reply is fast by construction.
+    ctx.waitUntil(
+      stub.launch(job, {
+        CVP_BASE_URL: env.CVP_BASE_URL,
+        CVP_AGENT_KEY: env.CVP_AGENT_KEY,
+        OPENROUTER_API_KEY: env.OPENROUTER_API_KEY,
+        BROWSER_RUN_ACCOUNT_ID: env.BROWSER_RUN_ACCOUNT_ID,
+        BROWSER_RUN_TOKEN: env.BROWSER_RUN_TOKEN,
+      }).catch((err: unknown) => {
+        // Nothing to report to: the response is already sent. CVP's stale-run
+        // sweeper is the backstop.
+        console.error("container start failed for run", job.run_id, err);
+      }),
+    );
 
     return new Response(JSON.stringify({ accepted: job.run_id }), {
       status: 202,

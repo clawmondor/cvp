@@ -29,6 +29,9 @@ from agent_client import AiRecommendationsClient
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger("runner")
 
+# COUPLED with `sleepAfter` on CustomPythonAgent in cloudflare/src/index.ts —
+# this timeout plus search's is the run's worst-case wall time, and `sleepAfter`
+# must exceed it. Raise one, raise the other.
 _TIMEOUT_SECONDS = 30.0
 
 
