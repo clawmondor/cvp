@@ -1,0 +1,11 @@
+{
+  "name": "cvp-agents",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@cloudflare/containers": "^0.0.42"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
