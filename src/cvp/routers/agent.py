@@ -33,6 +33,10 @@ class RecommendationIn(BaseModel):
     product_title: str = ""
     rationale: str = ""
     item_crop_id: str | None = None
+    #: Set when the submission came from a CVP-launched agent run. Optional so the
+    #: external-agent path (which has no run) is unaffected; it is what makes the
+    #: A/B join in the design spec (5.3) return rows.
+    agent_run_id: str | None = None
 
     @field_validator("source_url", "source_retailer")
     @classmethod
@@ -141,6 +145,7 @@ def submit_recommendation(
         item_id=item_id,
         item_crop_id=body.item_crop_id,
         agent_key_id=principal.agent_key_id,
+        agent_run_id=body.agent_run_id,
         proposed_retail_unit_cents=body.proposed_retail_unit_cents,
         proposed_shipping_cents=body.proposed_shipping_cents,
         source_url=body.source_url,

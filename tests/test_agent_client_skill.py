@@ -19,7 +19,7 @@ from cvp.config import settings
 from cvp.db import get_db
 from cvp.main import app
 from cvp.models import Base, Category, Item, ItemCrop, Matter
-from cvp.models_agent import AgentKey, AiRecommendation
+from cvp.models_agent import AgentKey, AgentRun, AiRecommendation
 from cvp.services.agent_keys import generate_key
 
 # Load the reference client module by path (it lives under skills/, not the cvp package).
@@ -174,6 +174,32 @@ def test_submit_creates_pending_recommendation(client, seeded_item, db_session):
     rec = db_session.query(AiRecommendation).one()
     assert rec.proposed_retail_unit_cents == 12300
     assert rec.proposed_shipping_cents == 500
+
+
+def test_submit_forwards_agent_run_id(client, seeded_item, db_session):
+    """The run FK is what makes A/B attribution recoverable after the fact."""
+    _, prefix, key_hash = generate_key()
+    key = AgentKey(name="cf", key_prefix=prefix, key_hash=key_hash)
+    db_session.add(key)
+    db_session.flush()
+    run = AgentRun(
+        item_id=seeded_item.id,
+        matter_id=seeded_item.matter_id,
+        agent_impl="custom-python",
+        model_slug="anthropic/claude-haiku-4.5",
+        agent_key_id=key.id,
+    )
+    db_session.add(run)
+    db_session.commit()
+
+    client.submit_recommendation(
+        seeded_item.id,
+        retail_unit_cents=12300,
+        source_url="https://shop.example/oak-chair",
+        source_retailer="Example",
+        agent_run_id=run.id,
+    )
+    assert db_session.query(AiRecommendation).one().agent_run_id == run.id
 
 
 def test_submit_missing_source_raises_422(client, seeded_item):

@@ -117,6 +117,10 @@ def _submit_recommendation(cfg: Config, body: dict) -> None:
         match_type=body["match_type"],
         product_title=body["product_title"],
         rationale=body["rationale"],
+        # Attribution for the A/B join in spec 5.3 — without it
+        # ai_recommendations.agent_run_id is never written and the accept-rate
+        # and exact-rate metrics are unrecoverable after the fact.
+        agent_run_id=cfg.run_id,
     )
 
 
