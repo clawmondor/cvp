@@ -2,10 +2,15 @@
   "name": "cvp-agents",
   "private": true,
   "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@cloudflare/containers": "^0.0.42"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.0.0",
+    "typescript": "^5.6.0",
     "wrangler": "^4.0.0"
   }
 }

@@ -27,7 +27,9 @@ export class CustomPythonAgent extends Container<Env> {
     // The DO id IS the run id, so a replayed launch lands here and is refused.
     if (this.launched) return;
     this.launched = true;
-    await this.ctx.container.start({
+    const container = this.ctx.container;
+    if (!container) throw new Error("no container is attached to this Durable Object");
+    await container.start({
       enableInternet: true,
       env: {
         RUN_ID: job.run_id,
