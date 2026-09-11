@@ -325,6 +325,13 @@ two implementations of the *agent*, one implementation of the *contract*.
 
 - **custom-python** — `runner.py` calls OpenRouter directly with
   `plugins:[{id:"web"}]`, escalating blocked URLs to a Browser Run Quick Action.
+
+  > **Not yet shipped (Phase 1):** custom-python does **not** escalate blocked
+  > pages. `search.fetch_blocked_page()` exists and the
+  > `BROWSER_RUN_ACCOUNT_ID` / `BROWSER_RUN_TOKEN` plumbing is wired end to
+  > end, but nothing calls it and `browser_run_used` is always `False`.
+  > Escalation is deferred to Phase 2 by controller ruling; the env-var
+  > plumbing is kept so enabling it is a code change and not a redeploy.
 - **pi** — adds Node and `@earendil-works/pi-coding-agent`; `runner.py` spawns
   it and parses `--mode json` into progress POSTs:
 

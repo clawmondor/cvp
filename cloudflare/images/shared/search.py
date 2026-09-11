@@ -5,8 +5,11 @@ together. Measured on 2026-09-10: ~$0.0098 per call at five results, of which
 only ~$0.0028 is inference — search dominates, so result count matters far more
 than model choice.
 
-Blocked retailer pages escalate to a Cloudflare Browser Run Quick Action rather
-than shipping a browser in this image.
+Blocked retailer pages are meant to escalate to a Cloudflare Browser Run Quick
+Action rather than shipping a browser in this image — but that escalation is
+Phase 2 and is NOT wired up yet: `fetch_blocked_page()` below has no caller and
+`browser_run_used` is always False. The credentials are plumbed through so
+enabling it is a code change, not a redeploy.
 """
 
 from __future__ import annotations
