@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import pytest
 from sqlalchemy import create_engine
@@ -86,9 +88,17 @@ def test_successful_launch_marks_running(run_id, session_factory, monkeypatch):
     assert captured["url"] == "https://w.example/runs"
     assert "X-CVP-Signature" in captured["headers"]
     assert "X-CVP-Timestamp" in captured["headers"]
-    # The launch payload must never carry credentials.
-    assert "KEY" not in captured["content"]
-    assert "secret" not in captured["content"].lower()
+    # The launch payload must never carry credentials. An exact key set, not a
+    # substring scan: no reachable value contains "KEY" or "secret", so the
+    # old assertions would have passed even with a secret added under a
+    # differently-spelled key.
+    assert set(json.loads(captured["content"])) == {
+        "run_id",
+        "matter_id",
+        "item_id",
+        "model_slug",
+        "agent_impl",
+    }
     db.close()
 
 
