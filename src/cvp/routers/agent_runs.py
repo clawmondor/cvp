@@ -5,13 +5,16 @@ specialist actions; progress is called by the Cloudflare container with an
 X-API-Key. Auth is declared per route rather than per file.
 """
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session, selectinload
 
+from cvp.agent_auth import AgentPrincipal, require_agent_key
 from cvp.config import settings
 from cvp.db import get_db
 from cvp.dependencies import CurrentUser, require_matter_role
@@ -106,3 +109,81 @@ def launch(
             request=request, run=run, item=item, recommendations=[]
         )
     )
+
+
+_VALID_STATUSES = (
+    "queued",
+    "running",
+    "searching",
+    "submitting",
+    "succeeded",
+    "failed",
+)
+
+
+class ProgressIn(BaseModel):
+    """A progress report from the container. Terminal reports carry telemetry."""
+
+    status: str
+    message: str | None = None
+    error: str | None = None
+    agent_impl: str | None = None
+    image_tag: str | None = None
+    model_slug: str | None = None
+    cost_micro_usd: int | None = Field(default=None, ge=0)
+    latency_ms: int | None = Field(default=None, ge=0)
+    browser_run_used: bool | None = None
+
+    @field_validator("status")
+    @classmethod
+    def _known_status(cls, v: str) -> str:
+        if v not in _VALID_STATUSES:
+            raise ValueError(f"status must be one of {_VALID_STATUSES}")
+        return v
+
+
+@router.post("/api/agent/runs/{run_id}/progress")
+def progress(
+    run_id: str,
+    body: ProgressIn,
+    principal: AgentPrincipal = Depends(require_agent_key),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    """Record progress from the container.
+
+    The run is bound to an agent key at creation, so this is a strict equality
+    check — a valid key must not be able to write progress onto another
+    principal's run.
+    """
+    run = db.get(AgentRun, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.agent_key_id != principal.agent_key_id:
+        raise HTTPException(status_code=403, detail="Run belongs to another agent key")
+    if run.status in AgentRun.TERMINAL:
+        raise HTTPException(status_code=409, detail="Run has already finished")
+
+    run.status = body.status
+    if body.message is not None:
+        run.status_message = body.message
+    if body.error is not None:
+        run.error = body.error
+    # Telemetry is reported by the image, so it describes what actually ran.
+    if body.image_tag is not None:
+        run.image_tag = body.image_tag
+    if body.agent_impl is not None:
+        run.agent_impl = body.agent_impl
+    if body.model_slug is not None:
+        run.model_slug = body.model_slug
+    if body.cost_micro_usd is not None:
+        run.cost_micro_usd = body.cost_micro_usd
+    if body.latency_ms is not None:
+        run.latency_ms = body.latency_ms
+    if body.browser_run_used is not None:
+        run.browser_run_used = body.browser_run_used
+
+    if body.status in AgentRun.TERMINAL:
+        run.finished_at = datetime.now(tz=timezone.utc)
+
+    db.commit()
+    return {"status": run.status}
