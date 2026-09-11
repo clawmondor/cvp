@@ -106,7 +106,11 @@ def launch(
 
     return HTMLResponse(
         templates.get_template("_agent_run_status.html").render(
-            request=request, run=run, item=item, recommendations=[]
+            request=request,
+            run=run,
+            item=item,
+            recommendations=[],
+            terminal=run.status in AgentRun.TERMINAL,
         )
     )
 
@@ -206,6 +210,10 @@ def status(
     recommendations = [r for r in item.ai_recommendations if r.status == "pending"]
     return HTMLResponse(
         templates.get_template("_agent_run_status.html").render(
-            request=request, run=run, item=item, recommendations=recommendations
+            request=request,
+            run=run,
+            item=item,
+            recommendations=recommendations,
+            terminal=run.status in AgentRun.TERMINAL,
         )
     )

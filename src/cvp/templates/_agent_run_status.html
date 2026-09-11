@@ -2,7 +2,6 @@
    element re-fetches itself while the run is live and simply stops emitting
    hx-trigger once terminal. No JavaScript — CSP forbids inline handlers and
    connect-src is 'self', so a direct socket to the Worker is not an option. #}
-{% set terminal = run.status in ["succeeded", "failed"] %}
 {% set labels = {
      "queued": "Queued",
      "running": "Starting…",
